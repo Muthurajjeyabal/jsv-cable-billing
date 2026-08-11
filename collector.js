@@ -25,6 +25,31 @@ const AGENT_AREAS = {
   'online@jsvcable.com': null,  // all
 };
 
+// Names used in CableSoft collections (employee / collectedBy)
+const AGENT_NAMES = {
+  'uma@jsvcable.com': ['UMA', 'uma'],
+  'muthumari@jsvcable.com': ['MUTHUMARI', 'muthumari', 'MUTHUMARI '],
+  'office@jsvcable.com': ['LOCAL', 'OFFICE', 'office'],
+  'online@jsvcable.com': ['ONLINE', 'online'],
+};
+
+function getAgentNames() {
+  if (!currentUser) return [];
+  const email = (currentUser.email || '').toLowerCase();
+  for (const [k, names] of Object.entries(AGENT_NAMES)) {
+    if (email === k || email.startsWith(k.split('@')[0])) return names.map(n => n.toUpperCase().trim());
+  }
+  return [];
+}
+
+function isMyCollection(d) {
+  if (!currentUser) return false;
+  if (d.createdBy === currentUser.email) return true;
+  const names = getAgentNames();
+  const emp = (d.employee || d.collectedBy || d.createdBy || '').toUpperCase().trim();
+  return names.some(n => emp === n || emp.includes(n));
+}
+
 function getAgentAreas() {
   if (!currentUser) return null;
   const email = (currentUser.email || '').toLowerCase();
@@ -397,7 +422,7 @@ async function loadDashboard() {
       monthT += amt;
       if (d.date === today) todayT += amt;
       if (d.date === yest) yestT += amt;
-      if (d.createdBy === currentUser.email) myMonth += amt;
+      if (isMyCollection(d)) myMonth += amt;
       if (d.customerId) paidIds.add(d.customerId);
       else if (d.custId) paidIds.add(d.custId);
     });
