@@ -13,8 +13,34 @@ const db = firebase.firestore();
 
 let currentUser = null;
 let allCustomers = [];
+let allCustomersRaw = [];
 let selectedCustomer = null;
 let placesMap = {};
+
+// Area allotment
+const AGENT_AREAS = {
+  'uma@jsvcable.com': ['AREA 2'],
+  'muthumari@jsvcable.com': ['AREA 1'],
+  'office@jsvcable.com': null,  // all
+  'online@jsvcable.com': null,  // all
+};
+
+function getAgentAreas() {
+  if (!currentUser) return null;
+  const email = (currentUser.email || '').toLowerCase();
+  if (email in AGENT_AREAS) return AGENT_AREAS[email];
+  // partial match
+  for (const [k, v] of Object.entries(AGENT_AREAS)) {
+    if (email.startsWith(k.split('@')[0])) return v;
+  }
+  return null; // admin / unknown = all
+}
+
+function filterByAgentArea(list) {
+  const areas = getAgentAreas();
+  if (!areas) return list; // all areas
+  return list.filter(c => areas.includes((c.place || '').trim()));
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
@@ -89,17 +115,20 @@ function showPage(id) {
 
 async function loadCustomers() {
   const snap = await db.collection('customers').get();
-  allCustomers = [];
-  placesMap = {};
+  allCustomersRaw = [];
   snap.forEach(doc => {
-    const d = { id: doc.id, ...doc.data() };
-    allCustomers.push(d);
+    allCustomersRaw.push({ id: doc.id, ...doc.data() });
+  });
+  allCustomersRaw.sort((a,b) => (a.name||'').localeCompare(b.name||'','ta'));
+  allCustomers = filterByAgentArea(allCustomersRaw);
+  placesMap = {};
+  allCustomers.forEach(d => {
     const pl = d.place || 'Other';
     const st = d.street || 'Other';
     if (!placesMap[pl]) placesMap[pl] = new Set();
     placesMap[pl].add(st);
   });
-  allCustomers.sort((a,b) => (a.name||'').localeCompare(b.name||'','ta'));
+  console.log('Agent areas:', getAgentAreas(), 'Customers:', allCustomers.length);
 }
 
 function buildPlaceStreet() {
