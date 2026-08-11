@@ -376,6 +376,10 @@ async function loadDashboard() {
   document.getElementById('dUnpaidAmt').textContent = '₹' + unpaidAmt.toLocaleString('en-IN');
   document.getElementById('dPending').textContent = '₹' + unpaidAmt.toLocaleString('en-IN');
 
+  // Only this agent's area customer IDs
+  const myCustIds = new Set(allCustomers.map(c => c.id));
+  const myCustIdCodes = new Set(allCustomers.map(c => c.custId).filter(Boolean));
+
   const today = new Date().toISOString().split('T')[0];
   const yest = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   const monthStart = today.slice(0, 8) + '01';
@@ -386,12 +390,16 @@ async function loadDashboard() {
     const paidIds = new Set();
     allCol.forEach(doc => {
       const d = doc.data();
+      // Filter: only collections for customers in this agent's area
+      const inArea = myCustIds.has(d.customerId) || myCustIdCodes.has(d.custId);
+      if (!inArea) return;
       const amt = Number(d.amount || 0);
       monthT += amt;
       if (d.date === today) todayT += amt;
       if (d.date === yest) yestT += amt;
       if (d.createdBy === currentUser.email) myMonth += amt;
       if (d.customerId) paidIds.add(d.customerId);
+      else if (d.custId) paidIds.add(d.custId);
     });
     document.getElementById('dToday').textContent = '₹' + todayT.toLocaleString('en-IN');
     document.getElementById('dYest').textContent = '₹' + yestT.toLocaleString('en-IN');
