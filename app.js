@@ -149,17 +149,19 @@ function toggleSidebar() {
 // ==================== CUSTOMERS ====================
 async function loadCustomers() {
   try {
-    const snap = await db.collection('customers').orderBy('createdAt', 'desc').get();
+    const snap = await db.collection('customers').get();
     allCustomers = [];
     snap.forEach(doc => {
       allCustomers.push({ id: doc.id, ...doc.data() });
     });
+    // Sort by name (Tamil friendly)
+    allCustomers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ta'));
     renderCustomerTable(allCustomers);
     updateDashboardStats();
   } catch (err) {
     console.error(err);
     document.getElementById('customerTableBody').innerHTML =
-      `<tr><td colspan="6" class="text-center py-8 text-red-500">Error loading data</td></tr>`;
+      `<tr><td colspan="6" class="text-center py-8 text-red-500">Error loading data: ${err.message}</td></tr>`;
   }
 }
 
