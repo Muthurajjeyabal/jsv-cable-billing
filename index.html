@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>JSV Cable Billing</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',
+            accent: '#3b82f6',
+            success: '#10b981',
+            danger: '#ef4444',
+            warning: '#f59e0b'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Firebase SDK (Compat for easy use) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .sidebar-item.active { background: #1e293b; border-left: 4px solid #3b82f6; }
+    .card-hover:active { transform: scale(0.98); }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+  <!-- ==================== LOGIN SCREEN ==================== -->
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 fade-in">
+      <div class="text-center mb-8">
+        <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-slate-800">JSV Cable Billing</h1>
+        <p class="text-slate-500 text-sm mt-1">S. Alangulam</p>
+      </div>
+
+      <div id="loginError" class="hidden mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg"></div>
+
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Email / Username</label>
+          <input type="email" id="loginEmail" required
+            class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+            placeholder="admin@jsvcable.com">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+          <input type="password" id="loginPassword" required
+            class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+            placeholder="••••••••">
+        </div>
+        <button type="submit" id="loginBtn"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-blue-200">
+          Login
+        </button>
+      </form>
+
+      <p class="text-center text-xs text-slate-400 mt-6">
+        Multi-user • Secure • Cloud Sync
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN APP ==================== -->
+  <div id="appScreen" class="hidden min-h-screen flex">
+
+    <!-- Mobile Overlay -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 flex flex-col">
+      <div class="p-4 border-b border-slate-700 flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-lg">J</div>
+        <div>
+          <div class="font-bold text-sm">JSV Cable</div>
+          <div class="text-xs text-slate-400">Billing System</div>
+        </div>
+      </div>
+
+      <nav class="flex-1 overflow-y-auto py-4 space-y-1 px-2">
+        <button onclick="showPage('dashboard')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition active" data-page="dashboard">
+          <span class="text-lg">📊</span> Dashboard
+        </button>
+        <button onclick="showPage('customers')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="customers">
+          <span class="text-lg">👥</span> Customers
+        </button>
+        <button onclick="showPage('newCustomer')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="newCustomer">
+          <span class="text-lg">➕</span> New Customer
+        </button>
+        <button onclick="showPage('billing')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="billing">
+          <span class="text-lg">🧾</span> Billing
+        </button>
+        <button onclick="showPage('boxes')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="boxes">
+          <span class="text-lg">📦</span> Box Management
+        </button>
+        <button onclick="showPage('reports')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="reports">
+          <span class="text-lg">📑</span> Reports
+        </button>
+        <button onclick="showPage('masters')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="masters">
+          <span class="text-lg">⚙️</span> Masters
+        </button>
+        <button onclick="showPage('settings')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="settings">
+          <span class="text-lg">🔧</span> Settings
+        </button>
+      </nav>
+
+      <div class="p-4 border-t border-slate-700">
+        <div class="text-xs text-slate-400 mb-2 truncate" id="userEmailDisplay">user@email.com</div>
+        <button onclick="logout()" class="w-full bg-red-600/20 hover:bg-red-600/40 text-red-400 py-2 rounded-lg text-sm transition">
+          Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col min-h-screen">
+      <!-- Top Bar -->
+      <header class="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <h2 id="pageTitle" class="font-semibold text-lg">Dashboard</h2>
+        </div>
+        <div class="text-sm text-slate-500" id="currentDate"></div>
+      </header>
+
+      <!-- Pages Container -->
+      <main class="flex-1 p-4 overflow-y-auto">
+
+        <!-- DASHBOARD -->
+        <div id="page-dashboard" class="page fade-in">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+              <div class="text-xs text-slate-500 mb-1">Total Customers</div>
+              <div class="text-2xl font-bold text-blue-600" id="statCustomers">0</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+              <div class="text-xs text-slate-500 mb-1">Active</div>
+              <div class="text-2xl font-bold text-green-600" id="statActive">0</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+              <div class="text-xs text-slate-500 mb-1">DC / Pending</div>
+              <div class="text-2xl font-bold text-red-600" id="statPending">0</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+              <div class="text-xs text-slate-500 mb-1">Total Boxes</div>
+              <div class="text-2xl font-bold text-purple-600" id="statBoxes">0</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
+            <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-4 text-white">
+              <div class="text-sm opacity-90">Today Collection</div>
+              <div class="text-2xl font-bold" id="statTodayCol">₹ 0</div>
+            </div>
+            <div class="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-4 text-white">
+              <div class="text-sm opacity-90">This Month</div>
+              <div class="text-2xl font-bold" id="statMonthCol">₹ 0</div>
+            </div>
+            <div class="bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl p-4 text-white">
+              <div class="text-sm opacity-90">Previous Due</div>
+              <div class="text-2xl font-bold" id="statDue">₹ 0</div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
+            <h3 class="font-semibold mb-3">Quick Actions</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <button onclick="showPage('newCustomer')" class="card-hover bg-blue-50 hover:bg-blue-100 text-blue-700 py-3 rounded-xl text-sm font-medium transition">+ New Customer</button>
+              <button onclick="showPage('billing')" class="card-hover bg-green-50 hover:bg-green-100 text-green-700 py-3 rounded-xl text-sm font-medium transition">New Bill</button>
+              <button onclick="showPage('customers')" class="card-hover bg-purple-50 hover:bg-purple-100 text-purple-700 py-3 rounded-xl text-sm font-medium transition">Search Customer</button>
+              <button onclick="showPage('reports')" class="card-hover bg-amber-50 hover:bg-amber-100 text-amber-700 py-3 rounded-xl text-sm font-medium transition">Reports</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CUSTOMERS LIST -->
+        <div id="page-customers" class="page hidden fade-in">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 mb-4">
+            <div class="flex flex-col sm:flex-row gap-3">
+              <input type="text" id="searchInput" placeholder="Search Name / Mobile / Box / ID..." 
+                class="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                oninput="searchCustomers()">
+              <select id="statusFilter" onchange="searchCustomers()" class="px-4 py-2.5 border border-slate-300 rounded-xl outline-none">
+                <option value="">All Status</option>
+                <option value="ACT">Active</option>
+                <option value="DC">DC</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th class="text-left px-4 py-3 font-medium">ID</th>
+                    <th class="text-left px-4 py-3 font-medium">Name</th>
+                    <th class="text-left px-4 py-3 font-medium">Mobile</th>
+                    <th class="text-left px-4 py-3 font-medium">Box</th>
+                    <th class="text-left px-4 py-3 font-medium">Status</th>
+                    <th class="text-left px-4 py-3 font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="customerTableBody">
+                  <tr><td colspan="6" class="text-center py-8 text-slate-400">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- NEW / EDIT CUSTOMER -->
+        <div id="page-newCustomer" class="page hidden fade-in">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 max-w-3xl">
+            <h3 class="font-semibold text-lg mb-4" id="customerFormTitle">New Customer</h3>
+            <form id="customerForm" class="space-y-4">
+              <input type="hidden" id="editCustomerId">
+              
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Customer Name *</label>
+                  <input type="text" id="custName" required class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Father Name</label>
+                  <input type="text" id="custFather" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Mobile *</label>
+                  <input type="tel" id="custMobile" required class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Door No</label>
+                  <input type="text" id="custDoor" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Place</label>
+                  <input type="text" id="custPlace" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Street</label>
+                  <input type="text" id="custStreet" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Box Number</label>
+                  <input type="text" id="custBox" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">SC Number</label>
+                  <input type="text" id="custSC" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Package</label>
+                  <select id="custPackage" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Select Package</option>
+                    <option value="Basic">Basic</option>
+                    <option value="Standard">Standard</option>
+                    <option value="Premium">Premium</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Package Amount</label>
+                  <input type="number" id="custPkgAmt" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Connection Date</label>
+                  <input type="date" id="custConDate" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Status</label>
+                  <select id="custStatus" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="ACT">Active (ACT)</option>
+                    <option value="DC">Disconnected (DC)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-1">Remarks</label>
+                <textarea id="custRemarks" rows="2" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+              </div>
+
+              <div class="flex gap-3 pt-2">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium transition">Save Customer</button>
+                <button type="button" onclick="showPage('customers')" class="bg-slate-200 hover:bg-slate-300 px-6 py-2.5 rounded-xl font-medium transition">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- BILLING -->
+        <div id="page-billing" class="page hidden fade-in">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 max-w-2xl">
+            <h3 class="font-semibold text-lg mb-4">New Bill / Collection</h3>
+            <form id="billForm" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium mb-1">Search Customer (Name / Mobile / Box)</label>
+                <input type="text" id="billSearch" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type to search..." oninput="searchForBill()">
+                <div id="billSearchResults" class="mt-2 max-h-40 overflow-y-auto hidden border rounded-xl"></div>
+              </div>
+
+              <div id="selectedCustomerInfo" class="hidden bg-blue-50 p-3 rounded-xl text-sm">
+                <div class="font-medium" id="billCustName">-</div>
+                <div class="text-slate-600" id="billCustDetails">-</div>
+              </div>
+
+              <input type="hidden" id="billCustomerId">
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1">Amount *</label>
+                  <input type="number" id="billAmount" required class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Date</label>
+                  <input type="date" id="billDate" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-1">Payment Mode</label>
+                <select id="billMode" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Bank">Bank Transfer</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-1">Remarks</label>
+                <input type="text" id="billRemarks" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+
+              <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-medium transition">Save Collection</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- BOX MANAGEMENT (Placeholder) -->
+        <div id="page-boxes" class="page hidden fade-in">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 text-center">
+            <div class="text-4xl mb-3">📦</div>
+            <h3 class="font-semibold text-lg mb-2">Box Management</h3>
+            <p class="text-slate-500 text-sm mb-4">Box Purchase, List, Transfer features will be added in next version.</p>
+            <div class="text-sm text-slate-400">Total Boxes (from customers): <span id="boxCountDisplay">0</span></div>
+          </div>
+        </div>
+
+        <!-- REPORTS (Placeholder) -->
+        <div id="page-reports" class="page hidden fade-in">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 text-left hover:shadow-md transition card-hover">
+              <div class="text-2xl mb-2">📋</div>
+              <div class="font-medium">Customer List</div>
+              <div class="text-xs text-slate-500 mt-1">All customers report</div>
+            </button>
+            <button class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 text-left hover:shadow-md transition card-hover">
+              <div class="text-2xl mb-2">💰</div>
+              <div class="font-medium">Collection Report</div>
+              <div class="text-xs text-slate-500 mt-1">Daily / Monthly collection</div>
+            </button>
+            <button class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 text-left hover:shadow-md transition card-hover">
+              <div class="text-2xl mb-2">⚠️</div>
+              <div class="font-medium">Pending / Due</div>
+              <div class="text-xs text-slate-500 mt-1">Outstanding amounts</div>
+            </button>
+            <button class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 text-left hover:shadow-md transition card-hover">
+              <div class="text-2xl mb-2">📦</div>
+              <div class="font-medium">Package Wise</div>
+              <div class="text-xs text-slate-500 mt-1">Package summary</div>
+            </button>
+            <button class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 text-left hover:shadow-md transition card-hover">
+              <div class="text-2xl mb-2">🔌</div>
+              <div class="font-medium">DC List</div>
+              <div class="text-xs text-slate-500 mt-1">Disconnected customers</div>
+            </button>
+            <button class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 text-left hover:shadow-md transition card-hover">
+              <div class="text-2xl mb-2">📱</div>
+              <div class="font-medium">WhatsApp Pending</div>
+              <div class="text-xs text-slate-500 mt-1">Send due reminders</div>
+            </button>
+          </div>
+          <p class="text-center text-slate-400 text-sm mt-6">Full reports will be activated in next update.</p>
+        </div>
+
+        <!-- MASTERS (Placeholder) -->
+        <div id="page-masters" class="page hidden fade-in">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
+              <div class="text-3xl mb-2">📍</div>
+              <div class="font-medium text-sm">Places</div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
+              <div class="text-3xl mb-2">🛣️</div>
+              <div class="font-medium text-sm">Streets</div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
+              <div class="text-3xl mb-2">🎁</div>
+              <div class="font-medium text-sm">Packages</div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
+              <div class="text-3xl mb-2">👤</div>
+              <div class="font-medium text-sm">Employees</div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
+              <div class="text-3xl mb-2">📡</div>
+              <div class="font-medium text-sm">MSO Master</div>
+            </div>
+            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
+              <div class="text-3xl mb-2">🏢</div>
+              <div class="font-medium text-sm">Company Info</div>
+            </div>
+          </div>
+          <p class="text-center text-slate-400 text-sm mt-6">Master data management coming soon.</p>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="page-settings" class="page hidden fade-in">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 max-w-lg space-y-4">
+            <h3 class="font-semibold text-lg">Settings</h3>
+            
+            <div class="border rounded-xl p-4">
+              <div class="font-medium mb-2">Create New User (Staff)</div>
+              <form id="createUserForm" class="space-y-3">
+                <input type="email" id="newUserEmail" placeholder="Email" required class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="password" id="newUserPassword" placeholder="Password (min 6)" required minlength="6" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Create User</button>
+              </form>
+              <p class="text-xs text-slate-500 mt-2">Only Admin should create users.</p>
+            </div>
+
+            <div class="border rounded-xl p-4">
+              <div class="font-medium mb-1">App Info</div>
+              <div class="text-sm text-slate-600">Version: 1.0 MVP</div>
+              <div class="text-sm text-slate-600">Project: jsvcable-billing</div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-lg text-sm hidden z-50 transition"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
