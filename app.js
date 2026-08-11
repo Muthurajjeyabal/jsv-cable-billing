@@ -17,6 +17,7 @@ const db = firebase.firestore();
 let currentUser = null;
 let allCustomers = [];
 let selectedBillCustomer = null;
+let currentLedgerCustomerId = null;
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -24,12 +25,12 @@ document.addEventListener('DOMContentLoaded', () => {
     weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
   });
 
-  // Set default dates
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('custConDate').value = today;
-  document.getElementById('billDate').value = today;
+  const conDateEl = document.getElementById('custConDate');
+  const billDateEl = document.getElementById('billDate');
+  if (conDateEl) conDateEl.value = today;
+  if (billDateEl) billDateEl.value = today;
 
-  // Auth state listener
   auth.onAuthStateChanged(user => {
     if (user) {
       currentUser = user;
@@ -45,11 +46,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Forms
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
   document.getElementById('customerForm').addEventListener('submit', handleSaveCustomer);
   document.getElementById('billForm').addEventListener('submit', handleSaveBill);
-  document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
+  const createUserForm = document.getElementById('createUserForm');
+  if (createUserForm) createUserForm.addEventListener('submit', handleCreateUser);
 });
 
 // ==================== AUTH ====================
@@ -67,7 +68,7 @@ async function handleLogin(e) {
   try {
     await auth.signInWithEmailAndPassword(email, password);
   } catch (err) {
-    errBox.textContent = err.message.includes('user-not-found') || err.message.includes('wrong-password')
+    errBox.textContent = err.message.includes('user-not-found') || err.message.includes('wrong-password') || err.message.includes('invalid-credential')
       ? 'Invalid email or password'
       : err.message;
     errBox.classList.remove('hidden');
@@ -87,11 +88,8 @@ async function handleCreateUser(e) {
   e.preventDefault();
   const email = document.getElementById('newUserEmail').value.trim();
   const password = document.getElementById('newUserPassword').value;
-
   try {
-    // Create user (this will sign in as the new user temporarily in some cases)
-    // Better way: use Admin SDK, but for simple case we use client
-    const secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
+    const secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary' + Date.now());
     await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
     await secondaryApp.auth().signOut();
     secondaryApp.delete();
@@ -117,6 +115,8 @@ function showPage(pageId) {
     customers: 'Customers',
     newCustomer: 'New Customer',
     billing: 'Billing / Collection',
+    ledger: 'Customer Ledger',
+    pending: 'Pending / Due Report',
     boxes: 'Box Management',
     reports: 'Reports',
     masters: 'Masters',
@@ -124,15 +124,18 @@ function showPage(pageId) {
   };
   document.getElementById('pageTitle').textContent = titles[pageId] || pageId;
 
-  // Reset form if new customer
   if (pageId === 'newCustomer') {
     document.getElementById('customerForm').reset();
     document.getElementById('editCustomerId').value = '';
     document.getElementById('customerFormTitle').textContent = 'New Customer';
-    document.getElementById('custConDate').value = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('custConDate').value = today;
   }
 
-  // Close mobile sidebar
+  if (pageId === 'pending') {
+    renderPendingReport();
+  }
+
   if (window.innerWidth < 1024) {
     document.getElementById('sidebar').classList.add('-translate-x-full');
     document.getElementById('sidebarOverlay').classList.add('hidden');
@@ -154,41 +157,48 @@ async function loadCustomers() {
     snap.forEach(doc => {
       allCustomers.push({ id: doc.id, ...doc.data() });
     });
-    // Sort by name (Tamil friendly)
     allCustomers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ta'));
     renderCustomerTable(allCustomers);
     updateDashboardStats();
   } catch (err) {
     console.error(err);
     document.getElementById('customerTableBody').innerHTML =
-      `<tr><td colspan="6" class="text-center py-8 text-red-500">Error loading data: ${err.message}</td></tr>`;
+      `<tr><td colspan="7" class="text-center py-8 text-red-500">Error: ${err.message}</td></tr>`;
   }
 }
 
 function renderCustomerTable(list) {
   const tbody = document.getElementById('customerTableBody');
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">No customers found</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">No customers found</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = list.map(c => `
+  tbody.innerHTML = list.map(c => {
+    const due = Number(c.dueAmt || c.due || 0);
+    const status = c.status || 'ACT';
+    return `
     <tr class="border-t border-slate-100 hover:bg-slate-50">
-      <td class="px-4 py-3 font-mono text-xs">${c.custId || c.id.slice(0,6)}</td>
-      <td class="px-4 py-3 font-medium">${c.name || '-'}</td>
-      <td class="px-4 py-3">${c.mobile || '-'}</td>
-      <td class="px-4 py-3 font-mono text-xs">${c.boxNo || '-'}</td>
-      <td class="px-4 py-3">
-        <span class="px-2 py-0.5 rounded-full text-xs font-medium ${c.status === 'ACT' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-          ${c.status || 'ACT'}
+      <td class="px-3 py-2.5 font-mono text-xs">${c.custId || c.id.slice(0,6)}</td>
+      <td class="px-3 py-2.5 font-medium text-sm">${c.name || '-'}</td>
+      <td class="px-3 py-2.5 text-sm">${c.mobile || '-'}</td>
+      <td class="px-3 py-2.5 font-mono text-xs">${c.boxNo || '-'}</td>
+      <td class="px-3 py-2.5 text-sm font-semibold ${due > 0 ? 'text-red-600' : 'text-slate-500'}">₹${due}</td>
+      <td class="px-3 py-2.5">
+        <span class="px-2 py-0.5 rounded-full text-xs font-medium ${status === 'ACT' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+          ${status}
         </span>
       </td>
-      <td class="px-4 py-3">
-        <button onclick="editCustomer('${c.id}')" class="text-blue-600 hover:underline text-xs mr-2">Edit</button>
-        <button onclick="openWhatsApp('${c.mobile}', '${c.name}')" class="text-green-600 hover:underline text-xs">WA</button>
+      <td class="px-3 py-2.5 whitespace-nowrap">
+        <button onclick="editCustomer('${c.id}')" class="text-blue-600 hover:underline text-xs mr-1">Edit</button>
+        <button onclick="toggleDC('${c.id}', '${status}')" class="text-xs mr-1 ${status === 'ACT' ? 'text-red-600' : 'text-green-600'} hover:underline">
+          ${status === 'ACT' ? 'DC' : 'RC'}
+        </button>
+        <button onclick="viewLedger('${c.id}')" class="text-purple-600 hover:underline text-xs mr-1">Ledger</button>
+        <button onclick="openWhatsApp('${c.mobile || ''}', '${(c.name || '').replace(/'/g, '')}')" class="text-green-600 hover:underline text-xs">WA</button>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 function searchCustomers() {
@@ -196,14 +206,15 @@ function searchCustomers() {
   const status = document.getElementById('statusFilter').value;
 
   let filtered = allCustomers;
-  if (status) filtered = filtered.filter(c => c.status === status);
+  if (status) filtered = filtered.filter(c => (c.status || 'ACT') === status);
   if (q) {
     filtered = filtered.filter(c =>
       (c.name || '').toLowerCase().includes(q) ||
       (c.mobile || '').includes(q) ||
       (c.boxNo || '').toLowerCase().includes(q) ||
       (c.custId || '').toLowerCase().includes(q) ||
-      (c.scNo || '').toLowerCase().includes(q)
+      (c.scNo || '').toLowerCase().includes(q) ||
+      (c.smartCard || '').toLowerCase().includes(q)
     );
   }
   renderCustomerTable(filtered);
@@ -224,6 +235,7 @@ async function handleSaveCustomer(e) {
     scNo: document.getElementById('custSC').value.trim(),
     package: document.getElementById('custPackage').value,
     packageAmt: Number(document.getElementById('custPkgAmt').value) || 0,
+    dueAmt: Number(document.getElementById('custDueAmt')?.value) || 0,
     conDate: document.getElementById('custConDate').value,
     status: document.getElementById('custStatus').value,
     remarks: document.getElementById('custRemarks').value.trim(),
@@ -260,14 +272,140 @@ function editCustomer(id) {
   document.getElementById('custPlace').value = c.place || '';
   document.getElementById('custStreet').value = c.street || '';
   document.getElementById('custBox').value = c.boxNo || '';
-  document.getElementById('custSC').value = c.scNo || '';
+  document.getElementById('custSC').value = c.scNo || c.smartCard || '';
   document.getElementById('custPackage').value = c.package || '';
   document.getElementById('custPkgAmt').value = c.packageAmt || '';
+  if (document.getElementById('custDueAmt')) {
+    document.getElementById('custDueAmt').value = c.dueAmt || c.due || 0;
+  }
   document.getElementById('custConDate').value = c.conDate || '';
   document.getElementById('custStatus').value = c.status || 'ACT';
   document.getElementById('custRemarks').value = c.remarks || '';
 
   showPage('newCustomer');
+}
+
+// ==================== DC / RC ====================
+async function toggleDC(id, currentStatus) {
+  const c = allCustomers.find(x => x.id === id);
+  if (!c) return;
+
+  const newStatus = currentStatus === 'ACT' ? 'DC' : 'ACT';
+  const action = newStatus === 'DC' ? 'Disconnect (DC)' : 'Reconnect (RC)';
+
+  if (!confirm(`${c.name} - ${action} செய்யவா?`)) return;
+
+  try {
+    await db.collection('customers').doc(id).update({
+      status: newStatus,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await db.collection('statusLogs').add({
+      customerId: id,
+      customerName: c.name,
+      fromStatus: currentStatus,
+      toStatus: newStatus,
+      date: new Date().toISOString().split('T')[0],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: currentUser.email
+    });
+
+    showToast(`${action} successful!`);
+    await loadCustomers();
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+// ==================== LEDGER ====================
+async function viewLedger(id) {
+  currentLedgerCustomerId = id;
+  const c = allCustomers.find(x => x.id === id);
+  if (!c) return;
+
+  document.getElementById('ledgerCustName').textContent = c.name || '-';
+  document.getElementById('ledgerCustInfo').textContent =
+    `ID: ${c.custId || id} | Mobile: ${c.mobile || '-'} | Box: ${c.boxNo || '-'} | Package: ${c.package || '-'}`;
+  document.getElementById('ledgerDue').textContent = '₹' + Number(c.dueAmt || c.due || 0).toLocaleString('en-IN');
+  document.getElementById('ledgerStatus').textContent = c.status || 'ACT';
+  document.getElementById('ledgerStatus').className =
+    (c.status === 'DC') ? 'px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700'
+                        : 'px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700';
+
+  try {
+    const snap = await db.collection('collections')
+      .where('customerId', '==', id)
+      .get();
+
+    const rows = [];
+    snap.forEach(doc => {
+      const d = doc.data();
+      rows.push({ id: doc.id, ...d });
+    });
+
+    rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    const tbody = document.getElementById('ledgerTableBody');
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">No collection records</td></tr>`;
+    } else {
+      let total = 0;
+      tbody.innerHTML = rows.map(r => {
+        total += Number(r.amount || 0);
+        return `
+        <tr class="border-t border-slate-100">
+          <td class="px-3 py-2 text-sm">${r.date || '-'}</td>
+          <td class="px-3 py-2 text-sm font-semibold">₹${Number(r.amount || 0).toLocaleString('en-IN')}</td>
+          <td class="px-3 py-2 text-sm">${r.mode || '-'}</td>
+          <td class="px-3 py-2 text-sm">${r.remarks || '-'}</td>
+          <td class="px-3 py-2 text-xs text-slate-500">${r.createdBy || '-'}</td>
+        </tr>`;
+      }).join('') + `
+        <tr class="border-t-2 border-slate-300 bg-slate-50 font-semibold">
+          <td class="px-3 py-2">Total</td>
+          <td class="px-3 py-2">₹${total.toLocaleString('en-IN')}</td>
+          <td colspan="3"></td>
+        </tr>`;
+    }
+  } catch (err) {
+    console.error(err);
+    document.getElementById('ledgerTableBody').innerHTML =
+      `<tr><td colspan="5" class="text-center py-6 text-red-500">Error loading ledger</td></tr>`;
+  }
+
+  showPage('ledger');
+}
+
+// ==================== PENDING / DUE REPORT ====================
+function renderPendingReport() {
+  const list = allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0);
+  list.sort((a, b) => Number(b.dueAmt || b.due || 0) - Number(a.dueAmt || a.due || 0));
+
+  const tbody = document.getElementById('pendingTableBody');
+  const totalDue = list.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
+
+  document.getElementById('pendingCount').textContent = list.length;
+  document.getElementById('pendingTotal').textContent = '₹' + totalDue.toLocaleString('en-IN');
+
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">No pending dues</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map(c => `
+    <tr class="border-t border-slate-100 hover:bg-slate-50">
+      <td class="px-3 py-2 font-mono text-xs">${c.custId || c.id.slice(0,6)}</td>
+      <td class="px-3 py-2 font-medium text-sm">${c.name || '-'}</td>
+      <td class="px-3 py-2 text-sm">${c.mobile || '-'}</td>
+      <td class="px-3 py-2 font-mono text-xs">${c.boxNo || '-'}</td>
+      <td class="px-3 py-2 text-sm font-bold text-red-600">₹${Number(c.dueAmt || c.due || 0).toLocaleString('en-IN')}</td>
+      <td class="px-3 py-2">
+        <button onclick="openWhatsApp('${c.mobile || ''}', '${(c.name || '').replace(/'/g, '')}')" class="text-green-600 hover:underline text-xs mr-2">WA</button>
+        <button onclick="viewLedger('${c.id}')" class="text-purple-600 hover:underline text-xs">Ledger</button>
+      </td>
+    </tr>
+  `).join('');
 }
 
 // ==================== BILLING ====================
@@ -283,8 +421,9 @@ function searchForBill() {
   const matches = allCustomers.filter(c =>
     (c.name || '').toLowerCase().includes(q) ||
     (c.mobile || '').includes(q) ||
-    (c.boxNo || '').toLowerCase().includes(q)
-  ).slice(0, 8);
+    (c.boxNo || '').toLowerCase().includes(q) ||
+    (c.custId || '').toLowerCase().includes(q)
+  ).slice(0, 10);
 
   if (matches.length === 0) {
     resultsDiv.innerHTML = '<div class="p-3 text-slate-400 text-sm">No match</div>';
@@ -292,7 +431,7 @@ function searchForBill() {
     resultsDiv.innerHTML = matches.map(c => `
       <div class="p-3 hover:bg-blue-50 cursor-pointer border-b text-sm" onclick="selectBillCustomer('${c.id}')">
         <div class="font-medium">${c.name}</div>
-        <div class="text-xs text-slate-500">${c.mobile} • Box: ${c.boxNo || '-'} • ${c.status}</div>
+        <div class="text-xs text-slate-500">${c.mobile || '-'} • Box: ${c.boxNo || '-'} • Due: ₹${c.dueAmt || c.due || 0} • ${c.status || 'ACT'}</div>
       </div>
     `).join('');
   }
@@ -305,11 +444,13 @@ function selectBillCustomer(id) {
   selectedBillCustomer = c;
   document.getElementById('billCustomerId').value = id;
   document.getElementById('billCustName').textContent = c.name;
-  document.getElementById('billCustDetails').textContent = `${c.mobile} | Box: ${c.boxNo || '-'} | ${c.package || ''} | Due: ₹${c.due || 0}`;
+  document.getElementById('billCustDetails').textContent =
+    `${c.mobile || '-'} | Box: ${c.boxNo || '-'} | ${c.package || ''} | Due: ₹${c.dueAmt || c.due || 0}`;
   document.getElementById('selectedCustomerInfo').classList.remove('hidden');
   document.getElementById('billSearchResults').classList.add('hidden');
   document.getElementById('billSearch').value = c.name;
-  document.getElementById('billAmount').value = c.packageAmt || '';
+  const due = Number(c.dueAmt || c.due || 0);
+  document.getElementById('billAmount').value = due > 0 ? due : (c.packageAmt || '');
 }
 
 async function handleSaveBill(e) {
@@ -321,6 +462,11 @@ async function handleSaveBill(e) {
   }
 
   const amount = Number(document.getElementById('billAmount').value);
+  if (!amount || amount <= 0) {
+    showToast('Enter valid amount', true);
+    return;
+  }
+
   const data = {
     customerId,
     customerName: selectedBillCustomer?.name || '',
@@ -334,11 +480,23 @@ async function handleSaveBill(e) {
 
   try {
     await db.collection('collections').add(data);
+
+    const c = allCustomers.find(x => x.id === customerId);
+    if (c) {
+      const currentDue = Number(c.dueAmt || c.due || 0);
+      const newDue = Math.max(0, currentDue - amount);
+      await db.collection('customers').doc(customerId).update({
+        dueAmt: newDue,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
     showToast('Collection saved! ₹' + amount);
     document.getElementById('billForm').reset();
     document.getElementById('selectedCustomerInfo').classList.add('hidden');
     document.getElementById('billDate').value = new Date().toISOString().split('T')[0];
     selectedBillCustomer = null;
+    await loadCustomers();
     loadDashboard();
   } catch (err) {
     showToast('Error: ' + err.message, true);
@@ -349,7 +507,6 @@ async function handleSaveBill(e) {
 async function loadDashboard() {
   updateDashboardStats();
 
-  // Today collection
   const today = new Date().toISOString().split('T')[0];
   try {
     const colSnap = await db.collection('collections').where('date', '==', today).get();
@@ -357,7 +514,6 @@ async function loadDashboard() {
     colSnap.forEach(d => todayTotal += (d.data().amount || 0));
     document.getElementById('statTodayCol').textContent = '₹ ' + todayTotal.toLocaleString('en-IN');
 
-    // This month (simple)
     const monthStart = today.slice(0, 8) + '01';
     const monthSnap = await db.collection('collections').where('date', '>=', monthStart).get();
     let monthTotal = 0;
@@ -370,24 +526,27 @@ async function loadDashboard() {
 
 function updateDashboardStats() {
   const total = allCustomers.length;
-  const active = allCustomers.filter(c => c.status === 'ACT').length;
+  const active = allCustomers.filter(c => (c.status || 'ACT') === 'ACT').length;
   const pending = allCustomers.filter(c => c.status === 'DC').length;
   const boxes = allCustomers.filter(c => c.boxNo).length;
+  const totalDue = allCustomers.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
 
   document.getElementById('statCustomers').textContent = total;
   document.getElementById('statActive').textContent = active;
   document.getElementById('statPending').textContent = pending;
   document.getElementById('statBoxes').textContent = boxes;
-  document.getElementById('boxCountDisplay').textContent = boxes;
+  document.getElementById('statDue').textContent = '₹ ' + totalDue.toLocaleString('en-IN');
+  const boxDisplay = document.getElementById('boxCountDisplay');
+  if (boxDisplay) boxDisplay.textContent = boxes;
 }
 
 // ==================== WHATSAPP ====================
 function openWhatsApp(mobile, name) {
-  if (!mobile) {
+  if (!mobile || mobile === '-' || mobile === '0') {
     showToast('No mobile number', true);
     return;
   }
-  let num = mobile.replace(/\D/g, '');
+  let num = String(mobile).replace(/\D/g, '');
   if (num.length === 10) num = '91' + num;
   const text = encodeURIComponent(`வணக்கம் ${name},\n\nJSV Cable - உங்கள் கேபிள் பில் நிலுவையில் உள்ளது. தயவுசெய்து செலுத்துங்கள்.\n\nநன்றி.`);
   window.open(`https://wa.me/${num}?text=${text}`, '_blank');

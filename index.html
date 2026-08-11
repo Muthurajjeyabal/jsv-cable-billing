@@ -115,6 +115,9 @@
         <button onclick="showPage('billing')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="billing">
           <span class="text-lg">🧾</span> Billing
         </button>
+        <button onclick="showPage('pending')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="pending">
+          <span class="text-lg">⚠️</span> Pending / Due
+        </button>
         <button onclick="showPage('boxes')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="boxes">
           <span class="text-lg">📦</span> Box Management
         </button>
@@ -220,16 +223,17 @@
               <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-600">
                   <tr>
-                    <th class="text-left px-4 py-3 font-medium">ID</th>
-                    <th class="text-left px-4 py-3 font-medium">Name</th>
-                    <th class="text-left px-4 py-3 font-medium">Mobile</th>
-                    <th class="text-left px-4 py-3 font-medium">Box</th>
-                    <th class="text-left px-4 py-3 font-medium">Status</th>
-                    <th class="text-left px-4 py-3 font-medium">Action</th>
+                    <th class="text-left px-3 py-3 font-medium">ID</th>
+                    <th class="text-left px-3 py-3 font-medium">Name</th>
+                    <th class="text-left px-3 py-3 font-medium">Mobile</th>
+                    <th class="text-left px-3 py-3 font-medium">Box</th>
+                    <th class="text-left px-3 py-3 font-medium">Due</th>
+                    <th class="text-left px-3 py-3 font-medium">Status</th>
+                    <th class="text-left px-3 py-3 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody id="customerTableBody">
-                  <tr><td colspan="6" class="text-center py-8 text-slate-400">Loading...</td></tr>
+                  <tr><td colspan="7" class="text-center py-8 text-slate-400">Loading...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -288,6 +292,10 @@
                 <div>
                   <label class="block text-sm font-medium mb-1">Package Amount</label>
                   <input type="number" id="custPkgAmt" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1">Due Amount</label>
+                  <input type="number" id="custDueAmt" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                   <label class="block text-sm font-medium mb-1">Connection Date</label>
@@ -363,6 +371,77 @@
           </div>
         </div>
 
+        <!-- CUSTOMER LEDGER -->
+        <div id="page-ledger" class="page hidden fade-in">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 mb-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <h3 class="font-semibold text-lg" id="ledgerCustName">-</h3>
+                <p class="text-sm text-slate-500" id="ledgerCustInfo">-</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="text-right">
+                  <div class="text-xs text-slate-500">Current Due</div>
+                  <div class="text-xl font-bold text-red-600" id="ledgerDue">₹0</div>
+                </div>
+                <span id="ledgerStatus" class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">ACT</span>
+              </div>
+            </div>
+            <button onclick="showPage('customers')" class="mt-3 text-sm text-blue-600 hover:underline">← Back to Customers</button>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th class="text-left px-3 py-3 font-medium">Date</th>
+                    <th class="text-left px-3 py-3 font-medium">Amount</th>
+                    <th class="text-left px-3 py-3 font-medium">Mode</th>
+                    <th class="text-left px-3 py-3 font-medium">Remarks</th>
+                    <th class="text-left px-3 py-3 font-medium">By</th>
+                  </tr>
+                </thead>
+                <tbody id="ledgerTableBody">
+                  <tr><td colspan="5" class="text-center py-6 text-slate-400">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PENDING / DUE REPORT -->
+        <div id="page-pending" class="page hidden fade-in">
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+              <div class="text-xs text-slate-500">Pending Customers</div>
+              <div class="text-2xl font-bold text-red-600" id="pendingCount">0</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+              <div class="text-xs text-slate-500">Total Due</div>
+              <div class="text-2xl font-bold text-red-600" id="pendingTotal">₹0</div>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-600">
+                  <tr>
+                    <th class="text-left px-3 py-3 font-medium">ID</th>
+                    <th class="text-left px-3 py-3 font-medium">Name</th>
+                    <th class="text-left px-3 py-3 font-medium">Mobile</th>
+                    <th class="text-left px-3 py-3 font-medium">Box</th>
+                    <th class="text-left px-3 py-3 font-medium">Due</th>
+                    <th class="text-left px-3 py-3 font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="pendingTableBody">
+                  <tr><td colspan="6" class="text-center py-8 text-slate-400">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- BOX MANAGEMENT (Placeholder) -->
         <div id="page-boxes" class="page hidden fade-in">
           <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 text-center">
@@ -386,7 +465,7 @@
               <div class="font-medium">Collection Report</div>
               <div class="text-xs text-slate-500 mt-1">Daily / Monthly collection</div>
             </button>
-            <button class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 text-left hover:shadow-md transition card-hover">
+            <button onclick="showPage('pending')" class="bg-white rounded-xl p-5 shadow-sm border border-slate-100 text-left hover:shadow-md transition card-hover">
               <div class="text-2xl mb-2">⚠️</div>
               <div class="font-medium">Pending / Due</div>
               <div class="text-xs text-slate-500 mt-1">Outstanding amounts</div>
