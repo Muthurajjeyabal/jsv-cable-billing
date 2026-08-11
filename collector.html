@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#0f4c81">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>JSV Collection</title>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -13,108 +13,141 @@
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     body { font-family: system-ui, -apple-system, sans-serif; }
+    .menu-btn:active { transform: scale(0.97); }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
 
-  <!-- LOGIN -->
-  <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 to-emerald-900">
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 to-blue-900">
     <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6">
       <div class="text-center mb-6">
-        <div class="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white text-2xl font-bold">₹</div>
+        <div class="w-16 h-16 bg-blue-700 rounded-full flex items-center justify-center mx-auto mb-3 text-white text-2xl font-bold">₹</div>
         <h1 class="text-xl font-bold">JSV Collection</h1>
         <p class="text-sm text-slate-500">Agent App • S. Alangulam</p>
       </div>
       <div id="loginError" class="hidden mb-3 p-2 bg-red-50 text-red-600 text-sm rounded-lg"></div>
       <form id="loginForm" class="space-y-3">
-        <input type="email" id="loginEmail" required placeholder="Email"
-          class="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
-        <input type="password" id="loginPassword" required placeholder="Password"
-          class="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
-        <button type="submit" id="loginBtn"
-          class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl">Login</button>
+        <input type="email" id="loginEmail" required placeholder="Email" class="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="password" id="loginPassword" required placeholder="Password" class="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="submit" id="loginBtn" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 rounded-xl">Login</button>
       </form>
     </div>
   </div>
 
-  <!-- MAIN -->
   <div id="appScreen" class="hidden min-h-screen flex flex-col">
-    <!-- Top bar -->
-    <header class="bg-emerald-700 text-white px-4 py-3 sticky top-0 z-20 shadow">
+    <header class="bg-blue-800 text-white px-4 py-3 sticky top-0 z-30 shadow">
       <div class="flex items-center justify-between">
-        <div>
-          <div class="font-semibold">JSV Collection</div>
-          <div class="text-xs opacity-80" id="agentName">Agent</div>
-        </div>
-        <div class="text-right">
-          <div class="text-xs opacity-80">Today</div>
-          <div class="font-bold" id="todayTotal">₹0</div>
-        </div>
+        <button id="backBtn" onclick="goHome()" class="hidden text-white text-xl px-1">←</button>
+        <div class="font-semibold text-sm flex-1 text-center" id="headerTitle">JSV CABLE</div>
+        <button onclick="logout()" class="text-red-300 text-lg">⏻</button>
       </div>
+      <div class="text-xs opacity-70 text-center" id="agentLabel"></div>
     </header>
 
-    <!-- Search -->
-    <div class="p-3 bg-white border-b sticky top-[60px] z-10">
-      <input type="text" id="searchInput" placeholder="Name / Mobile / Box / ID தேடுங்கள்..."
-        class="w-full px-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-base"
-        oninput="doSearch()">
+    <div id="page-home" class="page flex-1 p-4 space-y-3 overflow-y-auto">
+      <div class="text-center text-blue-900 font-bold text-sm mb-1 bg-blue-100 py-2 rounded-lg">JSV CABLE</div>
+      <button onclick="showPage('dashboard')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">📊</span><span class="font-medium">DASHBOARD</span></button>
+      <button onclick="showPage('customers')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">👤</span><span class="font-medium">CUSTOMER INFO</span></button>
+      <button onclick="showPage('billing')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">₹</span><span class="font-medium">BILLING</span></button>
+      <button onclick="showPage('ledger')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">📒</span><span class="font-medium">LEDGER</span></button>
+      <button onclick="showPage('colReport')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">📑</span><span class="font-medium">COLLECTION REPORT</span></button>
+      <button onclick="showPage('pending')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">⏰</span><span class="font-medium">PENDING REPORT</span></button>
+      <button onclick="showPage('settings')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">⚙️</span><span class="font-medium">SETTINGS</span></button>
     </div>
 
-    <!-- Results -->
-    <div id="results" class="flex-1 overflow-y-auto p-3 space-y-2">
-      <div class="text-center text-slate-400 py-10 text-sm">Customer தேடவும்</div>
+    <div id="page-dashboard" class="page hidden flex-1 overflow-y-auto p-3 space-y-2">
+      <div class="bg-blue-600 text-white text-center py-2 rounded-lg font-semibold text-sm" id="dashAgentName">AGENT</div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-green-500 text-white rounded-lg p-3 text-center"><div class="text-xs">Active</div><div class="text-xl font-bold" id="dActive">0</div></div>
+        <div class="bg-orange-500 text-white rounded-lg p-3 text-center"><div class="text-xs">DC</div><div class="text-xl font-bold" id="dDC">0</div></div>
+        <div class="bg-pink-500 text-white rounded-lg p-3 text-center"><div class="text-xs">Paid Cust.</div><div class="text-xl font-bold" id="dPaidCust">0</div></div>
+        <div class="bg-purple-500 text-white rounded-lg p-3 text-center"><div class="text-xs">Unpaid Cust.</div><div class="text-xl font-bold" id="dUnpaidCust">0</div></div>
+        <div class="bg-slate-600 text-white rounded-lg p-3 text-center"><div class="text-xs">Paid Amt (month)</div><div class="text-lg font-bold" id="dPaidAmt">₹0</div></div>
+        <div class="bg-amber-500 text-white rounded-lg p-3 text-center"><div class="text-xs">Unpaid Amt</div><div class="text-lg font-bold" id="dUnpaidAmt">₹0</div></div>
+      </div>
+      <div class="bg-blue-500 text-white rounded-lg p-3 text-center"><div class="text-xs">Yesterday Collection</div><div class="text-xl font-bold" id="dYest">₹0</div></div>
+      <div class="bg-green-700 text-white rounded-lg p-3 text-center"><div class="text-xs">Today Collection</div><div class="text-xl font-bold" id="dToday">₹0</div></div>
+      <div class="bg-blue-600 text-white rounded-lg p-3 text-center"><div class="text-xs">My Total (this month)</div><div class="text-xl font-bold" id="dMyTotal">₹0</div></div>
+      <div class="bg-red-600 text-white rounded-lg p-3 text-center"><div class="text-xs">Total Pending</div><div class="text-xl font-bold" id="dPending">₹0</div></div>
     </div>
 
-    <!-- Logout -->
-    <div class="p-3 bg-white border-t">
-      <button onclick="logout()" class="w-full py-2 text-red-600 text-sm font-medium">Logout</button>
+    <div id="page-customers" class="page hidden flex-1 flex flex-col overflow-hidden">
+      <div class="p-3 bg-white border-b space-y-2">
+        <select id="filterPlace" onchange="onPlaceChange()" class="w-full px-3 py-2 border rounded-lg text-sm"><option value="">- Select Place -</option></select>
+        <select id="filterStreet" onchange="filterCustomers()" class="w-full px-3 py-2 border rounded-lg text-sm"><option value="">- Select Street -</option></select>
+        <div class="flex gap-2 items-center text-sm flex-wrap">
+          <label class="flex items-center gap-1"><input type="checkbox" id="filterDC" onchange="filterCustomers()"> DC</label>
+          <label class="flex items-center gap-1"><input type="checkbox" id="filterACT" checked onchange="filterCustomers()"> Active</label>
+          <button onclick="showPendingOnly()" class="ml-auto bg-blue-600 text-white px-3 py-1 rounded text-xs">Pending</button>
+          <button onclick="showAllCust()" class="bg-red-500 text-white px-3 py-1 rounded text-xs">All</button>
+        </div>
+        <input type="text" id="custSearch" placeholder="Name / Mobile / Box..." oninput="filterCustomers()" class="w-full px-3 py-2 border rounded-lg text-sm">
+      </div>
+      <div id="custList" class="flex-1 overflow-y-auto p-2 space-y-1.5"></div>
+    </div>
+
+    <div id="page-billing" class="page hidden flex-1 flex flex-col overflow-hidden">
+      <div class="p-3 bg-white border-b">
+        <input type="text" id="billSearch" placeholder="Name / Mobile / Box தேடுங்கள்..." oninput="searchBill()" class="w-full px-4 py-3 border rounded-xl text-base outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div id="billResults" class="flex-1 overflow-y-auto p-2 space-y-1.5"><div class="text-center text-slate-400 py-10 text-sm">Customer தேடவும்</div></div>
+    </div>
+
+    <div id="page-ledger" class="page hidden flex-1 flex flex-col overflow-hidden">
+      <div class="p-3 bg-white border-b">
+        <input type="text" id="ledgerSearch" placeholder="Customer தேடி Ledger பார்க்க..." oninput="searchLedger()" class="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+        <div id="ledgerSearchResults" class="mt-2 hidden max-h-40 overflow-y-auto border rounded-lg"></div>
+      </div>
+      <div id="ledgerContent" class="flex-1 overflow-y-auto p-3"><div class="text-center text-slate-400 py-10 text-sm">Customer தேர்வு செய்யவும்</div></div>
+    </div>
+
+    <div id="page-colReport" class="page hidden flex-1 flex flex-col overflow-hidden">
+      <div class="p-3 bg-white border-b flex gap-2 items-center">
+        <input type="date" id="colFrom" class="flex-1 px-2 py-2 border rounded-lg text-sm">
+        <input type="date" id="colTo" class="flex-1 px-2 py-2 border rounded-lg text-sm">
+        <button onclick="loadColReport()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">🔍</button>
+      </div>
+      <div class="bg-blue-700 text-white text-center text-xs py-1.5 font-semibold">COLLECTION LIST</div>
+      <div id="colReportList" class="flex-1 overflow-y-auto"></div>
+      <div class="bg-slate-800 text-white p-2 text-center text-sm font-bold" id="colReportTotal">Total: ₹0</div>
+    </div>
+
+    <div id="page-pending" class="page hidden flex-1 flex flex-col overflow-hidden">
+      <div class="p-3 bg-white border-b flex gap-2">
+        <button onclick="loadPending()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm">Show Pending</button>
+      </div>
+      <div class="bg-blue-700 text-white text-center text-xs py-1.5 font-semibold">PENDING LIST</div>
+      <div id="pendingList" class="flex-1 overflow-y-auto"></div>
+      <div class="bg-red-700 text-white p-2 text-center text-sm font-bold" id="pendingTotalBar">Total: ₹0 (0)</div>
+    </div>
+
+    <div id="page-settings" class="page hidden flex-1 p-4">
+      <div class="bg-white rounded-xl p-4 shadow-sm space-y-3">
+        <div class="text-sm text-slate-500">Logged in as</div>
+        <div class="font-semibold" id="settingsEmail">-</div>
+        <button onclick="logout()" class="w-full bg-red-600 text-white py-3 rounded-xl font-medium mt-4">Logout</button>
+      </div>
+      <p class="text-center text-xs text-slate-400 mt-6">JSV Cable Agent App v2.0</p>
     </div>
   </div>
 
-  <!-- COLLECT MODAL -->
-  <div id="collectModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-    <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-start mb-4">
-        <div>
-          <h3 class="font-bold text-lg" id="modalName">-</h3>
-          <p class="text-sm text-slate-500" id="modalInfo">-</p>
-        </div>
-        <button onclick="closeModal()" class="text-slate-400 text-2xl leading-none">&times;</button>
+  <div id="collectModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
+    <div class="bg-white w-full rounded-t-2xl p-5 max-h-[85vh] overflow-y-auto">
+      <div class="flex justify-between items-start mb-3">
+        <div><h3 class="font-bold text-lg" id="modalName">-</h3><p class="text-xs text-slate-500" id="modalInfo">-</p></div>
+        <button onclick="closeModal()" class="text-2xl text-slate-400">&times;</button>
       </div>
-
-      <div class="bg-red-50 rounded-xl p-3 mb-4 flex justify-between items-center">
-        <span class="text-sm text-red-700">Due Amount</span>
-        <span class="text-xl font-bold text-red-600" id="modalDue">₹0</span>
-      </div>
-
+      <div class="bg-red-50 rounded-xl p-3 mb-4 flex justify-between"><span class="text-sm text-red-700">Due</span><span class="text-xl font-bold text-red-600" id="modalDue">₹0</span></div>
       <div class="space-y-3">
-        <div>
-          <label class="block text-sm font-medium mb-1">Collection Amount *</label>
-          <input type="number" id="colAmount" class="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-lg font-semibold" inputmode="numeric">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Payment Mode</label>
-          <select id="colMode" class="w-full px-4 py-3 border rounded-xl outline-none">
-            <option value="Cash">Cash</option>
-            <option value="UPI">UPI</option>
-            <option value="Bank">Bank</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Remarks</label>
-          <input type="text" id="colRemarks" class="w-full px-4 py-3 border rounded-xl outline-none" placeholder="Optional">
-        </div>
-        <button onclick="saveCollection()" id="saveColBtn"
-          class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl text-lg">
-          Save Collection
-        </button>
+        <div><label class="text-sm font-medium">Amount *</label><input type="number" id="colAmount" class="w-full px-4 py-3 border rounded-xl text-lg font-semibold" inputmode="numeric"></div>
+        <div><label class="text-sm font-medium">Mode</label><select id="colMode" class="w-full px-4 py-3 border rounded-xl"><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="Bank">Bank</option></select></div>
+        <div><label class="text-sm font-medium">Remarks</label><input type="text" id="colRemarks" class="w-full px-4 py-3 border rounded-xl"></div>
+        <button onclick="saveCollection()" id="saveColBtn" class="w-full bg-green-600 text-white font-semibold py-3.5 rounded-xl text-lg">Save Collection</button>
       </div>
     </div>
   </div>
 
-  <!-- Toast -->
-  <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full text-white text-sm z-50 shadow-lg"></div>
-
+  <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full text-white text-sm z-50 shadow-lg"></div>
   <script src="collector.js"></script>
 </body>
 </html>
