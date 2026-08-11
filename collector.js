@@ -65,16 +65,27 @@ function goHome() {
 }
 
 function showPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-  document.getElementById('page-' + id).classList.remove('hidden');
-  document.getElementById('backBtn').classList.remove('hidden');
-  const titles = { dashboard:'DASHBOARD', customers:'CUSTOMER INFO', billing:'BILLING', ledger:'LEDGER', colReport:'COLLECTION REPORT', pending:'PENDING REPORT', settings:'SETTINGS' };
-  document.getElementById('headerTitle').textContent = titles[id] || id;
-  if (id === 'dashboard') loadDashboard();
-  if (id === 'customers') { buildPlaceStreet(); filterCustomers(); }
-  if (id === 'colReport') loadColReport();
-  if (id === 'pending') loadPending();
+  try {
+    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+    const page = document.getElementById('page-' + id);
+    if (!page) { console.error('Page not found:', id); showToast('Page error: ' + id, true); return; }
+    page.classList.remove('hidden');
+    const back = document.getElementById('backBtn');
+    if (back) back.classList.remove('hidden');
+    const titles = { dashboard:'DASHBOARD', customers:'CUSTOMER INFO', billing:'BILLING', ledger:'LEDGER', colReport:'COLLECTION REPORT', pending:'PENDING REPORT', settings:'SETTINGS' };
+    const ht = document.getElementById('headerTitle');
+    if (ht) ht.textContent = titles[id] || id;
+    if (id === 'dashboard') loadDashboard();
+    if (id === 'customers') { buildPlaceStreet(); filterCustomers(); }
+    if (id === 'colReport') loadColReport();
+    if (id === 'pending') loadPending();
+  } catch (e) {
+    console.error('showPage error', e);
+    showToast('Error: ' + e.message, true);
+  }
 }
+
+// Expose to window for onclick
 
 async function loadCustomers() {
   const snap = await db.collection('customers').get();
@@ -370,3 +381,19 @@ function showToast(msg, isError) {
   t.classList.add(isError ? 'bg-red-600' : 'bg-green-700');
   setTimeout(() => t.classList.add('hidden'), 2500);
 }
+
+window.showPage = showPage;
+window.goHome = goHome;
+window.logout = logout;
+window.openCollect = openCollect;
+window.closeModal = closeModal;
+window.saveCollection = saveCollection;
+window.filterCustomers = filterCustomers;
+window.onPlaceChange = onPlaceChange;
+window.showPendingOnly = showPendingOnly;
+window.showAllCust = showAllCust;
+window.searchBill = searchBill;
+window.searchLedger = searchLedger;
+window.viewLedger = viewLedger;
+window.loadColReport = loadColReport;
+window.loadPending = loadPending;
