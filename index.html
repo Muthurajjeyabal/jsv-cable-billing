@@ -527,6 +527,17 @@
 
         <!-- PENDING / DUE REPORT -->
         <div id="page-pending" class="page hidden fade-in">
+          <div class="bg-green-50 border border-green-200 rounded-xl p-3 mb-4 flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+            <div class="text-sm text-green-800">
+              <div class="font-medium">WhatsApp Due Reminder</div>
+              <div class="text-xs" id="waQueueInfo">Laptop-ல் WhatsApp Web login செய்து Start அழுத்தவும்</div>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="startWaQueue()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">Start WA Queue</button>
+              <button onclick="skipWa()" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium">Next →</button>
+            </div>
+          </div>
+          <div id="waQueueBar" class="hidden"></div>
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
               <div class="text-xs text-slate-500">Pending Customers</div>

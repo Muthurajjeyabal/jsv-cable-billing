@@ -195,7 +195,7 @@ function renderCustomerTable(list) {
           ${status === 'ACT' ? 'DC' : 'RC'}
         </button>
         <button onclick="viewLedger('${c.id}')" class="text-purple-600 hover:underline text-xs mr-1">Ledger</button>
-        <button onclick="openWhatsApp('${c.mobile || ''}', '${(c.name || '').replace(/'/g, '')}')" class="text-green-600 hover:underline text-xs">WA</button>
+        <button onclick="openWhatsApp('${c.mobile || ''}', '${(c.name || '').replace(/'/g, '')}', ${Number(c.dueAmt||c.due||0)})" class="text-green-600 hover:underline text-xs">WA</button>
       </td>
     </tr>`;
   }).join('');
@@ -428,7 +428,7 @@ function renderPendingReport() {
       <td class="px-3 py-2 font-mono text-xs">${c.boxNo || '-'}</td>
       <td class="px-3 py-2 text-sm font-bold text-red-600">₹${Number(c.dueAmt || c.due || 0).toLocaleString('en-IN')}</td>
       <td class="px-3 py-2">
-        <button onclick="openWhatsApp('${c.mobile || ''}', '${(c.name || '').replace(/'/g, '')}')" class="text-green-600 hover:underline text-xs mr-2">WA</button>
+        <button onclick="openWhatsApp('${c.mobile || ''}', '${(c.name || '').replace(/'/g, '')}', ${Number(c.dueAmt||c.due||0)})" class="text-green-600 hover:underline text-xs mr-2">WA</button>
         <button onclick="viewLedger('${c.id}')" class="text-purple-600 hover:underline text-xs">Ledger</button>
       </td>
     </tr>
@@ -611,15 +611,69 @@ function updateDashboardStats() {
 }
 
 // ==================== WHATSAPP ====================
-function openWhatsApp(mobile, name) {
+const TAMIL_MONTHS = ['ஜனவரி','பிப்ரவரி','மார்ச்','ஏப்ரல்','மே','ஜூன்','ஜூலை','ஆகஸ்ட்','செப்டம்பர்','அக்டோபர்','நவம்பர்','டிசம்பர்'];
+
+function getMonthNameTa() {
+  return TAMIL_MONTHS[new Date().getMonth()];
+}
+
+function buildDueMessage(name, due) {
+  const month = getMonthNameTa();
+  const dueStr = Number(due || 0).toLocaleString('en-IN');
+  return `வணக்கம் ${name},\n\nJSV Cable - ${month} மாதத்திற்கு இன்னும் நீங்கள் பணம் கட்டவில்லை.\nநிலுவை: ₹${dueStr}\n\nதயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.\n\nநன்றி.\nJSV Cable Network`;
+}
+
+function openWhatsApp(mobile, name, due) {
   if (!mobile || mobile === '-' || mobile === '0') {
     showToast('No mobile number', true);
     return;
   }
   let num = String(mobile).replace(/\D/g, '');
   if (num.length === 10) num = '91' + num;
-  const text = encodeURIComponent(`வணக்கம் ${name},\n\nJSV Cable - உங்கள் கேபிள் பில் நிலுவையில் உள்ளது. தயவுசெய்து செலுத்துங்கள்.\n\nநன்றி.`);
+  if (num.length < 10) {
+    showToast('Invalid mobile', true);
+    return;
+  }
+  const text = encodeURIComponent(buildDueMessage(name || 'Customer', due));
   window.open(`https://wa.me/${num}?text=${text}`, '_blank');
+}
+
+// WhatsApp queue for pending
+let waQueue = [];
+let waQueueIndex = 0;
+
+function startWaQueue() {
+  waQueue = allCustomers
+    .filter(c => Number(c.dueAmt || c.due || 0) > 0)
+    .filter(c => c.mobile && String(c.mobile).replace(/\D/g, '').length >= 10)
+    .sort((a, b) => Number(b.dueAmt || b.due || 0) - Number(a.dueAmt || a.due || 0));
+  waQueueIndex = 0;
+  if (waQueue.length === 0) {
+    showToast('Pending + valid mobile இல்லை', true);
+    return;
+  }
+  const bar = document.getElementById('waQueueBar');
+  if (bar) bar.classList.remove('hidden');
+  sendNextWa(false);
+}
+
+function sendNextWa(advance) {
+  if (advance) waQueueIndex++;
+  if (waQueueIndex >= waQueue.length) {
+    showToast('Queue முடிந்தது!');
+    const bar = document.getElementById('waQueueBar');
+    if (bar) bar.classList.add('hidden');
+    return;
+  }
+  const c = waQueue[waQueueIndex];
+  const due = Number(c.dueAmt || c.due || 0);
+  const info = document.getElementById('waQueueInfo');
+  if (info) info.textContent = `${waQueueIndex + 1} / ${waQueue.length} — ${c.name} — ₹${due}`;
+  openWhatsApp(c.mobile, c.name, due);
+}
+
+function skipWa() {
+  sendNextWa(true);
 }
 
 // ==================== TOAST ====================
