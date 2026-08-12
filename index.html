@@ -47,41 +47,46 @@
 <body class="bg-slate-100 text-slate-800">
 
   <!-- ==================== LOGIN SCREEN ==================== -->
-  <div id="loginScreen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-4">
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-900 p-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 fade-in">
-      <div class="text-center mb-8">
-        <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+      <div class="text-center mb-6">
+        <div class="inline-block bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-wide">ADMIN PANEL</div>
+        <div class="w-20 h-20 bg-indigo-700 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
           <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
           </svg>
         </div>
         <h1 class="text-2xl font-bold text-slate-800">JSV Cable Billing</h1>
-        <p class="text-slate-500 text-sm mt-1">S. Alangulam</p>
+        <p class="text-indigo-600 text-sm mt-1 font-medium">Admin Login • Full Access</p>
+        <p class="text-slate-400 text-xs mt-1">S. Alangulam</p>
       </div>
 
       <div id="loginError" class="hidden mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg"></div>
 
       <form id="loginForm" class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Email / Username</label>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Admin Email</label>
           <input type="email" id="loginEmail" required
-            class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+            class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
             placeholder="admin@jsvcable.com">
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Admin Password</label>
           <input type="password" id="loginPassword" required
-            class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+            class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
             placeholder="••••••••">
         </div>
         <button type="submit" id="loginBtn"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-blue-200">
-          Login
+          class="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-indigo-200">
+          Admin Login
         </button>
       </form>
 
       <p class="text-center text-xs text-slate-400 mt-6">
-        Multi-user • Secure • Cloud Sync
+        Collectors → use Collector App only
+      </p>
+      <p class="text-center mt-2">
+        <a href="collector.html" class="text-xs text-emerald-600 hover:underline">Open Collector App →</a>
       </p>
     </div>
   </div>
