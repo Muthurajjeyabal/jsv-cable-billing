@@ -236,6 +236,7 @@ function renderCustomerTable(list) {
           ${status === 'ACT' ? 'DC' : 'RC'}
         </button>
         <button onclick="viewLedger('${c.id}')" class="text-purple-600 hover:underline text-xs mr-1">Ledger</button>
+        <button onclick="deleteCustomer('${c.id}')" class="text-red-700 hover:underline text-xs font-medium">Del</button>
         <button onclick="openWhatsApp('${c.mobile || ''}', '${(c.name || '').replace(/'/g, '')}', ${Number(c.dueAmt||c.due||0)})" class="text-green-600 hover:underline text-xs">WA</button>
       </td>
     </tr>`;
@@ -354,6 +355,28 @@ function editCustomer(id) {
 }
 
 // ==================== DC / RC ====================
+
+async function deleteCustomer(id) {
+  const c = allCustomers.find(x => x.id === id);
+  if (!c) return;
+  if (!isAdminUser(currentUser)) {
+    showToast('Admin only', true);
+    return;
+  }
+  const label = (c.name || '') + ' / ' + (c.custId || id);
+  if (!confirm('DELETE customer?\n\n' + label + '\n\n1/2 — Are you sure?')) return;
+  if (!confirm('FINAL confirm.\n\n' + label + '\n\nLedger history will remain but customer will be removed from list.\n\n2/2 — Delete permanently?')) return;
+  try {
+    await db.collection('customers').doc(id).delete();
+    allCustomers = allCustomers.filter(x => x.id !== id);
+    renderCustomerTable(allCustomers);
+    updateDashboardStats();
+    showToast('Customer deleted: ' + (c.name || ''));
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, true);
+  }
+}
+
 async function toggleDC(id, currentStatus) {
   const c = allCustomers.find(x => x.id === id);
   if (!c) return;
