@@ -231,13 +231,28 @@ async function handleSaveCustomer(e) {
     doorNo: document.getElementById('custDoor').value.trim(),
     place: document.getElementById('custPlace').value.trim(),
     street: document.getElementById('custStreet').value.trim(),
+    landmark: document.getElementById('custLandmark')?.value.trim() || '',
+    ebNo: document.getElementById('custEB')?.value.trim() || '',
     boxNo: document.getElementById('custBox').value.trim(),
     scNo: document.getElementById('custSC').value.trim(),
+    smartCard: document.getElementById('custSC').value.trim(),
     package: document.getElementById('custPackage').value,
     packageAmt: Number(document.getElementById('custPkgAmt').value) || 0,
     dueAmt: Number(document.getElementById('custDueAmt')?.value) || 0,
+    otherCharges: Number(document.getElementById('custOtherCharges')?.value) || 0,
+    discount: Number(document.getElementById('custDiscount')?.value) || 0,
+    disReason: document.getElementById('custDisReason')?.value.trim() || '',
     conDate: document.getElementById('custConDate').value,
     status: document.getElementById('custStatus').value,
+    sms: document.getElementById('custSMS')?.value || 'Yes',
+    signal: document.getElementById('custSignal')?.value || 'Digital',
+    mso: document.getElementById('custMSO')?.value.trim() || '',
+    boxType: document.getElementById('custBoxType')?.value || 'SD',
+    aadhar: document.getElementById('custAadhar')?.value.trim() || '',
+    caf: document.getElementById('custCAF')?.value.trim() || '',
+    regDate: document.getElementById('custRegDate')?.value || '',
+    boxAmt: Number(document.getElementById('custBoxAmt')?.value) || 0,
+    billing: document.getElementById('custBilling')?.value || 'Yes',
     remarks: document.getElementById('custRemarks').value.trim(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -271,15 +286,27 @@ function editCustomer(id) {
   document.getElementById('custDoor').value = c.doorNo || '';
   document.getElementById('custPlace').value = c.place || '';
   document.getElementById('custStreet').value = c.street || '';
+  if (document.getElementById('custLandmark')) document.getElementById('custLandmark').value = c.landmark || '';
+  if (document.getElementById('custEB')) document.getElementById('custEB').value = c.ebNo || '';
   document.getElementById('custBox').value = c.boxNo || '';
   document.getElementById('custSC').value = c.scNo || c.smartCard || '';
   document.getElementById('custPackage').value = c.package || '';
   document.getElementById('custPkgAmt').value = c.packageAmt || '';
-  if (document.getElementById('custDueAmt')) {
-    document.getElementById('custDueAmt').value = c.dueAmt || c.due || 0;
-  }
+  if (document.getElementById('custDueAmt')) document.getElementById('custDueAmt').value = c.dueAmt || c.due || 0;
+  if (document.getElementById('custOtherCharges')) document.getElementById('custOtherCharges').value = c.otherCharges || 0;
+  if (document.getElementById('custDiscount')) document.getElementById('custDiscount').value = c.discount || 0;
+  if (document.getElementById('custDisReason')) document.getElementById('custDisReason').value = c.disReason || '';
   document.getElementById('custConDate').value = c.conDate || '';
   document.getElementById('custStatus').value = c.status || 'ACT';
+  if (document.getElementById('custSMS')) document.getElementById('custSMS').value = c.sms || 'Yes';
+  if (document.getElementById('custSignal')) document.getElementById('custSignal').value = c.signal || 'Digital';
+  if (document.getElementById('custMSO')) document.getElementById('custMSO').value = c.mso || '';
+  if (document.getElementById('custBoxType')) document.getElementById('custBoxType').value = c.boxType || 'SD';
+  if (document.getElementById('custAadhar')) document.getElementById('custAadhar').value = c.aadhar || '';
+  if (document.getElementById('custCAF')) document.getElementById('custCAF').value = c.caf || '';
+  if (document.getElementById('custRegDate')) document.getElementById('custRegDate').value = c.regDate || '';
+  if (document.getElementById('custBoxAmt')) document.getElementById('custBoxAmt').value = c.boxAmt || 0;
+  if (document.getElementById('custBilling')) document.getElementById('custBilling').value = c.billing || 'Yes';
   document.getElementById('custRemarks').value = c.remarks || '';
 
   showPage('newCustomer');
@@ -511,8 +538,36 @@ async function loadDashboard() {
   try {
     const colSnap = await db.collection('collections').where('date', '==', today).get();
     let todayTotal = 0;
-    colSnap.forEach(d => todayTotal += (d.data().amount || 0));
+    const agents = {
+      uma: { amt: 0, cnt: 0 },
+      muthumari: { amt: 0, cnt: 0 },
+      office: { amt: 0, cnt: 0 },
+      online: { amt: 0, cnt: 0 },
+      other: { amt: 0, cnt: 0 }
+    };
+
+    colSnap.forEach(doc => {
+      const d = doc.data();
+      const amt = Number(d.amount || 0);
+      todayTotal += amt;
+      const key = classifyAgent(d);
+      agents[key].amt += amt;
+      agents[key].cnt += 1;
+    });
+
     document.getElementById('statTodayCol').textContent = '₹ ' + todayTotal.toLocaleString('en-IN');
+    const setAgent = (id, cntId, data) => {
+      const el = document.getElementById(id);
+      const cel = document.getElementById(cntId);
+      if (el) el.textContent = '₹' + data.amt.toLocaleString('en-IN');
+      if (cel) cel.textContent = data.cnt + ' bills';
+    };
+    setAgent('agentUma', 'agentUmaCnt', agents.uma);
+    setAgent('agentMuthu', 'agentMuthuCnt', agents.muthumari);
+    setAgent('agentOffice', 'agentOfficeCnt', agents.office);
+    setAgent('agentOnline', 'agentOnlineCnt', agents.online);
+    const oth = document.getElementById('agentOther');
+    if (oth) oth.textContent = '₹' + agents.other.amt.toLocaleString('en-IN') + ' (' + agents.other.cnt + ')';
 
     const monthStart = today.slice(0, 8) + '01';
     const monthSnap = await db.collection('collections').where('date', '>=', monthStart).get();
@@ -522,6 +577,21 @@ async function loadDashboard() {
   } catch (e) {
     console.log('Collection stats error', e);
   }
+}
+
+function classifyAgent(d) {
+  const raw = ((d.createdBy || '') + ' ' + (d.employee || '') + ' ' + (d.collectedBy || '')).toLowerCase();
+  if (raw.includes('uma@') || raw.includes(' uma') || raw.trim() === 'uma' || /(^|\s)uma(\s|$)/.test(raw)) return 'uma';
+  if (raw.includes('muthumari') || raw.includes('muthu')) return 'muthumari';
+  if (raw.includes('office') || raw.includes('local')) return 'office';
+  if (raw.includes('online')) return 'online';
+  // email local-part
+  const email = (d.createdBy || '').toLowerCase();
+  if (email.startsWith('uma@')) return 'uma';
+  if (email.startsWith('muthumari@')) return 'muthumari';
+  if (email.startsWith('office@')) return 'office';
+  if (email.startsWith('online@')) return 'online';
+  return 'other';
 }
 
 function updateDashboardStats() {
@@ -559,4 +629,61 @@ function showToast(msg, isError = false) {
   toast.classList.remove('hidden', 'bg-red-600', 'bg-slate-800');
   toast.classList.add(isError ? 'bg-red-600' : 'bg-slate-800');
   setTimeout(() => toast.classList.add('hidden'), 3000);
+}
+
+// ==================== GENERATE MONTH DUE ====================
+async function generateMonthDue() {
+  if (!confirm('Active customers எல்லாருக்கும் Package Amount-ஐ Due-வோடு சேர்க்கவா?\n\nDC customers-க்கு apply ஆகாது.')) return;
+
+  const btn = document.getElementById('genDueBtn');
+  const status = document.getElementById('genDueStatus');
+  if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
+  if (status) { status.classList.remove('hidden'); status.textContent = 'Loading customers...'; }
+
+  try {
+    const snap = await db.collection('customers').get();
+    const updates = [];
+    snap.forEach(doc => {
+      const d = doc.data();
+      if ((d.status || 'ACT') !== 'ACT') return;
+      const pkg = Number(d.packageAmt || 0);
+      if (pkg <= 0) return;
+      const currentDue = Number(d.dueAmt || d.due || 0);
+      updates.push({ id: doc.id, newDue: currentDue + pkg, pkg, name: d.name });
+    });
+
+    if (updates.length === 0) {
+      showToast('Update செய்ய Active + Package Amount customers இல்லை', true);
+      return;
+    }
+
+    if (status) status.textContent = updates.length + ' customers update ஆகிறது...';
+
+    // Batch write (max 400 per batch for REST; client SDK batch limit 500)
+    const BATCH_SIZE = 400;
+    let done = 0;
+    for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+      const batch = db.batch();
+      const chunk = updates.slice(i, i + BATCH_SIZE);
+      chunk.forEach(u => {
+        batch.update(db.collection('customers').doc(u.id), {
+          dueAmt: u.newDue,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      done += chunk.length;
+      if (status) status.textContent = done + ' / ' + updates.length + ' done...';
+    }
+
+    await loadCustomers();
+    showToast('Month Due generated! ' + updates.length + ' customers updated');
+    if (status) status.textContent = '✅ ' + updates.length + ' Active customers Due updated';
+  } catch (err) {
+    console.error(err);
+    showToast('Error: ' + err.message, true);
+    if (status) status.textContent = 'Error: ' + err.message;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate Month Due'; }
+  }
 }

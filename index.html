@@ -192,6 +192,33 @@
             </div>
           </div>
 
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 mb-6">
+            <h3 class="font-semibold mb-3">Today — Agent wise</h3>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" id="agentBoard">
+              <div class="bg-blue-50 rounded-xl p-3 text-center">
+                <div class="text-xs text-blue-600 font-medium">UMA</div>
+                <div class="text-lg font-bold text-blue-800" id="agentUma">₹0</div>
+                <div class="text-xs text-slate-500" id="agentUmaCnt">0 bills</div>
+              </div>
+              <div class="bg-emerald-50 rounded-xl p-3 text-center">
+                <div class="text-xs text-emerald-600 font-medium">MUTHUMARI</div>
+                <div class="text-lg font-bold text-emerald-800" id="agentMuthu">₹0</div>
+                <div class="text-xs text-slate-500" id="agentMuthuCnt">0 bills</div>
+              </div>
+              <div class="bg-violet-50 rounded-xl p-3 text-center">
+                <div class="text-xs text-violet-600 font-medium">OFFICE</div>
+                <div class="text-lg font-bold text-violet-800" id="agentOffice">₹0</div>
+                <div class="text-xs text-slate-500" id="agentOfficeCnt">0 bills</div>
+              </div>
+              <div class="bg-amber-50 rounded-xl p-3 text-center">
+                <div class="text-xs text-amber-600 font-medium">ONLINE</div>
+                <div class="text-lg font-bold text-amber-800" id="agentOnline">₹0</div>
+                <div class="text-xs text-slate-500" id="agentOnlineCnt">0 bills</div>
+              </div>
+            </div>
+            <div class="mt-3 text-xs text-slate-500 text-right">Other / Unmatched: <span id="agentOther">₹0</span></div>
+          </div>
+
           <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
             <h3 class="font-semibold mb-3">Quick Actions</h3>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -199,6 +226,7 @@
               <button onclick="showPage('billing')" class="card-hover bg-green-50 hover:bg-green-100 text-green-700 py-3 rounded-xl text-sm font-medium transition">New Bill</button>
               <button onclick="showPage('customers')" class="card-hover bg-purple-50 hover:bg-purple-100 text-purple-700 py-3 rounded-xl text-sm font-medium transition">Search Customer</button>
               <button onclick="showPage('reports')" class="card-hover bg-amber-50 hover:bg-amber-100 text-amber-700 py-3 rounded-xl text-sm font-medium transition">Reports</button>
+              <button onclick="showPage('settings')" class="card-hover bg-orange-50 hover:bg-orange-100 text-orange-700 py-3 rounded-xl text-sm font-medium transition">Month Due</button>
             </div>
           </div>
         </div>
@@ -242,85 +270,173 @@
 
         <!-- NEW / EDIT CUSTOMER -->
         <div id="page-newCustomer" class="page hidden fade-in">
-          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 max-w-3xl">
-            <h3 class="font-semibold text-lg mb-4" id="customerFormTitle">New Customer</h3>
-            <form id="customerForm" class="space-y-4">
-              <input type="hidden" id="editCustomerId">
-              
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form id="customerForm" class="space-y-4 max-w-4xl">
+            <input type="hidden" id="editCustomerId">
+
+            <!-- CUSTOMER INFO -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
+              <h3 class="font-semibold text-base mb-3 text-blue-700 border-b pb-2" id="customerFormTitle">Customer Info</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-sm font-medium mb-1">Customer Name *</label>
-                  <input type="text" id="custName" required class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Customer Name *</label>
+                  <input type="text" id="custName" required class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Father Name</label>
-                  <input type="text" id="custFather" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Father Name</label>
+                  <input type="text" id="custFather" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Mobile *</label>
-                  <input type="tel" id="custMobile" required class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Mobile *</label>
+                  <input type="tel" id="custMobile" required class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Door No</label>
-                  <input type="text" id="custDoor" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Door No</label>
+                  <input type="text" id="custDoor" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Place</label>
-                  <input type="text" id="custPlace" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Place</label>
+                  <input type="text" id="custPlace" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Street</label>
-                  <input type="text" id="custStreet" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Street</label>
+                  <input type="text" id="custStreet" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Box Number</label>
-                  <input type="text" id="custBox" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Landmark</label>
+                  <input type="text" id="custLandmark" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">SC Number</label>
-                  <input type="text" id="custSC" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">EB No</label>
+                  <input type="text" id="custEB" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Package</label>
-                  <select id="custPackage" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Connection Date</label>
+                  <input type="date" id="custConDate" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Due Amount</label>
+                  <input type="number" id="custDueAmt" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Other Charges</label>
+                  <input type="number" id="custOtherCharges" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Discount</label>
+                  <input type="number" id="custDiscount" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Discount Reason</label>
+                  <input type="text" id="custDisReason" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Status</label>
+                  <select id="custStatus" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <option value="ACT">Active (ACT)</option>
+                    <option value="DC">Disconnected (DC)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">SMS</label>
+                  <select id="custSMS" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Remarks</label>
+                  <textarea id="custRemarks" rows="2" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- SIGNAL / BOX INFO -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
+              <h3 class="font-semibold text-base mb-3 text-blue-700 border-b pb-2">Signal / Box Info</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Signal Type</label>
+                  <select id="custSignal" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <option value="Digital">Digital</option>
+                    <option value="Analog">Analog</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">MSO Name</label>
+                  <input type="text" id="custMSO" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="e.g. SPCHE0077">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Box Number</label>
+                  <input type="text" id="custBox" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Box Type</label>
+                  <select id="custBoxType" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <option value="SD">SD</option>
+                    <option value="HD">HD</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">SC / Smart Card</label>
+                  <input type="text" id="custSC" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Aadhar No</label>
+                  <input type="text" id="custAadhar" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">CAF No</label>
+                  <input type="text" id="custCAF" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Reg Date</label>
+                  <input type="date" id="custRegDate" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Box Amount</label>
+                  <input type="number" id="custBoxAmt" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+              </div>
+            </div>
+
+            <!-- PACKAGE DETAILS -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
+              <h3 class="font-semibold text-base mb-3 text-blue-700 border-b pb-2">Package Details</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Package</label>
+                  <select id="custPackage" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                     <option value="">Select Package</option>
+                    <option value="PLAN 250">PLAN 250</option>
+                    <option value="PLAN 280">PLAN 280</option>
+                    <option value="PLAN 290">PLAN 290</option>
+                    <option value="PLAN 300">PLAN 300</option>
+                    <option value="PLAN 350">PLAN 350</option>
                     <option value="Basic">Basic</option>
                     <option value="Standard">Standard</option>
                     <option value="Premium">Premium</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Package Amount</label>
-                  <input type="number" id="custPkgAmt" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Package Amount</label>
+                  <input type="number" id="custPkgAmt" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Due Amount</label>
-                  <input type="number" id="custDueAmt" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-1">Connection Date</label>
-                  <input type="date" id="custConDate" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium mb-1">Status</label>
-                  <select id="custStatus" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="ACT">Active (ACT)</option>
-                    <option value="DC">Disconnected (DC)</option>
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Billing</label>
+                  <select id="custBilling" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
                   </select>
                 </div>
               </div>
+            </div>
 
-              <div>
-                <label class="block text-sm font-medium mb-1">Remarks</label>
-                <textarea id="custRemarks" rows="2" class="w-full px-3 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-              </div>
-
-              <div class="flex gap-3 pt-2">
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium transition">Save Customer</button>
-                <button type="button" onclick="showPage('customers')" class="bg-slate-200 hover:bg-slate-300 px-6 py-2.5 rounded-xl font-medium transition">Cancel</button>
-              </div>
-            </form>
-          </div>
+            <div class="flex gap-3 pt-1 pb-4">
+              <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium transition text-sm">Save Customer</button>
+              <button type="button" onclick="showPage('customers')" class="bg-slate-200 hover:bg-slate-300 px-6 py-2.5 rounded-xl font-medium transition text-sm">Cancel</button>
+              <button type="button" onclick="document.getElementById('customerForm').reset()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-6 py-2.5 rounded-xl font-medium transition text-sm">Clear</button>
+            </div>
+          </form>
         </div>
 
         <!-- BILLING -->
@@ -535,9 +651,19 @@
               <p class="text-xs text-slate-500 mt-2">Only Admin should create users.</p>
             </div>
 
+            <div class="border rounded-xl p-4 border-amber-200 bg-amber-50">
+              <div class="font-medium mb-1 text-amber-900">Generate Month Due</div>
+              <p class="text-xs text-amber-800 mb-3">Active customers-க்கு மட்டும் Package Amount-ஐ Due-வோடு சேர்க்கும். DC customers skip ஆகும்.</p>
+              <button type="button" onclick="generateMonthDue()" id="genDueBtn"
+                class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">
+                Generate Month Due
+              </button>
+              <div id="genDueStatus" class="text-xs text-slate-600 mt-2 hidden"></div>
+            </div>
+
             <div class="border rounded-xl p-4">
               <div class="font-medium mb-1">App Info</div>
-              <div class="text-sm text-slate-600">Version: 1.0 MVP</div>
+              <div class="text-sm text-slate-600">Version: 1.1</div>
               <div class="text-sm text-slate-600">Project: jsvcable-billing</div>
             </div>
           </div>
