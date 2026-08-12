@@ -386,6 +386,23 @@ async function toggleDC(id, currentStatus) {
   }
 }
 
+
+function displayAgentName(d) {
+  const raw = ((typeof d === 'string' ? d : '') + ' ' + (d && d.createdBy || '') + ' ' + (d && d.employee || '') + ' ' + (d && d.collectedBy || '')).toLowerCase();
+  const s = (typeof d === 'string' ? d : (d && (d.collectedBy || d.employee || d.createdBy) || '')).toString();
+  const lower = s.toLowerCase();
+  if (lower.includes('muthumari') || lower.startsWith('muthumari')) return 'MUTHUMARI';
+  if (lower.includes('uma@') || lower === 'uma' || /(^|[^a-z])uma([^a-z]|$)/.test(lower)) return 'UMA';
+  if (lower.includes('office') || lower.includes('local')) return 'OFFICE';
+  if (lower.includes('online')) return 'ONLINE';
+  if (lower.includes('stefi')) return 'STEFI';
+  if (lower.includes('jeyabal') || lower.includes('muthuraj')) return 'ADMIN';
+  // already a short name
+  if (s && !s.includes('@') && s.length < 20) return s.toUpperCase();
+  if (s.includes('@')) return s.split('@')[0].toUpperCase();
+  return s || '-';
+}
+
 // ==================== LEDGER ====================
 async function viewLedger(id) {
   currentLedgerCustomerId = id;
@@ -427,7 +444,7 @@ async function viewLedger(id) {
           <td class="px-3 py-2 text-sm font-semibold">₹${Number(r.amount || 0).toLocaleString('en-IN')}</td>
           <td class="px-3 py-2 text-sm">${r.mode || '-'}</td>
           <td class="px-3 py-2 text-sm">${r.remarks || '-'}</td>
-          <td class="px-3 py-2 text-xs text-slate-500">${r.createdBy || '-'}</td>
+          <td class="px-3 py-2 text-xs text-slate-500">${displayAgentName(r)}</td>
         </tr>`;
       }).join('') + `
         <tr class="border-t-2 border-slate-300 bg-slate-50 font-semibold">
@@ -543,7 +560,8 @@ async function handleSaveBill(e) {
     mode: document.getElementById('billMode').value,
     remarks: document.getElementById('billRemarks').value.trim(),
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    createdBy: currentUser.email
+    createdBy: currentUser.email,
+    collectedBy: displayAgentName(currentUser.email)
   };
 
   try {

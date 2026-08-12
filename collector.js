@@ -279,6 +279,7 @@ async function saveCollection() {
       boxNo: selectedCustomer.boxNo || '',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: currentUser.email,
+      collectedBy: displayAgentName(currentUser.email),
       source: 'agent-app'
     });
     const currentDue = Number(selectedCustomer.dueAmt || selectedCustomer.due || 0);
@@ -329,7 +330,7 @@ async function viewLedger(id) {
       html += '<div class="bg-white rounded-xl border overflow-hidden"><table class="w-full text-xs"><thead class="bg-slate-100"><tr><th class="p-2 text-left">Date</th><th class="p-2 text-left">Amt</th><th class="p-2 text-left">Mode</th><th class="p-2 text-left">By</th></tr></thead><tbody>';
       rows.forEach(r => {
         total += Number(r.amount||0);
-        html += `<tr class="border-t"><td class="p-2">${r.date||'-'}</td><td class="p-2 font-semibold">₹${r.amount||0}</td><td class="p-2">${r.mode||'-'}</td><td class="p-2">${(r.createdBy||'').split('@')[0]}</td></tr>`;
+        html += `<tr class="border-t"><td class="p-2">${r.date||'-'}</td><td class="p-2 font-semibold">₹${r.amount||0}</td><td class="p-2">${r.mode||'-'}</td><td class="p-2">${displayAgentName(r)}</td></tr>`;
       });
       html += `</tbody></table><div class="p-2 bg-slate-50 font-bold text-sm">Total: ₹${total.toLocaleString('en-IN')}</div></div>`;
     }
@@ -434,6 +435,20 @@ async function loadDashboard() {
   } catch (e) {
     console.error(e);
   }
+}
+
+function displayAgentName(d) {
+  const s = (typeof d === 'string' ? d : (d && (d.collectedBy || d.employee || d.createdBy) || '')).toString();
+  const lower = s.toLowerCase();
+  if (lower.includes('muthumari')) return 'MUTHUMARI';
+  if (lower.includes('uma@') || lower === 'uma' || /(^|[^a-z])uma([^a-z]|$)/.test(lower)) return 'UMA';
+  if (lower.includes('office') || lower.includes('local')) return 'OFFICE';
+  if (lower.includes('online')) return 'ONLINE';
+  if (lower.includes('stefi')) return 'STEFI';
+  if (lower.includes('jeyabal') || lower.includes('muthuraj')) return 'ADMIN';
+  if (s && !s.includes('@') && s.length < 20) return s.toUpperCase();
+  if (s.includes('@')) return s.split('@')[0].toUpperCase();
+  return s || '-';
 }
 
 function showToast(msg, isError) {
