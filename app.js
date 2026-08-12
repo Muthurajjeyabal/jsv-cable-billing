@@ -19,6 +19,34 @@ let allCustomers = [];
 let selectedBillCustomer = null;
 let currentLedgerCustomerId = null;
 
+// Only these can use Admin app (others = collector app only)
+const ADMIN_EMAILS = [
+  'muthurajjeyabal@gmail.com',
+  'muthurajjey@jsvcable.com',
+  'admin@jsvcable.com',
+  'stefi@jsvcable.com',
+  'jeyabal@jsvcable.com',
+];
+// Collectors blocked from admin
+const COLLECTOR_EMAILS = [
+  'uma@jsvcable.com',
+  'muthumari@jsvcable.com',
+  'office@jsvcable.com',
+  'online@jsvcable.com',
+];
+
+function isAdminUser(user) {
+  if (!user || !user.email) return false;
+  const email = user.email.toLowerCase();
+  if (COLLECTOR_EMAILS.some(c => email === c || email.startsWith(c.split('@')[0] + '@'))) {
+    return false;
+  }
+  if (ADMIN_EMAILS.some(a => email === a.toLowerCase())) return true;
+  // If not in collector list, treat as admin (your main account)
+  if (email.includes('muthuraj')) return true;
+  return false;
+}
+
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-IN', {
@@ -31,8 +59,21 @@ document.addEventListener('DOMContentLoaded', () => {
   if (conDateEl) conDateEl.value = today;
   if (billDateEl) billDateEl.value = today;
 
-  auth.onAuthStateChanged(user => {
+  auth.onAuthStateChanged(async user => {
     if (user) {
+      if (!isAdminUser(user)) {
+        await auth.signOut();
+        currentUser = null;
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('appScreen').classList.add('hidden');
+        const errBox = document.getElementById('loginError');
+        if (errBox) {
+          errBox.innerHTML = 'Collector login. Admin app அல்ல.<br><a class="underline text-blue-600" href="collector.html">Collector App திறக்க →</a>';
+          errBox.classList.remove('hidden');
+        }
+        showToast('Collectors must use Collector App', true);
+        return;
+      }
       currentUser = user;
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
