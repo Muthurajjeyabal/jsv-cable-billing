@@ -223,10 +223,14 @@ function renderCustomerTable(list) {
   tbody.innerHTML = list.map(c => {
     const due = Number(c.dueAmt || c.due || 0);
     const status = c.status || 'ACT';
+    const street = c.street || '';
     return `
-    <tr class="border-t border-slate-100 hover:bg-slate-50">
+    <tr class="border-t border-slate-100 hover:bg-blue-50 cursor-pointer" onclick="viewLedger('${c.id}')">
       <td class="px-3 py-2.5 font-mono text-xs">${c.custId || c.id.slice(0,6)}</td>
-      <td class="px-3 py-2.5 font-medium text-sm">${c.name || '-'}</td>
+      <td class="px-3 py-2.5">
+        <div class="font-medium text-sm">${c.name || '-'}</div>
+        <div class="text-[10px] text-slate-500 truncate max-w-[140px]">${street}</div>
+      </td>
       <td class="px-3 py-2.5 text-sm">${c.mobile || '-'}</td>
       <td class="px-3 py-2.5 font-mono text-xs">${c.boxNo || '-'}</td>
       <td class="px-3 py-2.5 text-sm font-semibold ${due > 0 ? 'text-red-600' : 'text-slate-500'}">₹${due}</td>
@@ -235,12 +239,11 @@ function renderCustomerTable(list) {
           ${status}
         </span>
       </td>
-      <td class="px-3 py-2.5 whitespace-nowrap">
+      <td class="px-3 py-2.5 whitespace-nowrap" onclick="event.stopPropagation()">
         <button onclick="editCustomer('${c.id}')" class="text-blue-600 hover:underline text-xs mr-1">Edit</button>
         <button onclick="toggleDC('${c.id}', '${status}')" class="text-xs mr-1 ${status === 'ACT' ? 'text-red-600' : 'text-green-600'} hover:underline">
           ${status === 'ACT' ? 'DC' : 'RC'}
         </button>
-        <button onclick="viewLedger('${c.id}')" class="text-purple-600 hover:underline text-xs mr-1">Ledger</button>
         <button onclick="deleteCustomer('${c.id}')" class="text-red-700 hover:underline text-xs font-medium">Del</button>
         <button onclick="openWhatsApp('${c.mobile || ''}', '${(c.name || '').replace(/'/g, '')}', ${Number(c.dueAmt||c.due||0)})" class="text-green-600 hover:underline text-xs">WA</button>
       </td>
@@ -468,14 +471,51 @@ function displayAgentName(d) {
 }
 
 // ==================== LEDGER ====================
+
+function copyLedgerBox() {
+  const btn = document.getElementById('ledgerBoxBtn');
+  const box = (btn && (btn.dataset.box || btn.textContent)) || '';
+  if (!box || box === '-') { showToast('Box number இல்லை', true); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(box).then(() => showToast('Box copied: ' + box)).catch(() => fallbackCopy(box));
+  } else {
+    fallbackCopy(box);
+  }
+}
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); showToast('Box copied: ' + text); } catch(e) { showToast(text); }
+  document.body.removeChild(ta);
+}
+function startBillForLedger() {
+  if (!currentLedgerCustomerId) return;
+  selectCustomerForBill(currentLedgerCustomerId);
+  showPage('billing');
+}
+
 async function viewLedger(id) {
   currentLedgerCustomerId = id;
   const c = allCustomers.find(x => x.id === id);
   if (!c) return;
 
   document.getElementById('ledgerCustName').textContent = c.name || '-';
+  const streetLine = [c.street, c.place].filter(Boolean).join(' · ');
+  const sl = document.getElementById('ledgerStreetLine');
+  if (sl) sl.textContent = streetLine || '-';
   document.getElementById('ledgerCustInfo').textContent =
-    `ID: ${c.custId || id} | Mobile: ${c.mobile || '-'} | Box: ${c.boxNo || '-'} | Package: ${c.package || '-'}`;
+    `ID: ${c.custId || id} · Mobile: ${c.mobile || '-'} · Package: ${c.package || '-'}`;
+  const msoEl = document.getElementById('ledgerMso');
+  if (msoEl) msoEl.textContent = c.mso || '-';
+  const vcEl = document.getElementById('ledgerVc');
+  if (vcEl) vcEl.textContent = c.scNo || c.smartCard || '-';
+  const boxBtn = document.getElementById('ledgerBoxBtn');
+  if (boxBtn) {
+    boxBtn.textContent = c.boxNo || '-';
+    boxBtn.dataset.box = c.boxNo || '';
+  }
   document.getElementById('ledgerDue').textContent = '₹' + Number(c.dueAmt || c.due || 0).toLocaleString('en-IN');
   document.getElementById('ledgerStatus').textContent = c.status || 'ACT';
   document.getElementById('ledgerStatus').className =
