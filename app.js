@@ -2086,3 +2086,105 @@ async function saveCompanyInfo() {
   }, { merge: true });
   showToast('Company saved');
 }
+
+async function importAugustCollections() {
+  if (!confirm('ஆகஸ்ட் Collection list import?\n\n• ஏற்கனவே உள்ள bill (same BillNo+Date+Customer) SKIP\n• புதியவை ADD\n• Pay செய்த customers Due = 0')) return;
+  try {
+    showToast('Loading file...');
+    const res = await fetch('collections_aug2026.json?t=' + Date.now());
+    if (!res.ok) throw new Error('collections_aug2026.json not found in site — upload that file to GitHub too');
+    const list = await res.json();
+    if (!Array.isArray(list) || !list.length) throw new Error('Empty list');
+
+    // map custId -> customer doc
+    const byCustId = new Map();
+    allCustomers.forEach(c => {
+      const id = String(c.custId || '').trim().toUpperCase();
+      if (id) byCustId.set(id, c);
+    });
+
+    // existing collections key: custDocId|billNo|date
+    showToast('Checking existing bills...');
+    const existingKeys = new Set();
+    const colSnap = await db.collection('collections').get();
+    colSnap.forEach(doc => {
+      const d = doc.data();
+      const k = (d.customerId || '') + '|' + String(d.billNo || '') + '|' + (d.date || d.billDate || '');
+      existingKeys.add(k);
+      // also by imported custId
+      if (d.importCustId) {
+        existingKeys.add(String(d.importCustId).toUpperCase() + '|' + String(d.billNo || '') + '|' + (d.date || ''));
+      }
+    });
+
+    let added = 0, skipped = 0, noMatch = 0;
+    const paidCustDocIds = new Set();
+
+    for (let i = 0; i < list.length; i += 400) {
+      const chunk = list.slice(i, i + 400);
+      const batch = db.batch();
+      let batchOps = 0;
+      for (const r of chunk) {
+        const cid = String(r.custId || '').trim().toUpperCase();
+        const cust = byCustId.get(cid);
+        const date = r.colDate || r.billDate || '';
+        const billNo = String(r.billNo || '');
+        const skipKey1 = cid + '|' + billNo + '|' + date;
+        const skipKey2 = cust ? (cust.id + '|' + billNo + '|' + date) : '';
+        if (existingKeys.has(skipKey1) || (skipKey2 && existingKeys.has(skipKey2))) {
+          skipped++;
+          if (cust) paidCustDocIds.add(cust.id);
+          continue;
+        }
+        if (!cust) { noMatch++; continue; }
+
+        const ref = db.collection('collections').doc();
+        const agent = (r.collected || r.employee || '').toUpperCase();
+        batch.set(ref, {
+          customerId: cust.id,
+          customerName: cust.name || r.name || '',
+          amount: Number(r.amount) || 0,
+          date: date,
+          billDate: r.billDate || date,
+          billNo: billNo,
+          mode: /GPAY|UPI|ONLINE/i.test(agent) ? 'UPI' : (/LOCAL|OFFICE|BANK/i.test(agent) ? 'Cash' : 'Cash'),
+          remarks: 'Import Aug2026',
+          status: 'active',
+          importCustId: cid,
+          collectedBy: r.collected || r.employee || '',
+          employee: r.employee || '',
+          createdBy: (r.collected || r.employee || 'import') + '@import',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        existingKeys.add(skipKey1);
+        existingKeys.add(cust.id + '|' + billNo + '|' + date);
+        paidCustDocIds.add(cust.id);
+        added++;
+        batchOps++;
+      }
+      if (batchOps > 0) await batch.commit();
+    }
+
+    // set due = 0 for paid customers this month
+    showToast('Updating dues...');
+    const paidArr = Array.from(paidCustDocIds);
+    for (let i = 0; i < paidArr.length; i += 400) {
+      const batch = db.batch();
+      paidArr.slice(i, i + 400).forEach(id => {
+        batch.update(db.collection('customers').doc(id), {
+          dueAmt: 0,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+    }
+
+    showToast('Import done · Added: ' + added + ' · Skipped: ' + skipped + ' · No customer: ' + noMatch + ' · Due cleared: ' + paidArr.length);
+    await loadCustomers();
+    loadDashboard();
+  } catch (e) {
+    console.error(e);
+    showToast('Import error: ' + e.message, true);
+  }
+}
+
