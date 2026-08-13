@@ -178,7 +178,7 @@ function showPage(pageId) {
   };
   document.getElementById('pageTitle').textContent = titles[pageId] || pageId;
   if (pageId === 'settings') refreshMonthBillLockUI();
-  if (pageId === 'reports') renderCollectionReport();
+  if (pageId === 'reports') closeReportPanels();
 
   if (pageId === 'newCustomer') {
     document.getElementById('customerForm').reset();
@@ -2885,4 +2885,74 @@ async function runFullBackup() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '⬇ Backup Now'; }
   }
+}
+
+function openReport(kind) {
+  const menu = document.getElementById('reportMenu');
+  if (menu) menu.classList.add('hidden');
+  document.querySelectorAll('.report-panel').forEach(p => p.classList.add('hidden'));
+  const panel = document.getElementById('reportPanel-' + kind);
+  if (panel) panel.classList.remove('hidden');
+  if (kind === 'collection') renderCollectionReport();
+  if (kind === 'customers') renderCustomerReport();
+  if (kind === 'dc') renderDcReport();
+  if (kind === 'package') renderPackageReport();
+}
+function closeReportPanels() {
+  document.querySelectorAll('.report-panel').forEach(p => p.classList.add('hidden'));
+  const menu = document.getElementById('reportMenu');
+  if (menu) menu.classList.remove('hidden');
+}
+function renderCustomerReport() {
+  const st = (document.getElementById('custRepStatus') || {}).value || '';
+  let list = allCustomers.slice();
+  if (st) list = list.filter(c => String(c.status || 'ACT').toUpperCase() === st.toUpperCase());
+  list.sort((a, b) => String(a.custId || '').localeCompare(String(b.custId || '')));
+  const sum = document.getElementById('custRepSummary');
+  if (sum) sum.textContent = list.length + ' customers';
+  const body = document.getElementById('custRepBody');
+  if (!body) return;
+  body.innerHTML = `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">
+    <thead class="bg-slate-50 sticky top-0"><tr>
+      <th class="text-left px-2 py-2">ID</th><th class="text-left px-2 py-2">Name</th>
+      <th class="text-left px-2 py-2">Mobile</th><th class="text-left px-2 py-2">Street</th>
+      <th class="text-right px-2 py-2">Due</th><th class="text-left px-2 py-2">Status</th>
+    </tr></thead><tbody>` + list.map(c => `<tr class="border-t">
+      <td class="px-2 py-1.5">${c.custId||''}</td><td class="px-2 py-1.5">${c.name||''}</td>
+      <td class="px-2 py-1.5">${c.mobile||''}</td><td class="px-2 py-1.5 text-xs">${c.street||''}</td>
+      <td class="px-2 py-1.5 text-right">₹${Number(c.dueAmt||c.due||0).toLocaleString('en-IN')}</td>
+      <td class="px-2 py-1.5">${c.status||'ACT'}</td></tr>`).join('') + '</tbody></table></div>';
+}
+function renderDcReport() {
+  const list = allCustomers.filter(c => String(c.status||'').toUpperCase() === 'DC')
+    .sort((a,b) => String(a.custId||'').localeCompare(String(b.custId||'')));
+  const sum = document.getElementById('dcRepSummary');
+  if (sum) sum.textContent = list.length + ' DC customers';
+  const body = document.getElementById('dcRepBody');
+  if (!body) return;
+  body.innerHTML = `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">
+    <thead class="bg-slate-50 sticky top-0"><tr>
+      <th class="text-left px-2 py-2">ID</th><th class="text-left px-2 py-2">Name</th>
+      <th class="text-left px-2 py-2">Box</th><th class="text-left px-2 py-2">DC Date</th>
+      <th class="text-right px-2 py-2">Balance</th>
+    </tr></thead><tbody>` + list.map(c => `<tr class="border-t">
+      <td class="px-2 py-1.5">${c.custId||''}</td><td class="px-2 py-1.5">${c.name||''}</td>
+      <td class="px-2 py-1.5 text-xs">${c.boxNo||''}</td><td class="px-2 py-1.5">${c.dcDate||''}</td>
+      <td class="px-2 py-1.5 text-right">₹${Number(c.dueAmt||c.due||0).toLocaleString('en-IN')}</td>
+    </tr>`).join('') + '</tbody></table></div>';
+}
+function renderPackageReport() {
+  const map = new Map();
+  allCustomers.filter(c => String(c.status||'ACT').toUpperCase() !== 'DC').forEach(c => {
+    const amt = Number(c.packageAmt || 0);
+    const key = '₹' + amt;
+    if (!map.has(key)) map.set(key, { amt, count: 0 });
+    map.get(key).count++;
+  });
+  const rows = Array.from(map.values()).sort((a,b) => a.amt - b.amt);
+  const body = document.getElementById('pkgRepBody');
+  if (!body) return;
+  body.innerHTML = '<h3 class="font-semibold mb-3">Package Amount Wise (Active)</h3><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Package ₹</th><th class="text-right py-2">Customers</th></tr></thead><tbody>' +
+    rows.map(r => `<tr class="border-t"><td class="py-2">₹${r.amt.toLocaleString('en-IN')}</td><td class="py-2 text-right font-medium">${r.count}</td></tr>`).join('') +
+    '</tbody></table>';
 }

@@ -1043,24 +1043,102 @@
 
         <!-- REPORTS (Placeholder) -->
         <div id="page-reports" class="page hidden fade-in">
-          <div class="soft-card p-4 mb-4 no-print">
-            <h3 class="font-semibold text-sm text-slate-800 mb-3">Collection Report (Street-wise)</h3>
-            <p class="text-xs text-slate-500 mb-3">Pending customers · Street group · A4 print · ~3 sheets / area</p>
-            <div class="flex flex-wrap gap-2 items-end">
-              <div>
-                <label class="text-[10px] text-slate-500">Area</label>
-                <select id="colRepArea" onchange="renderCollectionReport()" class="block px-3 py-2 border rounded-lg text-sm bg-white">
-                  <option value="AREA 1">AREA 1</option>
-                  <option value="AREA 2">AREA 2</option>
-                </select>
-              </div>
-              <button type="button" onclick="renderCollectionReport()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">Refresh</button>
-              <button type="button" onclick="printCollectionReport()" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm">🖨 Print A4</button>
-            </div>
-            <div class="mt-2 text-xs text-slate-500" id="colRepSummary">—</div>
+          <!-- Report menu -->
+          <div id="reportMenu" class="no-print space-y-3 mb-4">
+            <button type="button" onclick="openReport('collection')" class="w-full soft-card p-4 text-left card-hover flex gap-3 items-start">
+              <span class="text-2xl">💰</span>
+              <span>
+                <span class="block font-semibold text-sm">Collection Report</span>
+                <span class="block text-xs text-slate-500 mt-0.5">Street-wise · Area 1 / 2 · A4 print</span>
+              </span>
+            </button>
+            <button type="button" onclick="showPage('pending')" class="w-full soft-card p-4 text-left card-hover flex gap-3 items-start">
+              <span class="text-2xl">⚠️</span>
+              <span>
+                <span class="block font-semibold text-sm">Pending / Due</span>
+                <span class="block text-xs text-slate-500 mt-0.5">Outstanding · filters · WhatsApp</span>
+              </span>
+            </button>
+            <button type="button" onclick="openReport('customers')" class="w-full soft-card p-4 text-left card-hover flex gap-3 items-start">
+              <span class="text-2xl">📋</span>
+              <span>
+                <span class="block font-semibold text-sm">Customer List</span>
+                <span class="block text-xs text-slate-500 mt-0.5">All customers · status filter</span>
+              </span>
+            </button>
+            <button type="button" onclick="openReport('dc')" class="w-full soft-card p-4 text-left card-hover flex gap-3 items-start">
+              <span class="text-2xl">🔌</span>
+              <span>
+                <span class="block font-semibold text-sm">DC List</span>
+                <span class="block text-xs text-slate-500 mt-0.5">Disconnected customers</span>
+              </span>
+            </button>
+            <button type="button" onclick="openReport('package')" class="w-full soft-card p-4 text-left card-hover flex gap-3 items-start">
+              <span class="text-2xl">📦</span>
+              <span>
+                <span class="block font-semibold text-sm">Package Wise</span>
+                <span class="block text-xs text-slate-500 mt-0.5">Package amount summary</span>
+              </span>
+            </button>
+            <button type="button" onclick="showPage('pending'); setTimeout(function(){ if(typeof startWaQueue==='function') startWaQueue(); }, 300);" class="w-full soft-card p-4 text-left card-hover flex gap-3 items-start">
+              <span class="text-2xl">📱</span>
+              <span>
+                <span class="block font-semibold text-sm">WhatsApp Pending</span>
+                <span class="block text-xs text-slate-500 mt-0.5">Due reminders queue</span>
+              </span>
+            </button>
           </div>
-          <div id="colRepPrint" class="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 text-slate-900">
-            <div class="text-center text-slate-400 text-sm py-8">Area select → Refresh</div>
+
+          <!-- Collection report panel -->
+          <div id="reportPanel-collection" class="report-panel hidden">
+            <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
+            <div class="soft-card p-4 mb-4 no-print">
+              <h3 class="font-semibold text-sm text-slate-800 mb-1">Collection Report (Street-wise)</h3>
+              <p class="text-xs text-slate-500 mb-3">Pending · Street group · A4 · ~3 sheets / area</p>
+              <div class="flex flex-wrap gap-2 items-end">
+                <div>
+                  <label class="text-[10px] text-slate-500">Area</label>
+                  <select id="colRepArea" onchange="renderCollectionReport()" class="block px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="AREA 1">AREA 1</option>
+                    <option value="AREA 2">AREA 2</option>
+                  </select>
+                </div>
+                <button type="button" onclick="renderCollectionReport()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">Refresh</button>
+                <button type="button" onclick="printCollectionReport()" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm">🖨 Print A4</button>
+              </div>
+              <div class="mt-2 text-xs text-slate-500" id="colRepSummary">—</div>
+            </div>
+            <div id="colRepPrint" class="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 text-slate-900">
+              <div class="text-center text-slate-400 text-sm py-8">Area select → Refresh</div>
+            </div>
+          </div>
+
+          <!-- Customer list panel -->
+          <div id="reportPanel-customers" class="report-panel hidden">
+            <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
+            <div class="soft-card p-4 mb-3 no-print flex flex-wrap gap-2 items-center">
+              <select id="custRepStatus" onchange="renderCustomerReport()" class="px-3 py-2 border rounded-lg text-sm bg-white">
+                <option value="">All Status</option>
+                <option value="ACT">Active</option>
+                <option value="DC">DC</option>
+              </select>
+              <button type="button" onclick="renderCustomerReport()" class="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm">Refresh</button>
+              <span class="text-xs text-slate-500" id="custRepSummary"></span>
+            </div>
+            <div id="custRepBody" class="bg-white rounded-xl border overflow-hidden text-sm"></div>
+          </div>
+
+          <!-- DC panel -->
+          <div id="reportPanel-dc" class="report-panel hidden">
+            <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
+            <div class="soft-card p-3 mb-3 no-print text-xs text-slate-500" id="dcRepSummary">—</div>
+            <div id="dcRepBody" class="bg-white rounded-xl border overflow-hidden text-sm"></div>
+          </div>
+
+          <!-- Package panel -->
+          <div id="reportPanel-package" class="report-panel hidden">
+            <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
+            <div id="pkgRepBody" class="bg-white rounded-xl border p-4 text-sm"></div>
           </div>
         </div>
 
