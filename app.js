@@ -275,6 +275,7 @@ async function handleSaveCustomer(e) {
     doorNo: document.getElementById('custDoor').value.trim(),
     place: document.getElementById('custPlace').value.trim(),
     street: document.getElementById('custStreet').value.trim(),
+    custId: (document.getElementById('custCustId')?.value || '').trim(),
     landmark: document.getElementById('custLandmark')?.value.trim() || '',
     ebNo: document.getElementById('custEB')?.value.trim() || '',
     boxNo: document.getElementById('custBox').value.trim(),
@@ -310,7 +311,9 @@ async function handleSaveCustomer(e) {
       showToast('Customer updated!');
     } else {
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      data.custId = 'C' + Date.now().toString().slice(-6);
+      const manualId = (document.getElementById('custCustId')?.value || '').trim();
+      data.custId = manualId || ('C' + Date.now().toString().slice(-6));
+      data.streetId = getStreetId(data.place, data.street);
       await db.collection('customers').add(data);
       showToast('Customer added!');
     }
@@ -332,7 +335,10 @@ function editCustomer(id) {
   document.getElementById('custMobile').value = c.mobile || '';
   document.getElementById('custDoor').value = c.doorNo || '';
   document.getElementById('custPlace').value = c.place || '';
+  onPlaceSelect();
   document.getElementById('custStreet').value = c.street || '';
+  if (document.getElementById('custCustId')) document.getElementById('custCustId').value = c.custId || '';
+  if (document.getElementById('custIdSuffix')) document.getElementById('custIdSuffix').value = '';
   if (document.getElementById('custLandmark')) document.getElementById('custLandmark').value = c.landmark || '';
   if (document.getElementById('custEB')) document.getElementById('custEB').value = c.ebNo || '';
   document.getElementById('custBox').value = c.boxNo || '';
@@ -790,6 +796,186 @@ function skipWa() {
 }
 
 // ==================== TOAST ====================
+
+// ==================== STREET MASTER + AUTO CUST ID ====================
+// Street ID codes from CableSoft Street Report (JSV S.Alangulam)
+const STREET_MASTER = [
+  // AREA 1
+  { place: 'AREA 1', street: 'அக்கதிரியார் தெரு', streetId: 'AGA' },
+  { place: 'AREA 1', street: 'அனா-1', streetId: '1AN' },
+  { place: 'AREA 1', street: 'அனா-2', streetId: '2AN' },
+  { place: 'AREA 1', street: 'அம்பேத்கர்', streetId: 'AJA' },
+  { place: 'AREA 1', street: 'அழகாசன்புரம்-1', streetId: '1AL' },
+  { place: 'AREA 1', street: 'அழகாசன்புரம்-2', streetId: '2AL' },
+  { place: 'AREA 1', street: 'ஆனைமலை', streetId: 'AIN' },
+  { place: 'AREA 1', street: 'ஆலமரத்துக்காடு', streetId: 'AJK' },
+  { place: 'AREA 1', street: 'இளாங்கோ அடிகள்', streetId: 'ILA' },
+  { place: 'AREA 1', street: 'கணபதி-1', streetId: '1KB' },
+  { place: 'AREA 1', street: 'கணபதி-2', streetId: '2KB' },
+  { place: 'AREA 1', street: 'கணபதி-3', streetId: '3KB' },
+  { place: 'AREA 1', street: 'கரிய தெரு', streetId: 'KAB' },
+  { place: 'AREA 1', street: 'கீழ்ப்பட்டி', streetId: 'KSS' },
+  { place: 'AREA 1', street: 'கோபிநாதன்', streetId: 'CBP' },
+  { place: 'AREA 1', street: 'சக்தி விநாயகர்', streetId: 'SAK' },
+  { place: 'AREA 1', street: 'சங்கர் தெரு', streetId: 'SLB' },
+  { place: 'AREA 1', street: 'புன்னை நகர்-1', streetId: '1CE' },
+  { place: 'AREA 1', street: 'புன்னை நகர்-2', streetId: '2CE' },
+  { place: 'AREA 1', street: 'புன்னை நகர்-3', streetId: '3CE' },
+  { place: 'AREA 1', street: 'புன்னை மெயின்', streetId: 'CES' },
+  { place: 'AREA 1', street: 'டெலிபோன் காலனி', streetId: 'TEL' },
+  { place: 'AREA 1', street: 'தாமரைக்கால்', streetId: 'TR' },
+  { place: 'AREA 1', street: 'திருமூர்த்தி', streetId: 'TJO' },
+  { place: 'AREA 1', street: 'தென்னாம்பட்டி தெரு', streetId: 'THL' },
+  { place: 'AREA 1', street: 'பாண்டுரம்-1', streetId: '1BH' },
+  { place: 'AREA 1', street: 'பாண்டுரம்-2', streetId: '2BH' },
+  { place: 'AREA 1', street: 'பாண்டுரம்-3', streetId: '3BH' },
+  { place: 'AREA 1', street: 'பாண்டுரம்-4', streetId: '4BH' },
+  { place: 'AREA 1', street: 'பாண்டுரம்-5', streetId: '5BH' },
+  { place: 'AREA 1', street: 'பாண்டுரம்-6', streetId: '6BH' },
+  { place: 'AREA 1', street: 'பாண்டுரம்-7', streetId: '7BH' },
+  { place: 'AREA 1', street: 'பாண்டுரம்-8', streetId: '8BH' },
+  { place: 'AREA 1', street: 'பாண்டுரம்-9', streetId: '9BH' },
+  { place: 'AREA 1', street: 'பூங்கா நகர்', streetId: '1PK' },
+  { place: 'AREA 1', street: 'மங்கள விநாயகர்', streetId: 'MAN' },
+  { place: 'AREA 1', street: 'மங்கள விநாயகர் தெருக்கு', streetId: 'MAX' },
+  { place: 'AREA 1', street: 'மற்றைக்காலன் கோவில்', streetId: 'MAN' },
+  { place: 'AREA 1', street: 'மண்ணங்காமன்', streetId: 'MNV' },
+  { place: 'AREA 1', street: 'முனிசிபல்', streetId: 'ML' },
+  { place: 'AREA 1', street: 'முனியாண்டி-1', streetId: '1MJ' },
+  { place: 'AREA 1', street: 'முனியாண்டி-2', streetId: '2MJ' },
+  { place: 'AREA 1', street: 'வீரபு புதூர்', streetId: 'VER' },
+  // AREA 2
+  { place: 'AREA 2', street: 'SVP', streetId: 'SVP' },
+  { place: 'AREA 2', street: 'அய்யன்-1', streetId: '1AY' },
+  { place: 'AREA 2', street: 'அய்யன்-2', streetId: '2AY' },
+  { place: 'AREA 2', street: 'அய்யன்-3', streetId: '3AY' },
+  { place: 'AREA 2', street: 'அய்யன்-4', streetId: '4AY' },
+  { place: 'AREA 2', street: 'அய்யன்-5', streetId: '5AY' },
+  { place: 'AREA 2', street: 'அய்யன்-6', streetId: '6AY' },
+  { place: 'AREA 2', street: 'அஞ்சு நகர்', streetId: 'ANF' },
+  { place: 'AREA 2', street: 'அனுமந்திரன்-1', streetId: '1AG' },
+  { place: 'AREA 2', street: 'அனுமந்திரன்-2', streetId: '2AG' },
+  { place: 'AREA 2', street: 'அனுமந்திரன்-3', streetId: '3AG' },
+  { place: 'AREA 2', street: 'இசையம்', streetId: 'ISA' },
+  { place: 'AREA 2', street: 'இசையம் மெயின்', streetId: 'ISM' },
+  { place: 'AREA 2', street: 'இலுப்பை-1', streetId: '1IU' },
+  { place: 'AREA 2', street: 'வைத்தீஸ்-1', streetId: '1EV' },
+  { place: 'AREA 2', street: 'வைத்தீஸ்-2', streetId: '2EV' },
+  { place: 'AREA 2', street: 'ஓடைவளம் முத்துக்குமரர்-1', streetId: '1OV' },
+  { place: 'AREA 2', street: 'ஓடைவளம் தெரு', streetId: 'OVT' },
+  { place: 'AREA 2', street: 'கலியாண்', streetId: 'KLS' },
+  { place: 'AREA 2', street: 'கருப்பசாமி-குருநாதர்', streetId: 'KRK' },
+  { place: 'AREA 2', street: 'கருப்பசாமி-1', streetId: '1KR' },
+  { place: 'AREA 2', street: 'கருப்பசாமி-4', streetId: '4KR' },
+  { place: 'AREA 2', street: 'காமாட்சி தெரு', streetId: 'KAM' },
+  { place: 'AREA 2', street: 'குறிஞ்சி தெரு', streetId: 'KUH' },
+  { place: 'AREA 2', street: 'கல்லூரி நகர்', streetId: 'CFP' },
+  { place: 'AREA 2', street: 'சின்னபொன்னாங்கு கோவில்', streetId: 'CPK' },
+  { place: 'AREA 2', street: 'செந்தூர் நகர்', streetId: 'SEN' },
+  { place: 'AREA 2', street: 'பெத்தாராளன்-2', streetId: '2PK' },
+  { place: 'AREA 2', street: 'பெத்தாராளன்-1', streetId: '1PK' },
+  { place: 'AREA 2', street: 'வெங்கட்சாமி-1', streetId: '1SG' },
+  { place: 'AREA 2', street: 'வெங்கட்சாமி-2', streetId: '2SG' },
+  { place: 'AREA 2', street: 'நேபால் நகர்', streetId: 'JAY' },
+  { place: 'AREA 2', street: 'நேருநகர்', streetId: 'NEH' },
+  { place: 'AREA 2', street: 'பேரையன் நகர்', streetId: 'PRA' },
+  { place: 'AREA 2', street: 'போஸ் நகர்-1', streetId: '1PN' },
+  { place: 'AREA 2', street: 'போஸ் நகர்-2', streetId: '2PN' },
+  { place: 'AREA 2', street: 'மஸீதி நகர்-1', streetId: '1MR' },
+  { place: 'AREA 2', street: 'மஸீதி நகர்-2', streetId: '2MR' },
+  { place: 'AREA 2', street: 'மஸீதி மெயின்', streetId: 'MRM' },
+  { place: 'AREA 2', street: 'மாரி நகர்-1', streetId: '1ML' },
+  { place: 'AREA 2', street: 'மாரி நகர்-2', streetId: '2ML' },
+  { place: 'AREA 2', street: 'முத்தம்மாள்', streetId: 'MUT' },
+  { place: 'AREA 2', street: 'ராமலிங்கம்-1', streetId: '1RM' },
+  { place: 'AREA 2', street: 'ராமலிங்கம்-2', streetId: '2RM' },
+  { place: 'AREA 2', street: 'ராமலிங்கம்-3', streetId: '3RM' },
+  { place: 'AREA 2', street: 'சேரண்-1', streetId: '1RJ' },
+  { place: 'AREA 2', street: 'சேரண்-2', streetId: '2RJ' }
+];
+
+function getStreetsForPlace(place) {
+  const fromMaster = STREET_MASTER.filter(s => s.place === place);
+  // also merge any streets found on existing customers for this place
+  const seen = new Set(fromMaster.map(s => s.street));
+  allCustomers.forEach(c => {
+    if ((c.place || '') === place && c.street && !seen.has(c.street)) {
+      seen.add(c.street);
+      fromMaster.push({ place, street: c.street, streetId: guessStreetId(c) });
+    }
+  });
+  fromMaster.sort((a, b) => a.street.localeCompare(b.street, 'ta'));
+  return fromMaster;
+}
+
+function guessStreetId(c) {
+  // try extract letter prefix from existing custId on same street
+  const same = allCustomers.filter(x => x.street === c.street && x.custId);
+  for (const x of same) {
+    const m = String(x.custId).match(/^([A-Z0-9]+?)(\d+[A-D]?)$/i);
+    if (m) return m[1].toUpperCase();
+  }
+  return (c.street || 'X').replace(/\s+/g, '').slice(0, 3).toUpperCase();
+}
+
+function getStreetId(place, street) {
+  const m = STREET_MASTER.find(s => s.place === place && s.street === street);
+  if (m) return m.streetId;
+  const same = allCustomers.find(c => c.street === street && c.custId);
+  if (same) return guessStreetId(same);
+  return (street || 'X').replace(/\s+/g, '').slice(0, 3).toUpperCase();
+}
+
+function onPlaceSelect() {
+  const place = document.getElementById('custPlace').value;
+  const sel = document.getElementById('custStreet');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">- Select Street -</option>';
+  if (!place) return;
+  getStreetsForPlace(place).forEach(s => {
+    sel.innerHTML += `<option value="${s.street}" data-sid="${s.streetId}">${s.street} (${s.streetId})</option>`;
+  });
+  const idEl = document.getElementById('custCustId');
+  if (idEl && !document.getElementById('editCustomerId').value) idEl.value = '';
+}
+
+function onStreetSelect() {
+  const editId = document.getElementById('editCustomerId').value;
+  // only auto-generate for NEW customers
+  if (editId) return;
+  const place = document.getElementById('custPlace').value;
+  const street = document.getElementById('custStreet').value;
+  if (!place || !street) return;
+  const streetId = getStreetId(place, street);
+  const suffix = (document.getElementById('custIdSuffix') || {}).value || '';
+  const nextNum = getNextNumberForStreet(streetId, street);
+  const newId = streetId + nextNum + suffix;
+  const idEl = document.getElementById('custCustId');
+  if (idEl) idEl.value = newId;
+}
+
+function getNextNumberForStreet(streetId, street) {
+  let maxN = 0;
+  const re = new RegExp('^' + streetId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\d+)', 'i');
+  allCustomers.forEach(c => {
+    const id = String(c.custId || '');
+    // match same streetId prefix
+    const m = id.match(re);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > maxN) maxN = n;
+    } else if (c.street === street && id) {
+      // fallback: trailing digits
+      const m2 = id.match(/(\d+)/);
+      if (m2) {
+        const n = parseInt(m2[1], 10);
+        if (n > maxN) maxN = n;
+      }
+    }
+  });
+  return maxN + 1;
+}
+
 function onPackageChange() {
   const sel = document.getElementById('custPackage');
   if (!sel) return;
@@ -931,7 +1117,7 @@ function showToast(msg, isError = false) {
 
 // ==================== GENERATE MONTH DUE ====================
 async function generateMonthDue() {
-  if (!confirm('Active customers எல்லாருக்கும் Package Amount-ஐ Due-வோடு சேர்க்கவா?\n\nDC customers-க்கு apply ஆகாது.')) return;
+  if (!confirm('Active customers-க்கு Package Amount Due-வோடு சேர்க்கவா?\n\nDC மற்றும் Package ₹0 skip ஆகும்.')) return;
 
   const btn = document.getElementById('genDueBtn');
   const status = document.getElementById('genDueStatus');
@@ -945,7 +1131,7 @@ async function generateMonthDue() {
       const d = doc.data();
       if ((d.status || 'ACT') !== 'ACT') return;
       const pkg = Number(d.packageAmt || 0);
-      if (pkg <= 0) return;
+      if (pkg <= 0) return; // free / zero package = no due
       const currentDue = Number(d.dueAmt || d.due || 0);
       updates.push({ id: doc.id, newDue: currentDue + pkg, pkg, name: d.name });
     });
