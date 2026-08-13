@@ -896,17 +896,22 @@ const STREET_MASTER = [
 ];
 
 function getStreetsForPlace(place) {
-  const fromMaster = STREET_MASTER.filter(s => s.place === place);
-  // also merge any streets found on existing customers for this place
-  const seen = new Set(fromMaster.map(s => s.street));
-  allCustomers.forEach(c => {
-    if ((c.place || '') === place && c.street && !seen.has(c.street)) {
-      seen.add(c.street);
-      fromMaster.push({ place, street: c.street, streetId: guessStreetId(c) });
-    }
+  // One entry per streetId — prefer STREET_MASTER names (no DB spelling duplicates)
+  const byId = new Map();
+  STREET_MASTER.filter(s => s.place === place).forEach(s => {
+    byId.set(s.streetId.toUpperCase(), { place: s.place, street: s.street, streetId: s.streetId });
   });
-  fromMaster.sort((a, b) => a.street.localeCompare(b.street, 'ta'));
-  return fromMaster;
+  // Only add customer streets if their streetId is completely unknown
+  allCustomers.forEach(c => {
+    if ((c.place || '') !== place || !c.street) return;
+    const sid = (c.streetId || guessStreetId(c) || '').toUpperCase();
+    if (!sid) return;
+    if (byId.has(sid)) return; // already have clean master name
+    byId.set(sid, { place, street: c.street, streetId: sid });
+  });
+  const list = Array.from(byId.values());
+  list.sort((a, b) => a.street.localeCompare(b.street, 'ta'));
+  return list;
 }
 
 function guessStreetId(c) {
