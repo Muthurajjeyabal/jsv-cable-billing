@@ -6,9 +6,10 @@
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>JSV Cable Billing</title>
+  <title>JSV Cable TV</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
+  <link rel="icon" href="logo.png" type="image/png">
+  <link rel="apple-touch-icon" href="logo.png">
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -88,22 +89,48 @@
       border-radius: 99px;
       transition: width .6s cubic-bezier(.22,1,.36,1);
     }
+  
+    #splashScreen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: opacity .5s ease, visibility .5s ease;
+    }
+    #splashScreen.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+    #splashScreen img {
+      width: min(72vw, 280px);
+      height: auto;
+      animation: logoIn .7s cubic-bezier(.22,1,.36,1) both;
+    }
+    #splashScreen .splash-sub {
+      margin-top: 1.25rem;
+      color: #3b82f6;
+      font-size: 12px;
+      letter-spacing: .2em;
+      font-weight: 600;
+      opacity: 0;
+      animation: logoIn .6s .25s ease both;
+    }
+    @keyframes logoIn {
+      from { opacity: 0; transform: scale(.88) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800">
+  <div id="splashScreen">
+    <img src="logo.png" alt="JSV Cable TV">
+    <div class="splash-sub">CABLE TV · S. ALANGULAM</div>
+  </div>
 
   <!-- ==================== LOGIN SCREEN ==================== -->
   <div id="loginScreen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-900 p-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 fade-in">
       <div class="text-center mb-6">
         <div class="inline-block bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-wide">ADMIN PANEL</div>
-        <div class="w-20 h-20 bg-indigo-700 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-          </svg>
-        </div>
-        <h1 class="text-2xl font-bold text-slate-800">JSV Cable Billing</h1>
-        <p class="text-indigo-600 text-sm mt-1 font-medium">Admin Login • Full Access</p>
+        <img src="logo.png" alt="JSV Cable TV" class="w-28 h-auto mx-auto mb-4 drop-shadow-lg">
+        <h1 class="text-xl font-bold text-slate-800">JSV Cable TV</h1>
+        <p class="text-indigo-600 text-sm mt-1 font-medium">Admin Login</p>
         <p class="text-slate-400 text-xs mt-1">S. Alangulam</p>
       </div>
 
@@ -145,11 +172,11 @@
 
     <!-- Sidebar -->
     <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#0b1220] text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 flex flex-col">
-      <div class="p-4 border-b border-slate-700 flex items-center gap-3">
-        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-lg">J</div>
+      <div class="p-4 border-b border-slate-800 flex items-center gap-3">
+        <img src="logo.png" alt="JSV" class="w-11 h-11 object-contain rounded-lg bg-black p-0.5">
         <div>
-          <div class="font-bold text-sm tracking-tight">JSV CABLE</div>
-          <div class="text-[10px] text-slate-400 font-medium tracking-wide">Billing &amp; Collection</div>
+          <div class="font-bold text-sm tracking-tight">JSV CABLE TV</div>
+          <div class="text-[10px] text-slate-400 font-medium tracking-wide">S. Alangulam</div>
         </div>
       </div>
 
@@ -193,7 +220,7 @@
 
         <div class="nav-section">Finance</div>
         <button onclick="showPage('settings')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="settings">
-          <span class="w-5 text-center opacity-80">◷</span> Monthly Bill
+          <span class="w-5 text-center opacity-80">◷</span> Next Month Bill
         </button>
 
         <div class="nav-section">System</div>
@@ -383,8 +410,8 @@
               <button onclick="showPage('settings')" class="card-hover text-left soft-card p-4 flex gap-3 items-start border border-slate-100 hover:border-slate-300">
                 <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg font-bold shrink-0">◷</span>
                 <span>
-                  <span class="block font-semibold text-sm text-slate-800">Monthly Bill</span>
-                  <span class="block text-xs text-slate-400 mt-0.5">Generate month due</span>
+                  <span class="block font-semibold text-sm text-slate-800">Next Month Bill</span>
+                  <span class="block text-xs text-slate-400 mt-0.5">Generate once per month</span>
                 </span>
               </button>
             </div>
@@ -1244,13 +1271,12 @@
             </div>
 
             <div class="border rounded-xl p-4 border-amber-200 bg-amber-50">
-              <div class="font-medium mb-1 text-amber-900">Generate Month Due</div>
+              <div class="font-medium mb-1 text-amber-900">Next Month Bill Generation</div>
               <p class="text-xs text-amber-800 mb-3">Active customers-க்கு மட்டும் Package Amount-ஐ Due-வோடு சேர்க்கும். DC customers skip ஆகும்.</p>
               <button type="button" onclick="generateMonthDue()" id="genDueBtn"
-                class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">
-                Generate Month Due
-              </button>
-              <div id="genDueStatus" class="text-xs text-slate-600 mt-2 hidden"></div>
+                class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">Generate Next Month Bill</button>
+              <p class="text-xs text-amber-800/80 mt-2" id="genDueHint">மாதத்திற்கு <b>ஒரு முறை</b> மட்டும். Active customers-க்கு package amount Due-ல் சேரும்.</p>
+              <div id="genDueStatus" class="text-xs text-slate-600 mt-2"></div>
             </div>
 
             <div class="border rounded-xl p-4">

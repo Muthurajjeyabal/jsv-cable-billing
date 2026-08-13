@@ -1,3 +1,15 @@
+// Splash
+(function hideSplash() {
+  const run = () => {
+    const el = document.getElementById('splashScreen');
+    if (!el) return;
+    setTimeout(() => el.classList.add('hide'), 1400);
+    setTimeout(() => { try { el.remove(); } catch(e) {} }, 2000);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+})();
+
 // ==================== FIREBASE CONFIG ====================
 const firebaseConfig = {
   apiKey: "AIzaSyBZj3FtS4d_I33NCQhUFssPTVAyrFQSCpY",
@@ -164,6 +176,7 @@ function showPage(pageId) {
     settings: 'Settings'
   };
   document.getElementById('pageTitle').textContent = titles[pageId] || pageId;
+  if (pageId === 'settings') refreshMonthBillLockUI();
 
   if (pageId === 'newCustomer') {
     document.getElementById('customerForm').reset();
@@ -1118,7 +1131,7 @@ function getMonthNameTa() {
 function buildDueMessage(name, due) {
   const month = getMonthNameTa();
   const dueStr = Number(due || 0).toLocaleString('en-IN');
-  return `வணக்கம் ${name},\n\nJSV Cable - ${month} மாதத்திற்கு இன்னும் நீங்கள் பணம் கட்டவில்லை.\nநிலுவை: ₹${dueStr}\n\nதயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.\n\nநன்றி.\nJSV Cable Network`;
+  return `வணக்கம் ${name},\n\nJSV Cable TV - ${month} மாதத்திற்கு இன்னும் நீங்கள் பணம் கட்டவில்லை.\nநிலுவை: ₹${dueStr}\n\nதயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.\n\nநன்றி.\nJSV Cable TV`;
 }
 
 function openWhatsApp(mobile, name, due) {
@@ -1540,22 +1553,38 @@ function showToast(msg, isError = false) {
 
 // ==================== GENERATE MONTH DUE ====================
 async function generateMonthDue() {
-  if (!confirm('Active customers-க்கு Package Amount Due-வோடு சேர்க்கவா?\n\nDC மற்றும் Package ₹0 skip ஆகும்.')) return;
-
   const btn = document.getElementById('genDueBtn');
   const status = document.getElementById('genDueStatus');
-  if (btn) { btn.disabled = true; btn.textContent = 'Processing...'; }
-  if (status) { status.classList.remove('hidden'); status.textContent = 'Loading customers...'; }
+  const hint = document.getElementById('genDueHint');
+  const ym = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const monthLabel = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' });
 
   try {
+    const lockRef = db.collection('settings').doc('monthBill');
+    const lockSnap = await lockRef.get();
+    const last = lockSnap.exists ? (lockSnap.data().lastGeneratedYM || '') : '';
+    if (last === ym) {
+      const when = lockSnap.data().generatedAt || '';
+      showToast('இந்த மாதம் ஏற்கனவே generate ஆனது (' + monthLabel + ')', true);
+      if (status) status.textContent = '✅ Already done for ' + monthLabel + (when ? ' · ' + when : '');
+      if (btn) { btn.disabled = true; btn.textContent = 'Already Generated · ' + monthLabel; btn.classList.add('opacity-60'); }
+      if (hint) hint.innerHTML = 'அடுத்த மாசம் 1ம் தேதிக்குப் பிறகு மீண்டும் press செய்யலாம்.';
+      return;
+    }
+
+    if (!confirm('Next Month Bill generate?\n\n' + monthLabel + '\nActive customers-க்கு Package Amount Due-ல் சேரும்.\nமாதத்திற்கு ஒரு முறை மட்டும்.\n\nதொடரவா?')) return;
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating...'; }
+    if (status) { status.classList.remove('hidden'); status.textContent = 'Loading customers...'; }
+
+    // Fresh read
     const snap = await db.collection('customers').get();
     const updates = [];
     snap.forEach(doc => {
       const d = doc.data();
       if ((d.status || 'ACT') !== 'ACT') return;
-      const pkg = Number(d.packageAmt || 0);
-      if (pkg <= 0) return; // free / zero package = no due
-      // billingStart = YYYY-MM — skip until that month
+      const pkg = Number(d.packageAmt || d.package || 0);
+      if (!pkg || pkg <= 0) return;
       const bs = d.billingStart || '';
       if (bs) {
         const nowYM = new Date().toISOString().slice(0, 7);
@@ -1567,39 +1596,68 @@ async function generateMonthDue() {
 
     if (updates.length === 0) {
       showToast('Update செய்ய Active + Package Amount customers இல்லை', true);
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate Next Month Bill'; }
       return;
     }
 
     if (status) status.textContent = updates.length + ' customers update ஆகிறது...';
 
-    // Batch write (max 400 per batch for REST; client SDK batch limit 500)
     const BATCH_SIZE = 400;
     let done = 0;
     for (let i = 0; i < updates.length; i += BATCH_SIZE) {
       const batch = db.batch();
-      const chunk = updates.slice(i, i + BATCH_SIZE);
-      chunk.forEach(u => {
+      updates.slice(i, i + BATCH_SIZE).forEach(u => {
         batch.update(db.collection('customers').doc(u.id), {
           dueAmt: u.newDue,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       });
       await batch.commit();
-      done += chunk.length;
+      done += updates.slice(i, i + BATCH_SIZE).length;
       if (status) status.textContent = done + ' / ' + updates.length + ' done...';
     }
 
+    // Lock this month
+    const nowStr = new Date().toLocaleString('en-IN');
+    await lockRef.set({
+      lastGeneratedYM: ym,
+      generatedAt: nowStr,
+      count: updates.length,
+      generatedBy: (currentUser && currentUser.email) || ''
+    }, { merge: true });
+
     await loadCustomers();
-    showToast('Month Due generated! ' + updates.length + ' customers updated');
-    if (status) status.textContent = '✅ ' + updates.length + ' Active customers Due updated';
+    showToast('Next Month Bill · ' + updates.length + ' customers');
+    if (status) status.textContent = '✅ ' + updates.length + ' customers · Locked for ' + monthLabel;
+    if (btn) { btn.disabled = true; btn.textContent = 'Already Generated · ' + monthLabel; btn.classList.add('opacity-60'); }
+    if (hint) hint.innerHTML = 'அடுத்த மாசம் வரை மீண்டும் generate செய்ய முடியாது.';
   } catch (err) {
     console.error(err);
     showToast('Error: ' + err.message, true);
     if (status) status.textContent = 'Error: ' + err.message;
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Generate Month Due'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate Next Month Bill'; }
   }
 }
+
+async function refreshMonthBillLockUI() {
+  const btn = document.getElementById('genDueBtn');
+  const status = document.getElementById('genDueStatus');
+  const hint = document.getElementById('genDueHint');
+  if (!btn) return;
+  try {
+    const ym = new Date().toISOString().slice(0, 7);
+    const monthLabel = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+    const snap = await db.collection('settings').doc('monthBill').get();
+    if (snap.exists && snap.data().lastGeneratedYM === ym) {
+      btn.disabled = true;
+      btn.textContent = 'Already Generated · ' + monthLabel;
+      btn.classList.add('opacity-60');
+      if (status) status.textContent = '✅ Done for ' + monthLabel + (snap.data().generatedAt ? ' · ' + snap.data().generatedAt : '');
+      if (hint) hint.innerHTML = 'அடுத்த மாசம் வரை மீண்டும் generate செய்ய முடியாது.';
+    }
+  } catch (e) {}
+}
+
 
 // ==================== BOX STOCK ====================
 let allBoxes = [];
