@@ -795,7 +795,7 @@
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                 <div>
                   <label class="text-xs text-slate-500">Place</label>
-                  <select id="mstPlace" class="w-full px-3 py-2 border rounded-lg bg-white">
+                  <select id="mstPlace" onchange="filterStreetMaster(this.value)" class="w-full px-3 py-2 border rounded-lg bg-white">
                     <option value="AREA 1">AREA 1</option>
                     <option value="AREA 2">AREA 2</option>
                   </select>
@@ -816,6 +816,11 @@
               </div>
             </div>
             <div class="bg-white rounded-xl border overflow-hidden">
+              <div class="px-3 py-2 bg-slate-50 border-b flex gap-2 text-sm">
+                <button type="button" onclick="filterStreetMaster('ALL')" id="stFilterAll" class="px-3 py-1 rounded-lg bg-slate-200 font-medium">All</button>
+                <button type="button" onclick="filterStreetMaster('AREA 1')" id="stFilter1" class="px-3 py-1 rounded-lg hover:bg-slate-100">AREA 1</button>
+                <button type="button" onclick="filterStreetMaster('AREA 2')" id="stFilter2" class="px-3 py-1 rounded-lg hover:bg-slate-100">AREA 2</button>
+              </div>
               <div class="overflow-x-auto max-h-80 overflow-y-auto">
                 <table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr>
                   <th class="text-left px-3 py-2">Place</th><th class="text-left px-3 py-2">Street</th><th class="text-left px-3 py-2">ID</th><th class="text-left px-3 py-2">Action</th>

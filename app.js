@@ -1398,13 +1398,20 @@ async function loadStreetMaster() {
 }
 
 function filterStreetMaster(f) {
-  streetMasterFilter = f;
-  ['All', '1', '2'].forEach((t, i) => {
-    const el = document.getElementById(['stFilterAll', 'stFilter1', 'stFilter2'][i]);
+  streetMasterFilter = f || 'ALL';
+  ['stFilterAll', 'stFilter1', 'stFilter2'].forEach((id, i) => {
+    const el = document.getElementById(id);
     if (!el) return;
-    const on = (f === 'ALL' && i === 0) || (f === 'AREA 1' && i === 1) || (f === 'AREA 2' && i === 2);
+    const on = (streetMasterFilter === 'ALL' && i === 0) ||
+               (streetMasterFilter === 'AREA 1' && i === 1) ||
+               (streetMasterFilter === 'AREA 2' && i === 2);
     el.className = on ? 'px-3 py-1 rounded-lg bg-slate-200 font-medium' : 'px-3 py-1 rounded-lg hover:bg-slate-100';
   });
+  // sync form place dropdown when filtering by area
+  const placeSel = document.getElementById('mstPlace');
+  if (placeSel && (streetMasterFilter === 'AREA 1' || streetMasterFilter === 'AREA 2')) {
+    placeSel.value = streetMasterFilter;
+  }
   renderStreetMasterTable();
 }
 
