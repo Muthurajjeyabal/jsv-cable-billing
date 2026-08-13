@@ -35,13 +35,79 @@
 
   <style>
     * { -webkit-tap-highlight-color: transparent; }
-    body { font-family: system-ui, -apple-system, sans-serif; }
-    .sidebar-item.active { background: #1e293b; border-left: 4px solid #3b82f6; }
-    .card-hover:active { transform: scale(0.98); }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-    .fade-in { animation: fadeIn 0.3s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    body {
+      font-family: 'SF Pro Display', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f1f5f9;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(99,102,241,0.12), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 0%, rgba(16,185,129,0.08), transparent);
+      min-height: 100vh;
+    }
+    .sidebar-item.active { background: #1e293b; border-left: 4px solid #6366f1; }
+    .card-hover { transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s ease, background .2s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -8px rgba(15,23,42,.15); }
+    .card-hover:active { transform: scale(0.97); }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 99px; }
+    .fade-in { animation: fadeUp .45s cubic-bezier(.22,1,.36,1) both; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .stagger > * { animation: fadeUp .5s cubic-bezier(.22,1,.36,1) both; }
+    .stagger > *:nth-child(1) { animation-delay: .04s; }
+    .stagger > *:nth-child(2) { animation-delay: .08s; }
+    .stagger > *:nth-child(3) { animation-delay: .12s; }
+    .stagger > *:nth-child(4) { animation-delay: .16s; }
+    .stagger > *:nth-child(5) { animation-delay: .2s; }
+    .stagger > *:nth-child(6) { animation-delay: .24s; }
+    .glass {
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.6);
+      box-shadow: 0 4px 24px -6px rgba(15,23,42,0.08);
+    }
+    .prem-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1.25rem;
+      box-shadow: 0 10px 40px -12px rgba(15,23,42,0.25);
+      transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease;
+    }
+    .prem-card:hover {
+      transform: translateY(-3px) scale(1.01);
+      box-shadow: 0 20px 50px -12px rgba(15,23,42,0.3);
+    }
+    .prem-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.22) 0%, transparent 50%, transparent 100%);
+      pointer-events: none;
+    }
+    .shimmer {
+      position: relative;
+      overflow: hidden;
+    }
+    .shimmer::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
+      animation: shimmer 3.5s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0% { left: -100%; }
+      60%, 100% { left: 150%; }
+    }
+    .num-pop { animation: numPop .4s cubic-bezier(.22,1,.36,1) both; }
+    @keyframes numPop {
+      from { opacity: 0; transform: scale(.92); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    #page-dashboard { padding-bottom: 1rem; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800">
@@ -176,81 +242,139 @@
 
         <!-- DASHBOARD -->
         <div id="page-dashboard" class="page fade-in">
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-              <div class="text-xs text-slate-500 mb-1">Customers (A + DC)</div>
-              <div class="text-2xl font-bold text-blue-600" id="statCustomers">0</div>
-              <div class="text-[10px] text-slate-400 mt-1" id="statCustSplit">A: 0 · DC: 0</div>
+          <!-- Hero money cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-5 stagger">
+            <div class="prem-card shimmer bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600 p-5 text-white">
+              <div class="flex items-start justify-between relative z-10">
+                <div>
+                  <div class="text-[11px] font-semibold tracking-wide uppercase opacity-90 mb-1">இன்று · Today</div>
+                  <div class="text-3xl font-bold tracking-tight num-pop drop-shadow-sm" id="statTodayCol">₹ 0</div>
+                </div>
+                <div class="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center text-xl backdrop-blur-sm">💰</div>
+              </div>
+              <div class="mt-3 text-[10px] opacity-80 relative z-10">Live collection</div>
             </div>
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-              <div class="text-xs text-slate-500 mb-1">Total Box</div>
-              <div class="text-2xl font-bold text-purple-600" id="statBoxes">0</div>
+            <div class="prem-card shimmer bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 p-5 text-white">
+              <div class="flex items-start justify-between relative z-10">
+                <div>
+                  <div class="text-[11px] font-semibold tracking-wide uppercase opacity-90 mb-1">மாதம் · Month</div>
+                  <div class="text-3xl font-bold tracking-tight num-pop drop-shadow-sm" id="statMonthCol">₹ 0</div>
+                </div>
+                <div class="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center text-xl backdrop-blur-sm">📈</div>
+              </div>
+              <div class="mt-3 text-[10px] opacity-80 relative z-10">This month total</div>
             </div>
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-              <div class="text-xs text-slate-500 mb-1">Distributed</div>
-              <div class="text-2xl font-bold text-indigo-600" id="statBoxAssigned">0</div>
-            </div>
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-              <div class="text-xs text-slate-500 mb-1">Balance Stock</div>
-              <div class="text-2xl font-bold text-emerald-600" id="statBoxBalance">0</div>
+            <div class="prem-card shimmer bg-gradient-to-br from-orange-400 via-amber-500 to-rose-500 p-5 text-white">
+              <div class="flex items-start justify-between relative z-10">
+                <div>
+                  <div class="text-[11px] font-semibold tracking-wide uppercase opacity-90 mb-1">நிலுவை · Due</div>
+                  <div class="text-3xl font-bold tracking-tight num-pop drop-shadow-sm" id="statDue">₹ 0</div>
+                </div>
+                <div class="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center text-xl backdrop-blur-sm">⏳</div>
+              </div>
+              <div class="mt-3 text-[10px] opacity-80 relative z-10">Pending amount</div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
-            <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-4 text-white">
-              <div class="text-sm opacity-90">Today Collection</div>
-              <div class="text-2xl font-bold" id="statTodayCol">₹ 0</div>
+          <!-- Stats row -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 stagger">
+            <div class="glass rounded-2xl p-4 card-hover">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-sm">👥</span>
+                <span class="text-[11px] text-slate-500 font-medium">Customers</span>
+              </div>
+              <div class="text-2xl font-bold text-slate-800 tracking-tight" id="statCustomers">0</div>
+              <div class="text-[10px] text-slate-400 mt-1 font-medium" id="statCustSplit">A: 0 · DC: 0</div>
             </div>
-            <div class="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-4 text-white">
-              <div class="text-sm opacity-90">This Month</div>
-              <div class="text-2xl font-bold" id="statMonthCol">₹ 0</div>
+            <div class="glass rounded-2xl p-4 card-hover">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-sm">📺</span>
+                <span class="text-[11px] text-slate-500 font-medium">Total Box</span>
+              </div>
+              <div class="text-2xl font-bold text-purple-700 tracking-tight" id="statBoxes">0</div>
             </div>
-            <div class="bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl p-4 text-white">
-              <div class="text-sm opacity-90">Previous Due</div>
-              <div class="text-2xl font-bold" id="statDue">₹ 0</div>
+            <div class="glass rounded-2xl p-4 card-hover">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm">🏠</span>
+                <span class="text-[11px] text-slate-500 font-medium">With Customers</span>
+              </div>
+              <div class="text-2xl font-bold text-indigo-700 tracking-tight" id="statBoxAssigned">0</div>
+            </div>
+            <div class="glass rounded-2xl p-4 card-hover">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm">📦</span>
+                <span class="text-[11px] text-slate-500 font-medium">In Store</span>
+              </div>
+              <div class="text-2xl font-bold text-emerald-700 tracking-tight" id="statBoxBalance">0</div>
             </div>
           </div>
 
-          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 mb-6">
-            <h3 class="font-semibold mb-3">Today — Agent wise</h3>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" id="agentBoard">
-              <div class="bg-blue-50 rounded-xl p-3 text-center">
-                <div class="text-xs text-blue-600 font-medium">UMA</div>
-                <div class="text-lg font-bold text-blue-800" id="agentUma">₹0</div>
-                <div class="text-xs text-slate-500" id="agentUmaCnt">0 bills</div>
+          <!-- Agents -->
+          <div class="glass rounded-2xl p-4 mb-5 fade-in" style="animation-delay:.15s">
+            <div class="flex items-center justify-between mb-3.5">
+              <h3 class="font-semibold text-sm text-slate-700 flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                Today — Agent wise
+              </h3>
+              <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Other: <span id="agentOther">₹0</span></span>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5 stagger">
+              <div class="rounded-2xl p-3.5 text-center bg-gradient-to-b from-blue-50 to-blue-100/50 border border-blue-100/80 card-hover">
+                <div class="text-[10px] text-blue-600 font-bold tracking-wider mb-1">UMA</div>
+                <div class="text-xl font-bold text-blue-900" id="agentUma">₹0</div>
+                <div class="text-[10px] text-slate-500 mt-0.5" id="agentUmaCnt">0 bills</div>
               </div>
-              <div class="bg-emerald-50 rounded-xl p-3 text-center">
-                <div class="text-xs text-emerald-600 font-medium">MUTHUMARI</div>
-                <div class="text-lg font-bold text-emerald-800" id="agentMuthu">₹0</div>
-                <div class="text-xs text-slate-500" id="agentMuthuCnt">0 bills</div>
+              <div class="rounded-2xl p-3.5 text-center bg-gradient-to-b from-emerald-50 to-emerald-100/50 border border-emerald-100/80 card-hover">
+                <div class="text-[10px] text-emerald-600 font-bold tracking-wider mb-1">MUTHUMARI</div>
+                <div class="text-xl font-bold text-emerald-900" id="agentMuthu">₹0</div>
+                <div class="text-[10px] text-slate-500 mt-0.5" id="agentMuthuCnt">0 bills</div>
               </div>
-              <div class="bg-violet-50 rounded-xl p-3 text-center">
-                <div class="text-xs text-violet-600 font-medium">OFFICE</div>
-                <div class="text-lg font-bold text-violet-800" id="agentOffice">₹0</div>
-                <div class="text-xs text-slate-500" id="agentOfficeCnt">0 bills</div>
+              <div class="rounded-2xl p-3.5 text-center bg-gradient-to-b from-violet-50 to-violet-100/50 border border-violet-100/80 card-hover">
+                <div class="text-[10px] text-violet-600 font-bold tracking-wider mb-1">OFFICE</div>
+                <div class="text-xl font-bold text-violet-900" id="agentOffice">₹0</div>
+                <div class="text-[10px] text-slate-500 mt-0.5" id="agentOfficeCnt">0 bills</div>
               </div>
-              <div class="bg-amber-50 rounded-xl p-3 text-center">
-                <div class="text-xs text-amber-600 font-medium">ONLINE</div>
-                <div class="text-lg font-bold text-amber-800" id="agentOnline">₹0</div>
-                <div class="text-xs text-slate-500" id="agentOnlineCnt">0 bills</div>
+              <div class="rounded-2xl p-3.5 text-center bg-gradient-to-b from-amber-50 to-amber-100/50 border border-amber-100/80 card-hover">
+                <div class="text-[10px] text-amber-600 font-bold tracking-wider mb-1">ONLINE</div>
+                <div class="text-xl font-bold text-amber-900" id="agentOnline">₹0</div>
+                <div class="text-[10px] text-slate-500 mt-0.5" id="agentOnlineCnt">0 bills</div>
               </div>
             </div>
-            <div class="mt-3 text-xs text-slate-500 text-right">Other / Unmatched: <span id="agentOther">₹0</span></div>
           </div>
 
-          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-            <h3 class="font-semibold mb-3">Quick Actions</h3>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <button onclick="showPage('newCustomer')" class="card-hover bg-blue-50 hover:bg-blue-100 text-blue-700 py-3 rounded-xl text-sm font-medium transition">+ New Customer</button>
-              <button onclick="showPage('billing')" class="card-hover bg-green-50 hover:bg-green-100 text-green-700 py-3 rounded-xl text-sm font-medium transition">New Bill</button>
-              <button onclick="showPage('customers')" class="card-hover bg-purple-50 hover:bg-purple-100 text-purple-700 py-3 rounded-xl text-sm font-medium transition">Search Customer</button>
-              <button onclick="showPage('reports')" class="card-hover bg-amber-50 hover:bg-amber-100 text-amber-700 py-3 rounded-xl text-sm font-medium transition">Reports</button>
-              <button onclick="showPage('settings')" class="card-hover bg-orange-50 hover:bg-orange-100 text-orange-700 py-3 rounded-xl text-sm font-medium transition">Month Due</button>
-            <button type="button" onclick="importDcList()" class="bg-red-50 text-red-700 px-3 py-2 rounded-xl text-sm">Import DC List</button>
-
+          <!-- Quick Actions -->
+          <div class="glass rounded-2xl p-4 fade-in" style="animation-delay:.2s">
+            <h3 class="font-semibold text-sm text-slate-700 mb-3.5">Quick Actions</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 stagger">
+              <button onclick="showPage('newCustomer')" class="card-hover flex flex-col items-center gap-1.5 bg-gradient-to-b from-white to-blue-50 text-blue-800 py-4 rounded-2xl text-xs font-semibold border border-blue-100/80 shadow-sm">
+                <span class="w-10 h-10 rounded-2xl bg-blue-500 text-white flex items-center justify-center text-lg shadow-md shadow-blue-500/30">＋</span>
+                New Customer
+              </button>
+              <button onclick="showPage('billing')" class="card-hover flex flex-col items-center gap-1.5 bg-gradient-to-b from-white to-emerald-50 text-emerald-800 py-4 rounded-2xl text-xs font-semibold border border-emerald-100/80 shadow-sm">
+                <span class="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center text-lg shadow-md shadow-emerald-500/30">₹</span>
+                New Bill
+              </button>
+              <button onclick="showPage('pending')" class="card-hover flex flex-col items-center gap-1.5 bg-gradient-to-b from-white to-rose-50 text-rose-800 py-4 rounded-2xl text-xs font-semibold border border-rose-100/80 shadow-sm">
+                <span class="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center text-lg shadow-md shadow-rose-500/30">≡</span>
+                Pending
+              </button>
+              <button onclick="showPage('customers')" class="card-hover flex flex-col items-center gap-1.5 bg-gradient-to-b from-white to-violet-50 text-violet-800 py-4 rounded-2xl text-xs font-semibold border border-violet-100/80 shadow-sm">
+                <span class="w-10 h-10 rounded-2xl bg-violet-500 text-white flex items-center justify-center text-lg shadow-md shadow-violet-500/30">◎</span>
+                Customers
+              </button>
+              <button onclick="showPage('boxes')" class="card-hover flex flex-col items-center gap-1.5 bg-gradient-to-b from-white to-indigo-50 text-indigo-800 py-4 rounded-2xl text-xs font-semibold border border-indigo-100/80 shadow-sm">
+                <span class="w-10 h-10 rounded-2xl bg-indigo-500 text-white flex items-center justify-center text-lg shadow-md shadow-indigo-500/30">▣</span>
+                Boxes
+              </button>
+              <button onclick="showPage('settings')" class="card-hover flex flex-col items-center gap-1.5 bg-gradient-to-b from-white to-orange-50 text-orange-800 py-4 rounded-2xl text-xs font-semibold border border-orange-100/80 shadow-sm">
+                <span class="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center text-lg shadow-md shadow-orange-500/30">◷</span>
+                Month Due
+              </button>
             </div>
           </div>
         </div>
+
+        
 
         <!-- CUSTOMERS LIST -->
         <div id="page-customers" class="page hidden fade-in">
