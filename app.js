@@ -2018,6 +2018,8 @@ function showMasterPanel(name) {
   if (name === 'package') loadPackageMaster();
   if (name === 'mso') loadMsoMaster();
   if (name === 'company') loadCompanyInfo();
+
+  if (key === 'employee') loadEmployees();
 }
 
 let packageMasterCache = [];
@@ -2306,9 +2308,9 @@ function globalCustomerSearch(openFirst) {
     return;
   }
   box.innerHTML = matches.map(c => `
-    <div class="p-3 hover:bg-blue-50 cursor-pointer border-b text-sm" onclick="globalPickCustomer('${c.id}')">
-      <div class="font-medium">${c.name || '-'}</div>
-      <div class="text-xs text-slate-500">${c.custId || ''} · ${c.mobile || '-'} · Box ${c.boxNo || '-'} · Due ₹${Number(c.dueAmt||c.due||0)} · ${c.street || ''}</div>
+    <div class="p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700 text-sm" onclick="globalPickCustomer('${c.id}')">
+      <div class="font-medium text-white">${c.name || '-'}</div>
+      <div class="text-xs text-slate-400">${c.custId || ''} · ${c.mobile || '-'} · Box ${c.boxNo || '-'} · Due ₹${Number(c.dueAmt||c.due||0)} · ${c.street || ''}</div>
     </div>`).join('');
   box.classList.remove('hidden');
 }
@@ -2388,5 +2390,111 @@ async function importDcList() {
   }
 }
 
+// ==================== EMPLOYEES (Area Allotment) ====================
+let allEmployees = [];
 
+async function loadEmployees() {
+  try {
+    const snap = await db.collection('employees').get();
+    allEmployees = [];
+    snap.forEach(doc => allEmployees.push({ id: doc.id, ...doc.data() }));
+    allEmployees.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    // seed defaults if empty
+    if (allEmployees.length === 0) {
+      const defaults = [
+        { name: 'Muthumari', email: 'muthumari@jsvcable.com', area: 'AREA 1', role: 'collector' },
+        { name: 'Uma', email: 'uma@jsvcable.com', area: 'AREA 2', role: 'collector' },
+        { name: 'Office', email: 'office@jsvcable.com', area: 'ALL', role: 'office' },
+        { name: 'Online', email: 'online@jsvcable.com', area: 'ALL', role: 'online' }
+      ];
+      const batch = db.batch();
+      defaults.forEach(d => {
+        const ref = db.collection('employees').doc();
+        batch.set(ref, { ...d, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      });
+      await batch.commit();
+      return loadEmployees();
+    }
+    renderEmployeeList();
+  } catch (e) {
+    console.error(e);
+    const el = document.getElementById('empList');
+    if (el) el.innerHTML = '<div class="p-3 text-red-500 text-sm">' + e.message + '</div>';
+  }
+}
+
+function renderEmployeeList() {
+  const el = document.getElementById('empList');
+  if (!el) return;
+  if (!allEmployees.length) {
+    el.innerHTML = '<div class="p-3 text-slate-400 text-center">No employees</div>';
+    return;
+  }
+  el.innerHTML = allEmployees.map(e => `
+    <div class="flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 gap-2">
+      <div class="min-w-0">
+        <div class="font-medium truncate">${e.name || '-'}</div>
+        <div class="text-[10px] text-slate-500 truncate">${e.email || ''} · ${e.role || 'collector'}</div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${e.area === 'AREA 1' ? 'bg-blue-100 text-blue-700' : e.area === 'AREA 2' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}">${e.area || '-'}</span>
+        <button type="button" onclick="editEmployee('${e.id}')" class="text-blue-600 text-xs">Edit</button>
+        <button type="button" onclick="deleteEmployee('${e.id}')" class="text-red-600 text-xs">Del</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearEmpForm() {
+  document.getElementById('editEmpId').value = '';
+  document.getElementById('empName').value = '';
+  document.getElementById('empEmail').value = '';
+  document.getElementById('empArea').value = 'AREA 1';
+  document.getElementById('empRole').value = 'collector';
+}
+
+function editEmployee(id) {
+  const e = allEmployees.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('editEmpId').value = id;
+  document.getElementById('empName').value = e.name || '';
+  document.getElementById('empEmail').value = e.email || '';
+  document.getElementById('empArea').value = e.area || 'AREA 1';
+  document.getElementById('empRole').value = e.role || 'collector';
+}
+
+async function saveEmployee() {
+  const id = document.getElementById('editEmpId').value;
+  const name = (document.getElementById('empName').value || '').trim();
+  const email = (document.getElementById('empEmail').value || '').trim().toLowerCase();
+  const area = document.getElementById('empArea').value;
+  const role = document.getElementById('empRole').value;
+  if (!name || !email) { showToast('Name + Email required', true); return; }
+  try {
+    const data = { name, email, area, role, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    if (id) {
+      await db.collection('employees').doc(id).update(data);
+      showToast('Employee updated');
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('employees').add(data);
+      showToast('Employee added');
+    }
+    clearEmpForm();
+    await loadEmployees();
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
+
+async function deleteEmployee(id) {
+  if (!confirm('Delete this employee mapping?')) return;
+  try {
+    await db.collection('employees').doc(id).delete();
+    showToast('Deleted');
+    await loadEmployees();
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
 
