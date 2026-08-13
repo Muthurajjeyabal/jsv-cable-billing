@@ -251,33 +251,47 @@
         <button onclick="showPage('customers')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="customers">
           <span class="w-5 text-center opacity-80">◎</span> Customers
         </button>
+        <button onclick="showPage('newCustomer')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="newCustomer">
+          <span class="w-5 text-center opacity-80">＋</span> New Customer
+        </button>
         <button onclick="showPage('billing')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="billing">
-          <span class="w-5 text-center opacity-80">₹</span> Billing
+          <span class="w-5 text-center opacity-80">₹</span> Collect / Bill
         </button>
         <button onclick="showPage('pending')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="pending">
-          <span class="w-5 text-center opacity-80">⚠</span> Pending / Due
+          <span class="w-5 text-center opacity-80">⚠</span> Pending Due
         </button>
 
-        <div class="nav-section">Network</div>
+        <div class="nav-section">Boxes</div>
         <button onclick="showPage('boxes')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="boxes">
-          <span class="w-5 text-center opacity-80">▣</span> Box Management
-        </button>
-        <button onclick="showPage('masters')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters">
-          <span class="w-5 text-center opacity-80">⌂</span> Areas / Streets
-        </button>
-        <button onclick="showPage('newCustomer')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="newCustomer">
-          <span class="w-5 text-center opacity-80">＋</span> New Connection
+          <span class="w-5 text-center opacity-80">▣</span> Box Stock
         </button>
 
-        <div class="nav-section">Management</div>
+        <div class="nav-section">Reports</div>
         <button onclick="showPage('reports')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="reports">
           <span class="w-5 text-center opacity-80">▦</span> Reports
         </button>
         <button onclick="showPage('cancelled')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="cancelled">
           <span class="w-5 text-center opacity-80">⊘</span> Cancelled Bills
         </button>
+
+        <div class="nav-section">Setup</div>
+        <button onclick="openMastersPanel('street')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-street">
+          <span class="w-5 text-center opacity-80">⌂</span> Streets
+        </button>
+        <button onclick="openMastersPanel('package')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-package">
+          <span class="w-5 text-center opacity-80">▦</span> Packages
+        </button>
+        <button onclick="openMastersPanel('mso')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-mso">
+          <span class="w-5 text-center opacity-80">◈</span> MSO
+        </button>
+        <button onclick="openMastersPanel('employee')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-employee">
+          <span class="w-5 text-center opacity-80">👤</span> Collectors
+        </button>
+        <button onclick="openMastersPanel('company')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-company">
+          <span class="w-5 text-center opacity-80">🏢</span> Company
+        </button>
         <button onclick="showPage('masters')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters">
-          <span class="w-5 text-center opacity-80">⚙</span> Masters
+          <span class="w-5 text-center opacity-80">⚙</span> All Masters
         </button>
 
         <div class="nav-section">Finance</div>
@@ -285,7 +299,7 @@
           <span class="w-5 text-center opacity-80">₹</span> Expenses
         </button>
         <button onclick="showPage('settings')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="settings">
-          <span class="w-5 text-center opacity-80">◷</span> Next Month Bill
+          <span class="w-5 text-center opacity-80">◷</span> Month Bill + Backup
         </button>
 
         <div class="nav-section">System</div>

@@ -2322,6 +2322,14 @@ async function seedStreetsFromCode() {
 
 // preload streets after login customers load
 
+function openMastersPanel(panel) {
+  showPage('masters');
+  setTimeout(function() {
+    if (typeof showMasterPanel === 'function') showMasterPanel(panel);
+  }, 50);
+  try { if (window.innerWidth < 1024) toggleSidebar(); } catch(e) {}
+}
+
 function showMasterPanel(name) {
   const hub = document.getElementById('mastersHub');
   document.querySelectorAll('.master-panel').forEach(p => p.classList.add('hidden'));
