@@ -2261,6 +2261,22 @@ let companyInfo = {
   gpay: '9442527545'
 };
 
+
+function setCompanyEditMode(on) {
+  document.querySelectorAll('.co-field').forEach(el => {
+    el.readOnly = !on;
+    el.classList.toggle('bg-slate-50', !on);
+    el.classList.toggle('bg-white', on);
+  });
+  const edit = document.getElementById('coEditBtn');
+  const save = document.getElementById('coSaveBtn');
+  const cancel = document.getElementById('coCancelBtn');
+  if (edit) edit.classList.toggle('hidden', on);
+  if (save) save.classList.toggle('hidden', !on);
+  if (cancel) cancel.classList.toggle('hidden', !on);
+  if (!on) loadCompanyInfo(); // reload values on cancel
+}
+
 async function loadCompanyInfo() {
   try {
     const doc = await db.collection('settings').doc('company').get();
@@ -2280,6 +2296,20 @@ async function loadCompanyInfo() {
   if (document.getElementById('coPhone2')) document.getElementById('coPhone2').value = companyInfo.phone2 || '';
   if (document.getElementById('coGpay')) document.getElementById('coGpay').value = companyInfo.gpay || '';
   if (document.getElementById('coAddress')) document.getElementById('coAddress').value = companyInfo.address || '';
+  // stay view-only unless editing
+  const saveBtn = document.getElementById('coSaveBtn');
+  if (!saveBtn || saveBtn.classList.contains('hidden')) {
+    document.querySelectorAll('.co-field').forEach(el => {
+      el.readOnly = true;
+      el.classList.add('bg-slate-50');
+      el.classList.remove('bg-white');
+    });
+    const edit = document.getElementById('coEditBtn');
+    const cancel = document.getElementById('coCancelBtn');
+    if (edit) edit.classList.remove('hidden');
+    if (saveBtn) saveBtn.classList.add('hidden');
+    if (cancel) cancel.classList.add('hidden');
+  }
 }
 
 async function saveCompanyInfo() {
@@ -2296,7 +2326,13 @@ async function saveCompanyInfo() {
     ...companyInfo,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
-  showToast('Company saved');
+  showToast('Company saved ✓');
+  const msg = document.getElementById('coSavedMsg');
+  if (msg) {
+    msg.classList.remove('hidden');
+    setTimeout(() => msg.classList.add('hidden'), 2500);
+  }
+  setCompanyEditMode(false);
 }
 
 async function importAugustCollections() {
