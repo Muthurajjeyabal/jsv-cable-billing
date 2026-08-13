@@ -73,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   auth.onAuthStateChanged(async user => {
   try { await loadCompanyInfo(); } catch(e) {}
+    try { flushOfflineQueue(); } catch(e) {}
     if (user) {
       if (!isAdminUser(user)) {
         await auth.signOut();
@@ -175,9 +176,10 @@ function showPage(pageId) {
     reports: 'Collection Report',
     masters: 'Masters',
     settings: 'Settings'
-  };
+  , expenses: 'Expenses' };
   document.getElementById('pageTitle').textContent = titles[pageId] || pageId;
   if (pageId === 'settings') refreshMonthBillLockUI();
+  if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d && !d.value) d.value=new Date().toISOString().slice(0,10); loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
 
   if (pageId === 'newCustomer') {
@@ -862,6 +864,25 @@ function selectBillCustomer(id) {
   document.getElementById('billSearch').value = c.name;
   const due = Number(c.dueAmt || c.due || 0);
   document.getElementById('billAmount').value = due > 0 ? due : (c.packageAmt || '');
+  const hint = document.getElementById('billDueHint');
+  if (hint) {
+    hint.classList.remove('hidden');
+    hint.textContent = 'Current Due: ₹' + due.toLocaleString('en-IN') + ' · Partial / Full / Advance எல்லாம் OK';
+  }
+  updateBillPayHint();
+}
+
+function updateBillPayHint() {
+  const c = selectedBillCustomer;
+  const el = document.getElementById('billPayType');
+  if (!el) return;
+  if (!c) { el.textContent = ''; return; }
+  const due = Number(c.dueAmt || c.due || 0);
+  const amt = Number(document.getElementById('billAmount')?.value || 0);
+  if (!amt) { el.textContent = ''; return; }
+  if (amt < due) el.textContent = 'Partial · Balance ₹' + (due - amt).toLocaleString('en-IN');
+  else if (amt === due) el.textContent = 'Full payment · Due clear';
+  else el.textContent = 'Advance · Extra ₹' + (amt - due).toLocaleString('en-IN') + ' (credit)';
 }
 
 async function nextDailyBillNo(billDate) {
@@ -916,29 +937,84 @@ async function handleSaveBill(e) {
     collectedBy: displayAgentName(currentUser.email)
   };
 
-  try {
-    await db.collection('collections').add(data);
+  // Partial / Full / Advance: due decreases by amount (floor 0); overpay stays 0 due
+  const c0 = allCustomers.find(x => x.id === customerId);
+  const currentDue = c0 ? Number(c0.dueAmt || c0.due || 0) : 0;
+  const newDue = Math.max(0, currentDue - amount);
+  data.payType = amount < currentDue ? 'partial' : (amount > currentDue ? 'advance' : 'full');
+  data.prevDue = currentDue;
+  data.balanceAfter = newDue;
 
-    const c = allCustomers.find(x => x.id === customerId);
-    if (c) {
-      const currentDue = Number(c.dueAmt || c.due || 0);
-      const newDue = Math.max(0, currentDue - amount);
+  try {
+    if (!navigator.onLine) throw new Error('OFFLINE');
+    await db.collection('collections').add(data);
+    if (c0) {
       await db.collection('customers').doc(customerId).update({
         dueAmt: newDue,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
 
-    showToast('Bill ' + billNo + ' · ₹' + amount);
-    document.getElementById('billForm').reset();
-    document.getElementById('selectedCustomerInfo').classList.add('hidden');
-    document.getElementById('billDate').value = new Date().toISOString().split('T')[0];
-    selectedBillCustomer = null;
-    await loadCustomers();
-    loadDashboard();
+    showToast('Bill ' + billNo + ' · ₹' + amount + (data.payType === 'partial' ? ' (partial)' : ''));
+    finishBillSave(data, newDue);
   } catch (err) {
-    showToast('Error: ' + err.message, true);
+    if (!navigator.onLine || String(err.message).includes('OFFLINE') || err.code === 'unavailable') {
+      queueOfflineOp({ type: 'collection', data, customerId, newDue });
+      showToast('Offline · saved locally · will sync', false);
+      finishBillSave(data, newDue, true);
+    } else {
+      showToast('Error: ' + err.message, true);
+    }
   }
+}
+
+function finishBillSave(data, newDue, offline) {
+  const printOn = document.getElementById('billPrintReceipt')?.checked;
+  if (printOn) showReceipt(data, newDue);
+  document.getElementById('billForm').reset();
+  document.getElementById('selectedCustomerInfo')?.classList.add('hidden');
+  const bd = document.getElementById('billDate');
+  if (bd) bd.value = new Date().toISOString().split('T')[0];
+  if (document.getElementById('billPrintReceipt')) document.getElementById('billPrintReceipt').checked = true;
+  selectedBillCustomer = null;
+  // optimistic local update
+  const c = allCustomers.find(x => x.id === data.customerId);
+  if (c) c.dueAmt = newDue;
+  if (!offline) {
+    loadCustomers().then(() => { if (typeof loadDashboard === 'function') loadDashboard(); else if (typeof updateDashboardStats === 'function') updateDashboardStats(); });
+  } else if (typeof updateDashboardStats === 'function') updateDashboardStats();
+}
+
+function showReceipt(data, balanceAfter) {
+  const co = companyInfo || {};
+  const html = `
+    <div style="text-align:center;font-weight:700;font-size:14px">JSV CABLE TV</div>
+    <div style="text-align:center;font-size:10px;margin-bottom:6px">${co.address || 'S. Alangulam'}</div>
+    <div style="border-top:1px dashed #000;margin:6px 0"></div>
+    <div>Bill No: <b>${data.billNo || '-'}</b></div>
+    <div>Date: ${data.date || ''}</div>
+    <div>Customer: ${data.customerName || ''}</div>
+    <div style="border-top:1px dashed #000;margin:6px 0"></div>
+    <div style="display:flex;justify-content:space-between"><span>Paid</span><b>₹${Number(data.amount).toLocaleString('en-IN')}</b></div>
+    <div style="display:flex;justify-content:space-between"><span>Mode</span><span>${data.mode || ''}</span></div>
+    <div style="display:flex;justify-content:space-between"><span>Type</span><span>${data.payType || 'full'}</span></div>
+    <div style="display:flex;justify-content:space-between"><span>Balance Due</span><b>₹${Number(balanceAfter||0).toLocaleString('en-IN')}</b></div>
+    <div style="border-top:1px dashed #000;margin:6px 0"></div>
+    <div style="font-size:10px">GPay: ${co.gpay || '9442527545'}</div>
+    <div style="font-size:10px">Office: ${co.phone || ''} ${co.phone2 || ''}</div>
+    <div style="text-align:center;margin-top:8px;font-size:10px">நன்றி · by JMR Apps</div>
+  `;
+  const el = document.getElementById('receiptContent');
+  if (el) el.innerHTML = html;
+  document.getElementById('receiptModal')?.classList.remove('hidden');
+}
+function closeReceipt() {
+  document.getElementById('receiptModal')?.classList.add('hidden');
+}
+function printReceiptNow() {
+  document.body.classList.add('printing-receipt');
+  window.print();
+  setTimeout(() => document.body.classList.remove('printing-receipt'), 500);
 }
 
 async function cancelCollection(colId, customerId, amount) {
@@ -2955,4 +3031,121 @@ function renderPackageReport() {
   body.innerHTML = '<h3 class="font-semibold mb-3">Package Amount Wise (Active)</h3><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Package ₹</th><th class="text-right py-2">Customers</th></tr></thead><tbody>' +
     rows.map(r => `<tr class="border-t"><td class="py-2">₹${r.amt.toLocaleString('en-IN')}</td><td class="py-2 text-right font-medium">${r.count}</td></tr>`).join('') +
     '</tbody></table>';
+}
+
+// ==================== OFFLINE QUEUE ====================
+const OFFLINE_KEY = 'jsv_offline_queue';
+
+function getOfflineQueue() {
+  try { return JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]'); } catch (e) { return []; }
+}
+function setOfflineQueue(q) {
+  localStorage.setItem(OFFLINE_KEY, JSON.stringify(q));
+  updateOfflineBadges();
+}
+function queueOfflineOp(op) {
+  const q = getOfflineQueue();
+  op.id = 'off_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  op.queuedAt = new Date().toISOString();
+  q.push(op);
+  setOfflineQueue(q);
+}
+function updateOfflineBadges() {
+  const off = document.getElementById('offlineBadge');
+  const sync = document.getElementById('syncBadge');
+  const q = getOfflineQueue();
+  if (off) {
+    if (!navigator.onLine) off.classList.remove('hidden');
+    else off.classList.add('hidden');
+  }
+  if (sync) {
+    if (q.length) {
+      sync.classList.remove('hidden');
+      sync.textContent = 'Sync ' + q.length;
+    } else sync.classList.add('hidden');
+  }
+}
+async function flushOfflineQueue() {
+  if (!navigator.onLine) return;
+  let q = getOfflineQueue();
+  if (!q.length) { updateOfflineBadges(); return; }
+  const sync = document.getElementById('syncBadge');
+  if (sync) { sync.classList.remove('hidden'); sync.textContent = 'Syncing…'; }
+  const remain = [];
+  for (const op of q) {
+    try {
+      if (op.type === 'collection') {
+        await db.collection('collections').add(op.data);
+        if (op.customerId != null) {
+          await db.collection('customers').doc(op.customerId).update({
+            dueAmt: op.newDue,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      } else if (op.type === 'expense') {
+        await db.collection('expenses').add(op.data);
+      }
+    } catch (e) {
+      remain.push(op);
+    }
+  }
+  setOfflineQueue(remain);
+  if (!remain.length) showToast('Offline data synced');
+  await loadCustomers();
+  if (typeof updateDashboardStats === 'function') updateDashboardStats();
+  updateOfflineBadges();
+}
+window.addEventListener('online', () => { updateOfflineBadges(); flushOfflineQueue(); });
+window.addEventListener('offline', updateOfflineBadges);
+document.addEventListener('DOMContentLoaded', updateOfflineBadges);
+
+// ==================== EXPENSES ====================
+async function saveExpense() {
+  const amount = Number(document.getElementById('expAmount')?.value || 0);
+  if (!amount || amount <= 0) { showToast('Enter amount', true); return; }
+  const data = {
+    date: document.getElementById('expDate')?.value || new Date().toISOString().slice(0, 10),
+    category: document.getElementById('expCategory')?.value || 'Other',
+    amount,
+    note: (document.getElementById('expNote')?.value || '').trim(),
+    createdBy: currentUser?.email || '',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    if (!navigator.onLine) throw new Error('OFFLINE');
+    await db.collection('expenses').add(data);
+    showToast('Expense saved · ₹' + amount);
+  } catch (e) {
+    const plain = { ...data, createdAt: new Date().toISOString() };
+    queueOfflineOp({ type: 'expense', data: plain });
+    showToast('Offline · expense queued');
+  }
+  document.getElementById('expAmount').value = '';
+  document.getElementById('expNote').value = '';
+  loadExpenses();
+}
+
+async function loadExpenses() {
+  const listEl = document.getElementById('expList');
+  const totEl = document.getElementById('expMonthTotal');
+  if (!listEl) return;
+  const monthStart = new Date().toISOString().slice(0, 7) + '-01';
+  try {
+    const snap = await db.collection('expenses').where('date', '>=', monthStart).get();
+    const rows = [];
+    snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+    rows.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
+    if (totEl) totEl.textContent = '₹' + total.toLocaleString('en-IN');
+    listEl.innerHTML = rows.length ? rows.map(r => `
+      <div class="py-2.5 flex justify-between gap-2">
+        <div>
+          <div class="font-medium">${r.category || ''}</div>
+          <div class="text-[10px] text-slate-500">${r.date || ''} · ${r.note || ''}</div>
+        </div>
+        <div class="font-bold text-rose-600 shrink-0">₹${Number(r.amount||0).toLocaleString('en-IN')}</div>
+      </div>`).join('') : '<div class="py-4 text-center text-slate-400">No expenses this month</div>';
+  } catch (e) {
+    listEl.innerHTML = '<div class="text-red-500 text-xs">' + e.message + '</div>';
+  }
 }
