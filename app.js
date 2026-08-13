@@ -1008,16 +1008,23 @@ async function loadDashboard() {
     });
 
     document.getElementById('statTodayCol').textContent = '₹ ' + todayTotal.toLocaleString('en-IN');
-    const setAgent = (id, cntId, data) => {
+        const totalTodayAmt = Object.values(agents).reduce((s, a) => s + Number(a.amt || 0), 0) || 1;
+    const setAgent = (id, cntId, barId, pctId, data) => {
       const el = document.getElementById(id);
-      const cel = document.getElementById(cntId);
-      if (el) el.textContent = '₹' + data.amt.toLocaleString('en-IN');
-      if (cel) cel.textContent = data.cnt + ' bills';
+      const cnt = document.getElementById(cntId);
+      const bar = document.getElementById(barId);
+      const pct = document.getElementById(pctId);
+      const amt = Number(data.amt || 0);
+      const p = Math.round((amt / totalTodayAmt) * 100);
+      if (el) el.textContent = '₹' + amt.toLocaleString('en-IN');
+      if (cnt) cnt.textContent = (data.cnt || 0) + ' bills';
+      if (bar) bar.style.width = p + '%';
+      if (pct) pct.textContent = p + '%';
     };
-    setAgent('agentUma', 'agentUmaCnt', agents.uma);
-    setAgent('agentMuthu', 'agentMuthuCnt', agents.muthumari);
-    setAgent('agentOffice', 'agentOfficeCnt', agents.office);
-    setAgent('agentOnline', 'agentOnlineCnt', agents.online);
+    setAgent('agentUma', 'agentUmaCnt', 'agentUmaBar', 'agentUmaPct', agents.uma);
+    setAgent('agentMuthu', 'agentMuthuCnt', 'agentMuthuBar', 'agentMuthuPct', agents.muthumari);
+    setAgent('agentOffice', 'agentOfficeCnt', 'agentOfficeBar', 'agentOfficePct', agents.office);
+    setAgent('agentOnline', 'agentOnlineCnt', 'agentOnlineBar', 'agentOnlinePct', agents.online);
     const oth = document.getElementById('agentOther');
     if (oth) oth.textContent = '₹' + agents.other.amt.toLocaleString('en-IN') + ' (' + agents.other.cnt + ')';
 
@@ -1081,6 +1088,20 @@ function updateDashboardStats() {
   const sbb = document.getElementById('statBoxBalance');
   if (sbb) sbb.textContent = balance;
 
+  const pendingN = allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0).length;
+  const sdc = document.getElementById('statDueCnt');
+  if (sdc) sdc.textContent = pendingN.toLocaleString('en-IN');
+  const activeN = allCustomers.filter(c => String(c.status || 'ACT').toUpperCase() === 'ACT').length;
+  const totalN = allCustomers.length || 1;
+  const ap = Math.round((activeN / totalN) * 100);
+  const apEl = document.getElementById('statActivePct');
+  if (apEl) apEl.textContent = ap + '% active';
+  const ab = document.getElementById('statActiveBar');
+  if (ab) ab.style.width = ap + '%';
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const now = new Date();
+  const ms = document.getElementById('statMonthSub');
+  if (ms) ms.textContent = monthNames[now.getMonth()] + ' ' + now.getFullYear();
   const sd = document.getElementById('statDue');
   if (sd) sd.textContent = '₹ ' + totalDue.toLocaleString('en-IN');
   const boxDisplay = document.getElementById('boxCountDisplay');
