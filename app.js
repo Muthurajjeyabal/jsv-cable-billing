@@ -73,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   auth.onAuthStateChanged(async user => {
   try { await loadCompanyInfo(); } catch(e) {}
+    try { await loadWaTemplate(); } catch(e) {}
     try { flushOfflineQueue(); } catch(e) {}
     if (user) {
       if (!isAdminUser(user)) {
@@ -178,7 +179,7 @@ function showPage(pageId) {
     settings: 'Settings'
   , expenses: 'Expenses' };
   document.getElementById('pageTitle').textContent = titles[pageId] || pageId;
-  if (pageId === 'settings') refreshMonthBillLockUI();
+  if (pageId === 'settings') { refreshMonthBillLockUI(); loadWaTemplate(); }
   if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d && !d.value) d.value=new Date().toISOString().slice(0,10); loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
 
@@ -1206,27 +1207,171 @@ function getMonthNameTa() {
   return TAMIL_MONTHS[new Date().getMonth()];
 }
 
-function buildDueMessage(name, due) {
+
+
+let waTemplates = null; // { id: { name, text } }
+let waDefaultTplId = 'due';
+let waActiveTplId = 'due';
+
+const DEFAULT_WA_TEMPLATES = {
+  "due": "வணக்கம் {name},\n\nJSV Cable TV - {month} மாதத்திற்கு இன்னும் நீங்கள் பணம் கட்டவில்லை.\nநிலுவை: ₹{due}\n\nதயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.\n\nGPay: {gpay} (பணம் மட்டும் — புகார் வேண்டாம்)\nOffice / புகார்: {office}\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
+  "diwali": "வணக்கம் {name},\n\n✨ இனிய தீபாவளி நல்வாழ்த்துக்கள்! ✨\n\nJSV Cable TV குடும்பம் உங்களுக்கும் உங்கள் குடும்பத்தினருக்கும் இனிய தீபாவளி வாழ்த்துக்களை தெரிவித்துக் கொள்கிறது.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
+  "christmas": "வணக்கம் {name},\n\n🎄 இனிய கிறிஸ்துமஸ் நல்வாழ்த்துக்கள்! 🎄\n\nJSV Cable TV உங்களுக்கும் குடும்பத்தினருக்கும் மகிழ்ச்சியான கிறிஸ்துமஸ் வாழ்த்துக்களைத் தெரிவிக்கிறது.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
+  "newyear": "வணக்கம் {name},\n\n🎉 இனிய புத்தாண்டு நல்வாழ்த்துக்கள்! 🎉\n\nபுதிய ஆண்டு உங்களுக்கு ஆரோக்கியமும் செழிப்பும் தரட்டும்.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
+  "ramadan": "வணக்கம் {name},\n\n🌙 ரம்ஜான் நல்வாழ்த்துக்கள்! 🌙\n\nஇந்த புனித மாதம் உங்களுக்கு அமைதியும் ஆசியும் தரட்டும்.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
+  "pongal": "வணக்கம் {name},\n\n🌾 இனிய பொங்கல் நல்வாழ்த்துக்கள்! 🌾\n\nJSV Cable TV குடும்பம் உங்களுக்கு இனிய தைப்பொங்கல் வாழ்த்துக்களைத் தெரிவிக்கிறது.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
+};
+
+const DEFAULT_WA_NAMES = {"due": "Due Reminder", "diwali": "தீபாவளி வாழ்த்து", "christmas": "கிறிஸ்துமஸ் வாழ்த்து", "newyear": "புத்தாண்டு வாழ்த்து", "ramadan": "ரம்ஜான் வாழ்த்து", "pongal": "பொங்கல் வாழ்த்து"};
+
+function ensureWaTemplates() {
+  if (waTemplates && Object.keys(waTemplates).length) return;
+  waTemplates = {};
+  Object.keys(DEFAULT_WA_TEMPLATES).forEach(id => {
+    waTemplates[id] = { name: DEFAULT_WA_NAMES[id] || id, text: DEFAULT_WA_TEMPLATES[id] };
+  });
+}
+
+async function loadWaTemplate() {
+  ensureWaTemplates();
+  try {
+    const doc = await db.collection('settings').doc('waTemplates').get();
+    if (doc.exists) {
+      const d = doc.data();
+      if (d.templates && typeof d.templates === 'object') {
+        waTemplates = { ...waTemplates, ...d.templates };
+      }
+      if (d.defaultId) waDefaultTplId = d.defaultId;
+      // migrate old single template
+    } else {
+      const old = await db.collection('settings').doc('waTemplate').get();
+      if (old.exists && old.data().text) {
+        waTemplates.due = { name: 'Due Reminder', text: old.data().text };
+      }
+    }
+  } catch (e) {}
+  waActiveTplId = waDefaultTplId;
+  fillWaTplSelects();
+  onWaTplSelect();
+}
+
+function fillWaTplSelects() {
+  ensureWaTemplates();
+  const opts = Object.keys(waTemplates).map(id => {
+    const n = waTemplates[id].name || id;
+    return `<option value="${id}">${n}</option>`;
+  }).join('');
+  ['waTplSelect', 'waDefaultTpl', 'waQueueTpl'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = opts;
+    if (id === 'waDefaultTpl') el.value = waDefaultTplId;
+    else if (id === 'waTplSelect') el.value = waActiveTplId;
+    else if (cur && waTemplates[cur]) el.value = cur;
+    else el.value = waDefaultTplId;
+  });
+}
+
+function onWaTplSelect() {
+  const id = document.getElementById('waTplSelect')?.value || 'due';
+  waActiveTplId = id;
+  ensureWaTemplates();
+  const t = waTemplates[id] || { name: id, text: '' };
+  const nameEl = document.getElementById('waTplName');
+  const ta = document.getElementById('waTemplate');
+  if (nameEl) nameEl.value = t.name || '';
+  if (ta) ta.value = t.text || '';
+}
+
+async function persistWaTemplates() {
+  await db.collection('settings').doc('waTemplates').set({
+    templates: waTemplates,
+    defaultId: waDefaultTplId,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+}
+
+async function saveWaTemplate() {
+  ensureWaTemplates();
+  const id = document.getElementById('waTplSelect')?.value || waActiveTplId || 'due';
+  const name = (document.getElementById('waTplName')?.value || '').trim() || id;
+  const text = (document.getElementById('waTemplate')?.value || '').trim();
+  if (!text) { showToast('Template empty', true); return; }
+  waTemplates[id] = { name, text };
+  await persistWaTemplates();
+  fillWaTplSelects();
+  document.getElementById('waTplSelect').value = id;
+  const st = document.getElementById('waTemplateStatus');
+  if (st) st.textContent = '✓ Saved: ' + name;
+  showToast('Template saved');
+}
+
+async function addWaTemplate() {
+  const name = prompt('புதிய template பெயர் (எ.கா. Deepavali offer)');
+  if (!name) return;
+  const id = 'custom_' + Date.now().toString(36);
+  ensureWaTemplates();
+  waTemplates[id] = { name, text: 'வணக்கம் {name},\n\n' + name + '\n\nநன்றி.\nJSV Cable TV' };
+  await persistWaTemplates();
+  fillWaTplSelects();
+  document.getElementById('waTplSelect').value = id;
+  onWaTplSelect();
+  showToast('New template added');
+}
+
+async function deleteWaTemplate() {
+  const id = document.getElementById('waTplSelect')?.value;
+  if (!id) return;
+  if (id === 'due') { showToast('Due template delete செய்ய முடியாது', true); return; }
+  if (!confirm('இந்த template நீக்கவா?')) return;
+  delete waTemplates[id];
+  if (waDefaultTplId === id) waDefaultTplId = 'due';
+  await persistWaTemplates();
+  fillWaTplSelects();
+  onWaTplSelect();
+  showToast('Deleted');
+}
+
+async function saveWaDefaultTpl() {
+  waDefaultTplId = document.getElementById('waDefaultTpl')?.value || 'due';
+  await persistWaTemplates();
+  showToast('Default send template set');
+}
+
+async function resetWaTemplate() {
+  ensureWaTemplates();
+  Object.keys(DEFAULT_WA_TEMPLATES).forEach(id => {
+    waTemplates[id] = { name: DEFAULT_WA_NAMES[id], text: DEFAULT_WA_TEMPLATES[id] };
+  });
+  await persistWaTemplates();
+  fillWaTplSelects();
+  onWaTplSelect();
+  showToast('Festival templates restored');
+}
+
+function getWaTemplateText(tplId) {
+  ensureWaTemplates();
+  const id = tplId || waDefaultTplId || 'due';
+  return (waTemplates[id] && waTemplates[id].text) || DEFAULT_WA_TEMPLATES.due;
+}
+
+function buildDueMessage(name, due, tplId) {
   const month = getMonthNameTa();
   const dueStr = Number(due || 0).toLocaleString('en-IN');
   const co = companyInfo || {};
-  const office = [co.phone, co.phone2].filter(Boolean).join(' / ');
+  const office = [co.phone, co.phone2].filter(Boolean).join(' / ') || '0452-2527545 / 8678953333';
   const gpay = co.gpay || '9442527545';
-  return `வணக்கம் ${name},
-
-JSV Cable TV - ${month} மாதத்திற்கு இன்னும் நீங்கள் பணம் கட்டவில்லை.
-நிலுவை: ₹${dueStr}
-
-தயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.
-
-GPay: ${gpay} (பணம் மட்டும் — புகார் வேண்டாம்)
-Office / புகார்: ${office || '0452-2527545 / 8678953333'}
-
-நன்றி.
-JSV Cable TV · S. Alangulam\n(by JMR Apps)`;
+  let tpl = getWaTemplateText(tplId);
+  return tpl
+    .replace(/\{name\}/g, name || 'Customer')
+    .replace(/\{month\}/g, month)
+    .replace(/\{due\}/g, dueStr)
+    .replace(/\{gpay\}/g, gpay)
+    .replace(/\{office\}/g, office);
 }
 
-function openWhatsApp(mobile, name, due) {
+function openWhatsApp(mobile, name, due, tplId) {
   if (!mobile || mobile === '-' || mobile === '0') {
     showToast('No mobile number', true);
     return;
@@ -1237,9 +1382,11 @@ function openWhatsApp(mobile, name, due) {
     showToast('Invalid mobile', true);
     return;
   }
-  const text = encodeURIComponent(buildDueMessage(name || 'Customer', due));
+  const useTpl = tplId || document.getElementById('waQueueTpl')?.value || waDefaultTplId || 'due';
+  const text = encodeURIComponent(buildDueMessage(name || 'Customer', due, useTpl));
   window.open(`https://wa.me/${num}?text=${text}`, '_blank');
 }
+
 
 // WhatsApp queue for pending
 let waQueue = [];
@@ -1271,7 +1418,7 @@ function sendNextWa(advance) {
   const due = Number(c.dueAmt || c.due || 0);
   const info = document.getElementById('waQueueInfo');
   if (info) info.textContent = `${waQueueIndex + 1} / ${waQueue.length} — ${c.name} — ₹${due}`;
-  openWhatsApp(c.mobile, c.name, due);
+  openWhatsApp(c.mobile, c.name, due, document.getElementById('waQueueTpl')?.value);
 }
 
 function skipWa() {
