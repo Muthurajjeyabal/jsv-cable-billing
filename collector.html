@@ -17,6 +17,11 @@
     .menu-btn:active { transform: scale(0.97); }
   </style>
 </head>
+<div id="splashScreen" style="position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s">
+  <img src="jmr-logo.png" alt="JMR" style="width:min(50vw,180px)">
+  <div style="color:#94a3b8;font-size:10px;letter-spacing:.15em;margin-top:12px">BY JMR APPS</div>
+</div>
+<script>setTimeout(function(){var e=document.getElementById('splashScreen');if(e){e.style.opacity=0;setTimeout(function(){e.remove()},500)}},1400)</script>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
 
   <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-emerald-900 via-green-900 to-teal-900">
@@ -137,7 +142,7 @@
         <div class="font-semibold" id="settingsEmail">-</div>
         <button onclick="logout()" class="w-full bg-red-600 text-white py-3 rounded-xl font-medium mt-4">Logout</button>
       </div>
-      <p class="text-center text-xs text-slate-400 mt-6">JSV Cable TV Agent App v2.0</p>
+      <p class="text-center text-xs text-slate-400 mt-6">JSV Cable TV · by JMR Apps</p>
     </div>
   </div>
 

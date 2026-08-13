@@ -1147,7 +1147,7 @@ GPay: ${gpay} (பணம் மட்டும் — புகார் வே�
 Office / புகார்: ${office || '0452-2527545 / 8678953333'}
 
 நன்றி.
-JSV Cable TV · S. Alangulam`;
+JSV Cable TV · S. Alangulam\n(by JMR Apps)`;
 }
 
 function openWhatsApp(mobile, name, due) {
@@ -2717,7 +2717,7 @@ function renderCollectionReport() {
     });
     html += `</tbody></table></div>`;
   });
-  html += `<div style="margin-top:12px;font-size:10px;text-align:center;color:#64748b">JSV Cable TV · S. Alangulam · ${area}</div>`;
+  html += `<div style="margin-top:12px;font-size:10px;text-align:center;color:#64748b">JSV Cable TV · S. Alangulam · ${area}<br>by JMR Apps</div>`;
   box.innerHTML = html;
 }
 
