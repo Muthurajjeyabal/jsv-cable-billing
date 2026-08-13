@@ -386,23 +386,48 @@ async function toggleDC(id, currentStatus) {
 
   if (!confirm(`${c.name} - ${action} செய்யவா?`)) return;
 
+  let returnBox = false;
+  const boxNo = (c.boxNo || '').trim();
+  if (newStatus === 'DC' && boxNo) {
+    returnBox = confirm(`Box ${boxNo} return ஆனதா?\n\nOK = Store stock-க்கு சேர்க்கும்\nCancel = Box customer-ல் வைக்கும்`);
+  }
+
   try {
-    await db.collection('customers').doc(id).update({
+    const updates = {
       status: newStatus,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    };
+    if (returnBox) {
+      updates.boxNo = '';
+      updates.previousBoxNo = boxNo;
+    }
+    await db.collection('customers').doc(id).update(updates);
 
+    if (returnBox && boxNo) {
+      await upsertBoxStock(boxNo, {
+        status: 'available',
+        customerId: null,
+        customerName: null,
+        mso: c.mso || '',
+        returnedAt: new Date().toISOString().split('T')[0],
+        returnedFrom: c.name || ''
+      });
+    }
+
+    // RC with no box - optional assign from stock later via Edit
     await db.collection('statusLogs').add({
       customerId: id,
       customerName: c.name,
       fromStatus: currentStatus,
       toStatus: newStatus,
+      boxReturned: returnBox,
+      boxNo: returnBox ? boxNo : (c.boxNo || ''),
       date: new Date().toISOString().split('T')[0],
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: currentUser.email
     });
 
-    showToast(`${action} successful!`);
+    showToast(returnBox ? `${action} + Box ${boxNo} → Store` : `${action} successful!`);
     await loadCustomers();
   } catch (err) {
     showToast('Error: ' + err.message, true);
@@ -821,5 +846,121 @@ async function generateMonthDue() {
     if (status) status.textContent = 'Error: ' + err.message;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Generate Month Due'; }
+  }
+}
+
+// ==================== BOX STOCK ====================
+let allBoxes = [];
+let boxListFilter = 'available';
+
+async function upsertBoxStock(boxNo, data) {
+  const q = await db.collection('boxes').where('boxNo', '==', boxNo).limit(1).get();
+  if (q.empty) {
+    await db.collection('boxes').add({
+      boxNo,
+      status: data.status || 'available',
+      customerId: data.customerId || null,
+      customerName: data.customerName || null,
+      mso: data.mso || '',
+      returnedAt: data.returnedAt || null,
+      returnedFrom: data.returnedFrom || null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } else {
+    await q.docs[0].ref.update({
+      ...data,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+}
+
+async function loadBoxes() {
+  try {
+    const snap = await db.collection('boxes').get();
+    allBoxes = [];
+    snap.forEach(doc => allBoxes.push({ id: doc.id, ...doc.data() }));
+    allBoxes.sort((a, b) => (a.boxNo || '').localeCompare(b.boxNo || '', undefined, { numeric: true }));
+    updateBoxStats();
+    renderBoxList(boxListFilter);
+  } catch (e) {
+    console.error(e);
+    showToast('Boxes load error: ' + e.message, true);
+  }
+}
+
+function updateBoxStats() {
+  const avail = allBoxes.filter(b => b.status === 'available').length;
+  const assigned = allBoxes.filter(b => b.status === 'assigned').length;
+  const el1 = document.getElementById('boxStockCount');
+  const el2 = document.getElementById('boxAssignedCount');
+  const el3 = document.getElementById('boxCountDisplay');
+  if (el1) el1.textContent = avail;
+  if (el2) el2.textContent = assigned;
+  if (el3) el3.textContent = allBoxes.length;
+}
+
+function renderBoxList(filter) {
+  boxListFilter = filter || boxListFilter;
+  ['Avail', 'Assign', 'All'].forEach((t, i) => {
+    const id = ['boxTabAvail', 'boxTabAssign', 'boxTabAll'][i];
+    const el = document.getElementById(id);
+    if (!el) return;
+    const active = (filter === 'available' && i === 0) || (filter === 'assigned' && i === 1) || (filter === 'all' && i === 2);
+    el.className = active ? 'px-3 py-1 rounded-lg bg-green-100 text-green-800 font-medium' : 'px-3 py-1 rounded-lg hover:bg-slate-100';
+  });
+  let list = allBoxes;
+  if (filter === 'available') list = allBoxes.filter(b => b.status === 'available');
+  if (filter === 'assigned') list = allBoxes.filter(b => b.status === 'assigned');
+  const tbody = document.getElementById('boxTableBody');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-400">No boxes</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(b => `
+    <tr class="border-t border-slate-100">
+      <td class="px-3 py-2 font-mono text-xs">${b.boxNo || '-'}</td>
+      <td class="px-3 py-2"><span class="text-xs px-2 py-0.5 rounded ${b.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">${b.status || '-'}</span></td>
+      <td class="px-3 py-2 text-sm">${b.customerName || (b.status === 'available' ? '—' : '-')}</td>
+      <td class="px-3 py-2 text-xs text-slate-500">${b.mso || '-'}</td>
+    </tr>
+  `).join('');
+}
+
+async function addBoxToStock() {
+  const boxNo = (document.getElementById('newBoxNo').value || '').trim();
+  const mso = (document.getElementById('newBoxMso').value || '').trim();
+  if (!boxNo) { showToast('Box number enter பண்ணுங்கள்', true); return; }
+  try {
+    await upsertBoxStock(boxNo, { status: 'available', customerId: null, customerName: null, mso });
+    document.getElementById('newBoxNo').value = '';
+    showToast('Box ' + boxNo + ' added to store');
+    await loadBoxes();
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
+
+async function syncBoxesFromCustomers() {
+  if (!confirm('Customer list-ல் இருக்கும் box numbers-ஐ stock-ல் sync செய்யவா?\n(Already assigned ஆக mark ஆகும்)')) return;
+  try {
+    let n = 0;
+    for (const c of allCustomers) {
+      const boxNo = (c.boxNo || '').trim();
+      if (!boxNo) continue;
+      const st = (c.status || 'ACT') === 'ACT' ? 'assigned' : 'available';
+      await upsertBoxStock(boxNo, {
+        status: st,
+        customerId: st === 'assigned' ? c.id : null,
+        customerName: st === 'assigned' ? (c.name || '') : null,
+        mso: c.mso || ''
+      });
+      n++;
+    }
+    showToast('Synced ' + n + ' boxes');
+    await loadBoxes();
+  } catch (e) {
+    showToast('Sync error: ' + e.message, true);
   }
 }

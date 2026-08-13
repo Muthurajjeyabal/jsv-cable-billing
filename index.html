@@ -579,13 +579,54 @@
           </div>
         </div>
 
-        <!-- BOX MANAGEMENT (Placeholder) -->
+        <!-- BOX MANAGEMENT -->
         <div id="page-boxes" class="page hidden fade-in">
-          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 text-center">
-            <div class="text-4xl mb-3">📦</div>
-            <h3 class="font-semibold text-lg mb-2">Box Management</h3>
-            <p class="text-slate-500 text-sm mb-4">Box Purchase, List, Transfer features will be added in next version.</p>
-            <div class="text-sm text-slate-400">Total Boxes (from customers): <span id="boxCountDisplay">0</span></div>
+          <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="bg-white rounded-xl p-3 shadow-sm border text-center">
+              <div class="text-xs text-slate-500">In Store</div>
+              <div class="text-xl font-bold text-green-600" id="boxStockCount">0</div>
+            </div>
+            <div class="bg-white rounded-xl p-3 shadow-sm border text-center">
+              <div class="text-xs text-slate-500">With Customers</div>
+              <div class="text-xl font-bold text-blue-600" id="boxAssignedCount">0</div>
+            </div>
+            <div class="bg-white rounded-xl p-3 shadow-sm border text-center">
+              <div class="text-xs text-slate-500">Total</div>
+              <div class="text-xl font-bold text-slate-700" id="boxCountDisplay">0</div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border p-4 mb-4">
+            <h3 class="font-semibold mb-2 text-sm">Add Box to Store</h3>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="text" id="newBoxNo" placeholder="Box Number" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+              <input type="text" id="newBoxMso" placeholder="MSO (optional)" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+              <button onclick="addBoxToStock()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Add Stock</button>
+            </div>
+            <button onclick="syncBoxesFromCustomers()" class="mt-2 text-xs text-blue-600 hover:underline">Sync from customer list (one-time)</button>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div class="px-4 py-2 bg-slate-50 border-b flex gap-2 text-sm">
+              <button onclick="renderBoxList('available')" id="boxTabAvail" class="px-3 py-1 rounded-lg bg-green-100 text-green-800 font-medium">Store</button>
+              <button onclick="renderBoxList('assigned')" id="boxTabAssign" class="px-3 py-1 rounded-lg hover:bg-slate-100">Assigned</button>
+              <button onclick="renderBoxList('all')" id="boxTabAll" class="px-3 py-1 rounded-lg hover:bg-slate-100">All</button>
+            </div>
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-600 sticky top-0">
+                  <tr>
+                    <th class="text-left px-3 py-2">Box No</th>
+                    <th class="text-left px-3 py-2">Status</th>
+                    <th class="text-left px-3 py-2">Customer</th>
+                    <th class="text-left px-3 py-2">MSO</th>
+                  </tr>
+                </thead>
+                <tbody id="boxTableBody">
+                  <tr><td colspan="4" class="text-center py-6 text-slate-400">Open this page to load</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
