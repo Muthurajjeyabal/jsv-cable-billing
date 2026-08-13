@@ -1400,17 +1400,25 @@
             <h3 class="font-semibold text-sm mb-3">Add Expense</h3>
             <div class="space-y-2 text-sm">
               <input type="date" id="expDate" class="w-full px-3 py-2 border rounded-lg">
-              <select id="expCategory" class="w-full px-3 py-2 border rounded-lg bg-white">
-                <option>MSO / Broadcaster</option>
-                <option>Salary</option>
-                <option>Fuel / Travel</option>
-                <option>Electricity</option>
-                <option>Maintenance</option>
-                <option>STB Purchase</option>
-                <option>Other</option>
+              <label class="text-xs text-slate-500">Category</label>
+              <select id="expCategory" onchange="onExpCategoryChange()" class="w-full px-3 py-2 border rounded-lg bg-white">
+                <option value="Daily Salary">Daily Salary</option>
+                <option value="Tea / Coffee">Tea / Coffee</option>
+                <option value="Petrol">Petrol</option>
+                <option value="Spacing">Spacing</option>
+                <option value="Donation">Donation + (name)</option>
+                <option value="Spare Parts">Spare Parts</option>
+                <option value="Monthly Salary">Monthly Salary + (name)</option>
+                <option value="MSO / Broadcaster">MSO / Broadcaster</option>
+                <option value="Electricity">Electricity</option>
+                <option value="Other">Other</option>
               </select>
+              <div id="expNameWrap" class="hidden">
+                <label class="text-xs text-slate-500">Name (Donation / Monthly Salary)</label>
+                <input type="text" id="expPersonName" placeholder="Name" class="w-full px-3 py-2 border rounded-lg">
+              </div>
               <input type="number" id="expAmount" placeholder="Amount ₹" class="w-full px-3 py-2 border rounded-lg">
-              <input type="text" id="expNote" placeholder="Note" class="w-full px-3 py-2 border rounded-lg">
+              <input type="text" id="expNote" placeholder="Note (optional)" class="w-full px-3 py-2 border rounded-lg">
               <button type="button" onclick="saveExpense()" class="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm">Save Expense</button>
             </div>
           </div>

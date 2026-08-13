@@ -3282,13 +3282,31 @@ window.addEventListener('offline', updateOfflineBadges);
 document.addEventListener('DOMContentLoaded', updateOfflineBadges);
 
 // ==================== EXPENSES ====================
+function onExpCategoryChange() {
+  const cat = document.getElementById('expCategory')?.value || '';
+  const wrap = document.getElementById('expNameWrap');
+  if (!wrap) return;
+  const need = (cat === 'Donation' || cat === 'Monthly Salary');
+  wrap.classList.toggle('hidden', !need);
+}
+
 async function saveExpense() {
   const amount = Number(document.getElementById('expAmount')?.value || 0);
   if (!amount || amount <= 0) { showToast('Enter amount', true); return; }
+  let category = document.getElementById('expCategory')?.value || 'Other';
+  const person = (document.getElementById('expPersonName')?.value || '').trim();
+  if ((category === 'Donation' || category === 'Monthly Salary') && !person) {
+    showToast('Name உள்ளிடவும்', true);
+    return;
+  }
+  if (person && (category === 'Donation' || category === 'Monthly Salary')) {
+    category = category + ' · ' + person;
+  }
   const data = {
     date: document.getElementById('expDate')?.value || new Date().toISOString().slice(0, 10),
-    category: document.getElementById('expCategory')?.value || 'Other',
+    category,
     amount,
+    personName: person || '',
     note: (document.getElementById('expNote')?.value || '').trim(),
     createdBy: currentUser?.email || '',
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -3304,6 +3322,7 @@ async function saveExpense() {
   }
   document.getElementById('expAmount').value = '';
   document.getElementById('expNote').value = '';
+  if (document.getElementById('expPersonName')) document.getElementById('expPersonName').value = '';
   loadExpenses();
 }
 
