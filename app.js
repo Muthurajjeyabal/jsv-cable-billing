@@ -313,6 +313,7 @@ async function handleSaveCustomer(e) {
   };
 
   try {
+    let savedId = editId;
     if (editId) {
       await db.collection('customers').doc(editId).update(data);
       showToast('Customer updated!');
@@ -321,10 +322,31 @@ async function handleSaveCustomer(e) {
       const manualId = (document.getElementById('custCustId')?.value || '').trim();
       data.custId = manualId || ('C' + Date.now().toString().slice(-6));
       data.streetId = getStreetId(data.place, data.street);
-      await db.collection('customers').add(data);
+      const ref = await db.collection('customers').add(data);
+      savedId = ref.id;
       showToast('Customer added!');
     }
+    // Scheme A: Box No → auto stock as Assigned (if Active)
+    const boxNo = (data.boxNo || '').trim();
+    if (boxNo && (data.status || 'ACT') === 'ACT') {
+      try {
+        await upsertBoxStock(boxNo, {
+          status: 'assigned',
+          customerId: savedId,
+          customerName: data.name || '',
+          mso: data.mso || '',
+          scNo: data.scNo || data.smartCard || '',
+          boxType: data.boxType || 'HD',
+          source: 'new-line'
+        });
+      } catch (be) {
+        console.error('box stock', be);
+      }
+    }
     await loadCustomers();
+    if (typeof loadBoxes === 'function') {
+      try { await loadBoxes(); } catch (e) {}
+    }
     showPage('customers');
   } catch (err) {
     showToast('Error: ' + err.message, true);
@@ -1585,6 +1607,100 @@ async function syncBoxesFromCustomers() {
     showToast('Sync error: ' + e.message, true);
   }
 }
+
+async function importMsoBoxList() {
+  const mso = (document.getElementById('importBoxMso') || {}).value || '';
+  const boxType = (document.getElementById('importBoxType') || {}).value || 'HD';
+  const text = (document.getElementById('importBoxText') || {}).value || '';
+  const statusEl = document.getElementById('importBoxStatus');
+  if (!mso) { showToast('MSO select பண்ணுங்கள்', true); return; }
+  if (!text.trim()) { showToast('Box list paste பண்ணுங்கள்', true); return; }
+
+  // parse lines: boxNo OR boxNo,scNo OR tab-separated
+  const rows = [];
+  text.split(/\r?\n/).forEach(line => {
+    line = line.trim();
+    if (!line) return;
+    // skip headers
+    if (/^(box|stb|serial|s\.?no|sc\s*no|smart)/i.test(line)) return;
+    let boxNo = '', scNo = '';
+    if (line.includes('\t')) {
+      const p = line.split('\t').map(x => x.trim()).filter(Boolean);
+      boxNo = p[0] || '';
+      scNo = p[1] || '';
+    } else if (line.includes(',')) {
+      const p = line.split(',').map(x => x.trim()).filter(Boolean);
+      boxNo = p[0] || '';
+      scNo = p[1] || '';
+    } else {
+      // spaces: last token might be sc - prefer single token as box
+      const p = line.split(/\s+/).filter(Boolean);
+      boxNo = p[0] || '';
+      if (p.length >= 2) scNo = p[p.length - 1];
+    }
+    boxNo = boxNo.replace(/[^a-zA-Z0-9]/g, '');
+    if (boxNo.length >= 4) rows.push({ boxNo, scNo });
+  });
+
+  if (!rows.length) { showToast('Valid box numbers கிடைக்கவில்லை', true); return; }
+
+  // customer map by boxNo
+  const custByBox = new Map();
+  allCustomers.forEach(c => {
+    const b = String(c.boxNo || '').trim().toUpperCase();
+    if (b) custByBox.set(b, c);
+  });
+
+  await loadBoxes();
+  const existing = new Map();
+  allBoxes.forEach(b => {
+    if (b.boxNo) existing.set(String(b.boxNo).trim().toUpperCase(), b.id);
+  });
+
+  let assigned = 0, stock = 0, updated = 0;
+  if (statusEl) statusEl.textContent = 'Importing ' + rows.length + ' boxes...';
+
+  for (let i = 0; i < rows.length; i += 400) {
+    const chunk = rows.slice(i, i + 400);
+    const batch = db.batch();
+    chunk.forEach(({ boxNo, scNo }) => {
+      const key = boxNo.toUpperCase();
+      const cust = custByBox.get(key);
+      const isAssigned = !!cust && (cust.status || 'ACT') === 'ACT';
+      const data = {
+        boxNo,
+        mso,
+        boxType,
+        scNo: scNo || (cust && (cust.scNo || cust.smartCard)) || '',
+        status: isAssigned ? 'assigned' : 'available',
+        customerId: isAssigned ? cust.id : null,
+        customerName: isAssigned ? (cust.name || '') : null,
+        source: 'mso-import',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (isAssigned) assigned++; else stock++;
+      if (existing.has(key)) {
+        batch.update(db.collection('boxes').doc(existing.get(key)), data);
+        updated++;
+      } else {
+        const ref = db.collection('boxes').doc();
+        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        batch.set(ref, data);
+        existing.set(key, ref.id);
+      }
+    });
+    await batch.commit();
+  }
+
+  const msg = 'Import OK · Match(Customers): ' + assigned + ' · Store: ' + stock + ' · Total lines: ' + rows.length;
+  showToast(msg);
+  if (statusEl) statusEl.textContent = msg;
+  document.getElementById('importBoxText').value = '';
+  await loadBoxes();
+  updateDashboardStats();
+}
+
+
 
 // ==================== STREET MASTER (Firestore) ====================
 let streetMasterCache = [];
