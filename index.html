@@ -155,7 +155,12 @@
           </button>
           <h2 id="pageTitle" class="font-semibold text-lg">Dashboard</h2>
         </div>
-        <div class="text-sm text-slate-500" id="currentDate"></div>
+        <div class="flex items-center gap-3">
+          <div class="text-sm text-slate-500 hidden sm:block" id="currentDate"></div>
+          <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium px-3 py-1.5 rounded-lg border border-red-200">
+            Logout
+          </button>
+        </div>
       </header>
 
       <!-- Pages Container -->
