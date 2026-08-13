@@ -2278,3 +2278,51 @@ async function importAugustCollections() {
   }
 }
 
+function globalCustomerSearch(openFirst) {
+  const inp = document.getElementById('globalSearch');
+  const box = document.getElementById('globalSearchResults');
+  if (!inp || !box) return;
+  const q = (inp.value || '').toLowerCase().trim();
+  if (q.length < 2) {
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    return;
+  }
+  const matches = allCustomers.filter(c =>
+    (c.name || '').toLowerCase().includes(q) ||
+    (c.mobile || '').includes(q) ||
+    (c.boxNo || '').toLowerCase().includes(q) ||
+    (c.custId || '').toLowerCase().includes(q) ||
+    (c.street || '').toLowerCase().includes(q)
+  ).slice(0, 15);
+  if (!matches.length) {
+    box.innerHTML = '<div class="p-3 text-sm text-slate-400">No match</div>';
+    box.classList.remove('hidden');
+    return;
+  }
+  if (openFirst && matches.length === 1) {
+    box.classList.add('hidden');
+    viewLedger(matches[0].id);
+    return;
+  }
+  box.innerHTML = matches.map(c => `
+    <div class="p-3 hover:bg-blue-50 cursor-pointer border-b text-sm" onclick="globalPickCustomer('${c.id}')">
+      <div class="font-medium">${c.name || '-'}</div>
+      <div class="text-xs text-slate-500">${c.custId || ''} · ${c.mobile || '-'} · Box ${c.boxNo || '-'} · Due ₹${Number(c.dueAmt||c.due||0)} · ${c.street || ''}</div>
+    </div>`).join('');
+  box.classList.remove('hidden');
+}
+function globalPickCustomer(id) {
+  const box = document.getElementById('globalSearchResults');
+  if (box) box.classList.add('hidden');
+  const inp = document.getElementById('globalSearch');
+  if (inp) inp.value = '';
+  viewLedger(id);
+}
+document.addEventListener('click', (e) => {
+  const box = document.getElementById('globalSearchResults');
+  const inp = document.getElementById('globalSearch');
+  if (!box || !inp) return;
+  if (!box.contains(e.target) && e.target !== inp) box.classList.add('hidden');
+});
+
