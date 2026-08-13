@@ -1445,14 +1445,23 @@ async function loadBoxes() {
 }
 
 function updateBoxStats() {
-  const avail = allBoxes.filter(b => b.status === 'available').length;
-  const assigned = allBoxes.filter(b => b.status === 'assigned').length;
+  let avail = 0, assigned = 0, total = 0;
+  if (allBoxes.length > 0) {
+    avail = allBoxes.filter(b => b.status === 'available').length;
+    assigned = allBoxes.filter(b => b.status === 'assigned').length;
+    total = allBoxes.length;
+  } else {
+    // boxes not synced yet — show from customer list
+    assigned = allCustomers.filter(c => c.boxNo && String(c.boxNo).trim()).length;
+    avail = 0;
+    total = assigned;
+  }
   const el1 = document.getElementById('boxStockCount');
   const el2 = document.getElementById('boxAssignedCount');
   const el3 = document.getElementById('boxCountDisplay');
   if (el1) el1.textContent = avail;
   if (el2) el2.textContent = assigned;
-  if (el3) el3.textContent = allBoxes.length;
+  if (el3) el3.textContent = total;
 }
 
 function renderBoxList(filter) {
@@ -1531,23 +1540,47 @@ async function addBoxToStock() {
 }
 
 async function syncBoxesFromCustomers() {
-  if (!confirm('Customer list-ல் இருக்கும் box numbers-ஐ stock-ல் sync செய்யவா?\n(Already assigned ஆக mark ஆகும்)')) return;
+  if (!confirm('Customer list-ல் box numbers-ஐ stock-ல் sync செய்யவா?\nWith Customers count update ஆகும்.')) return;
   try {
+    showToast('Syncing... wait');
+    // map existing boxNo -> docId
+    const existing = new Map();
+    allBoxes.forEach(b => { if (b.boxNo) existing.set(String(b.boxNo).trim().toUpperCase(), b.id); });
     let n = 0;
-    for (const c of allCustomers) {
-      const boxNo = (c.boxNo || '').trim();
-      if (!boxNo) continue;
-      const st = (c.status || 'ACT') === 'ACT' ? 'assigned' : 'available';
-      await upsertBoxStock(boxNo, {
-        status: st,
-        customerId: st === 'assigned' ? c.id : null,
-        customerName: st === 'assigned' ? (c.name || '') : null,
-        mso: c.mso || ''
+    const list = allCustomers.filter(c => (c.boxNo || '').trim());
+    for (let i = 0; i < list.length; i += 400) {
+      const chunk = list.slice(i, i + 400);
+      const batch = db.batch();
+      chunk.forEach(c => {
+        const boxNo = String(c.boxNo).trim();
+        const key = boxNo.toUpperCase();
+        const st = (c.status || 'ACT') === 'ACT' ? 'assigned' : 'available';
+        const data = {
+          boxNo,
+          status: st,
+          customerId: st === 'assigned' ? c.id : null,
+          customerName: st === 'assigned' ? (c.name || '') : null,
+          mso: c.mso || '',
+          scNo: c.scNo || c.smartCard || '',
+          boxType: c.boxType || '',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (existing.has(key)) {
+          batch.update(db.collection('boxes').doc(existing.get(key)), data);
+        } else {
+          const ref = db.collection('boxes').doc();
+          data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          data.source = 'customer-sync';
+          batch.set(ref, data);
+          existing.set(key, ref.id);
+        }
+        n++;
       });
-      n++;
+      await batch.commit();
     }
-    showToast('Synced ' + n + ' boxes');
+    showToast('Synced ' + n + ' boxes → With Customers');
     await loadBoxes();
+    updateDashboardStats();
   } catch (e) {
     showToast('Sync error: ' + e.message, true);
   }
