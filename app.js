@@ -472,14 +472,14 @@ function displayAgentName(d) {
 
 // ==================== LEDGER ====================
 
-function copyLedgerBox() {
-  const btn = document.getElementById('ledgerBoxBtn');
-  const box = (btn && (btn.dataset.box || btn.textContent)) || '';
-  if (!box || box === '-') { showToast('Box number இல்லை', true); return; }
+function copyLedgerField(kind) {
+  const btn = document.getElementById(kind === 'vc' ? 'ledgerVcBtn' : 'ledgerBoxBtn');
+  const val = (btn && (btn.dataset.val || btn.textContent)) || '';
+  if (!val || val === '-') { showToast((kind === 'vc' ? 'VC' : 'Box') + ' இல்லை', true); return; }
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(box).then(() => showToast('Box copied: ' + box)).catch(() => fallbackCopy(box));
+    navigator.clipboard.writeText(val).then(() => showToast('Copied: ' + val)).catch(() => fallbackCopy(val));
   } else {
-    fallbackCopy(box);
+    fallbackCopy(val);
   }
 }
 function fallbackCopy(text) {
@@ -487,7 +487,7 @@ function fallbackCopy(text) {
   ta.value = text;
   document.body.appendChild(ta);
   ta.select();
-  try { document.execCommand('copy'); showToast('Box copied: ' + text); } catch(e) { showToast(text); }
+  try { document.execCommand('copy'); showToast('Copied: ' + text); } catch(e) { showToast(text); }
   document.body.removeChild(ta);
 }
 function startBillForLedger() {
@@ -509,12 +509,35 @@ async function viewLedger(id) {
     `ID: ${c.custId || id} · Mobile: ${c.mobile || '-'} · Package: ${c.package || '-'}`;
   const msoEl = document.getElementById('ledgerMso');
   if (msoEl) msoEl.textContent = c.mso || '-';
-  const vcEl = document.getElementById('ledgerVc');
-  if (vcEl) vcEl.textContent = c.scNo || c.smartCard || '-';
+  const pkgEl = document.getElementById('ledgerPkg');
+  if (pkgEl) {
+    const base = c.packageBase != null ? Number(c.packageBase) : Number(c.packageAmt || 0);
+    const addon = Number(c.addonAmt || 0);
+    const pkgName = c.package || '-';
+    pkgEl.textContent = pkgName + (base || addon ? ' · ₹' + (Number(c.packageAmt || base + addon)) : '');
+  }
+  const vcBtn = document.getElementById('ledgerVcBtn');
+  const vc = c.scNo || c.smartCard || '';
+  if (vcBtn) {
+    vcBtn.textContent = vc || '-';
+    vcBtn.dataset.val = vc;
+  }
   const boxBtn = document.getElementById('ledgerBoxBtn');
   if (boxBtn) {
     boxBtn.textContent = c.boxNo || '-';
-    boxBtn.dataset.box = c.boxNo || '';
+    boxBtn.dataset.val = c.boxNo || '';
+  }
+  const cd = document.getElementById('ledgerConDate');
+  if (cd) cd.textContent = c.conDate || c.connectionDate || '-';
+  const ca = document.getElementById('ledgerCafAddon');
+  if (ca) {
+    let addons = '';
+    try {
+      const arr = typeof c.addons === 'string' ? JSON.parse(c.addons || '[]') : (c.addons || []);
+      if (Array.isArray(arr) && arr.length) addons = arr.map(a => a.name + (a.amount ? ' ₹'+a.amount : '')).join(', ');
+    } catch(e) {}
+    const caf = c.cafNo || c.caf || '';
+    ca.textContent = [caf ? 'CAF: '+caf : '', addons ? 'Add-on: '+addons : ''].filter(Boolean).join(' · ') || '-';
   }
   document.getElementById('ledgerDue').textContent = '₹' + Number(c.dueAmt || c.due || 0).toLocaleString('en-IN');
   document.getElementById('ledgerStatus').textContent = c.status || 'ACT';
@@ -537,23 +560,29 @@ async function viewLedger(id) {
 
     const tbody = document.getElementById('ledgerTableBody');
     if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">No collection records</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No collection records</td></tr>`;
     } else {
       let total = 0;
+      // active only for total; show cancelled struck
       tbody.innerHTML = rows.map(r => {
-        total += Number(r.amount || 0);
+        const cancelled = r.status === 'cancelled';
+        if (!cancelled) total += Number(r.amount || 0);
         return `
-        <tr class="border-t border-slate-100">
-          <td class="px-3 py-2 text-sm">${r.date || '-'}</td>
-          <td class="px-3 py-2 text-sm font-semibold">₹${Number(r.amount || 0).toLocaleString('en-IN')}</td>
-          <td class="px-3 py-2 text-sm">${r.mode || '-'}</td>
-          <td class="px-3 py-2 text-sm">${r.remarks || '-'}</td>
-          <td class="px-3 py-2 text-xs text-slate-500">${displayAgentName(r)}</td>
+        <tr class="border-t border-slate-100 ${cancelled ? 'opacity-50 line-through' : ''}">
+          <td class="px-2 py-2 text-xs font-mono">${r.billNo || '-'}</td>
+          <td class="px-2 py-2 text-sm">${r.date || '-'}</td>
+          <td class="px-2 py-2 text-sm font-semibold">₹${Number(r.amount || 0).toLocaleString('en-IN')}</td>
+          <td class="px-2 py-2 text-sm">${r.mode || '-'}</td>
+          <td class="px-2 py-2 text-xs text-slate-500">${displayAgentName(r)}</td>
+          <td class="px-2 py-2 text-xs">
+            ${cancelled ? '<span class="text-red-500">Cancelled</span>' :
+              `<button type="button" onclick="cancelCollection('${r.id}','${id}',${Number(r.amount||0)})" class="text-red-600 hover:underline">Cancel</button>`}
+          </td>
         </tr>`;
       }).join('') + `
         <tr class="border-t-2 border-slate-300 bg-slate-50 font-semibold">
-          <td class="px-3 py-2">Total</td>
-          <td class="px-3 py-2">₹${total.toLocaleString('en-IN')}</td>
+          <td class="px-2 py-2" colspan="2">Total (active)</td>
+          <td class="px-2 py-2">₹${total.toLocaleString('en-IN')}</td>
           <td colspan="3"></td>
         </tr>`;
     }
@@ -627,6 +656,7 @@ function searchForBill() {
   resultsDiv.classList.remove('hidden');
 }
 
+function selectCustomerForBill(id) { selectBillCustomer(id); }
 function selectBillCustomer(id) {
   const c = allCustomers.find(x => x.id === id);
   if (!c) return;
@@ -640,6 +670,20 @@ function selectBillCustomer(id) {
   document.getElementById('billSearch').value = c.name;
   const due = Number(c.dueAmt || c.due || 0);
   document.getElementById('billAmount').value = due > 0 ? due : (c.packageAmt || '');
+}
+
+async function nextDailyBillNo(billDate) {
+  // Format: YYYY-MM-DD-001 (resets every day)
+  const ref = db.collection('counters').doc('bills_' + billDate);
+  const billNo = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    let n = 1;
+    if (snap.exists) n = (Number(snap.data().seq) || 0) + 1;
+    tx.set(ref, { seq: n, date: billDate }, { merge: true });
+    // Display only 001, 002... (resets daily via counters doc)
+    return String(n).padStart(3, '0');
+  });
+  return billNo;
 }
 
 async function handleSaveBill(e) {
@@ -656,13 +700,25 @@ async function handleSaveBill(e) {
     return;
   }
 
+  const billDate = document.getElementById('billDate').value || new Date().toISOString().split('T')[0];
+  let billNo = '';
+  try {
+    billNo = await nextDailyBillNo(billDate);
+  } catch (err) {
+    // fallback if transaction fails
+    billNo = String(Date.now()).slice(-3);
+  }
+
   const data = {
     customerId,
     customerName: selectedBillCustomer?.name || '',
     amount,
-    date: document.getElementById('billDate').value,
+    date: billDate,
+    billDate,
+    billNo,
     mode: document.getElementById('billMode').value,
     remarks: document.getElementById('billRemarks').value.trim(),
+    status: 'active',
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     createdBy: currentUser.email,
     collectedBy: displayAgentName(currentUser.email)
@@ -681,7 +737,7 @@ async function handleSaveBill(e) {
       });
     }
 
-    showToast('Collection saved! ₹' + amount);
+    showToast('Bill ' + billNo + ' · ₹' + amount);
     document.getElementById('billForm').reset();
     document.getElementById('selectedCustomerInfo').classList.add('hidden');
     document.getElementById('billDate').value = new Date().toISOString().split('T')[0];
@@ -690,6 +746,59 @@ async function handleSaveBill(e) {
     loadDashboard();
   } catch (err) {
     showToast('Error: ' + err.message, true);
+  }
+}
+
+async function cancelCollection(colId, customerId, amount) {
+  if (!confirm('இந்த bill cancel செய்யவா?\nDue amount customer-க்கு திரும்ப சேரும்.')) return;
+  try {
+    await db.collection('collections').doc(colId).update({
+      status: 'cancelled',
+      cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
+      cancelledBy: currentUser.email
+    });
+    const cRef = db.collection('customers').doc(customerId);
+    const cSnap = await cRef.get();
+    if (cSnap.exists) {
+      const due = Number(cSnap.data().dueAmt || cSnap.data().due || 0);
+      await cRef.update({
+        dueAmt: due + Number(amount || 0),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    showToast('Bill cancelled');
+    if (currentLedgerCustomerId) await viewLedger(currentLedgerCustomerId);
+    await loadCustomers();
+    if (typeof loadCancelledBills === 'function') loadCancelledBills();
+  } catch (err) {
+    showToast('Error: ' + err.message, true);
+  }
+}
+
+async function loadCancelledBills() {
+  const tbody = document.getElementById('cancelledBillsBody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-slate-400">Loading...</td></tr>';
+  try {
+    const snap = await db.collection('collections').where('status', '==', 'cancelled').get();
+    const rows = [];
+    snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
+    rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400">No cancelled bills</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr class="border-t">
+        <td class="px-3 py-2 font-mono text-xs">${r.billNo || '-'}</td>
+        <td class="px-3 py-2 text-sm">${r.date || '-'}</td>
+        <td class="px-3 py-2 text-sm">${r.customerName || r.customerId || '-'}</td>
+        <td class="px-3 py-2 font-semibold">₹${Number(r.amount||0)}</td>
+        <td class="px-3 py-2 text-xs">${displayAgentName(r)}</td>
+        <td class="px-3 py-2 text-xs text-slate-500">${(r.cancelledBy||'').split('@')[0]||'-'}</td>
+      </tr>`).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 py-4">${e.message}</td></tr>`;
   }
 }
 
