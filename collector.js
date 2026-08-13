@@ -106,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
   auth.onAuthStateChanged(async user => {
     if (user) {
       await loadEmployeeMap();
+      try { updateColOfflineUI(); flushCollectorOffline(); } catch(e) {}
       currentUser = user;
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
@@ -295,34 +296,111 @@ async function saveCollection() {
   const btn = document.getElementById('saveColBtn');
   btn.disabled = true; btn.textContent = 'Saving...';
   const today = new Date().toISOString().split('T')[0];
+  const currentDue = Number(selectedCustomer.dueAmt || selectedCustomer.due || 0);
+  const newDue = Math.max(0, currentDue - amount);
+  const payType = amount < currentDue ? 'partial' : (amount > currentDue ? 'advance' : 'full');
+  const data = {
+    customerId: selectedCustomer.id,
+    custId: selectedCustomer.custId || '',
+    customerName: selectedCustomer.name || '',
+    amount, date: today,
+    mode: document.getElementById('colMode').value,
+    remarks: document.getElementById('colRemarks').value.trim(),
+    package: selectedCustomer.package || '',
+    boxNo: selectedCustomer.boxNo || '',
+    payType, prevDue: currentDue, balanceAfter: newDue,
+    createdBy: currentUser.email,
+    collectedBy: displayAgentName(currentUser.email),
+    source: 'agent-app',
+    status: 'active'
+  };
   try {
-    await db.collection('collections').add({
-      customerId: selectedCustomer.id,
-      custId: selectedCustomer.custId || '',
-      customerName: selectedCustomer.name || '',
-      amount, date: today,
-      mode: document.getElementById('colMode').value,
-      remarks: document.getElementById('colRemarks').value.trim(),
-      package: selectedCustomer.package || '',
-      boxNo: selectedCustomer.boxNo || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: currentUser.email,
-      collectedBy: displayAgentName(currentUser.email),
-      source: 'agent-app'
+    if (!navigator.onLine) throw new Error('OFFLINE');
+    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    await db.collection('collections').add(data);
+    await db.collection('customers').doc(selectedCustomer.id).update({
+      dueAmt: newDue,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    const currentDue = Number(selectedCustomer.dueAmt || selectedCustomer.due || 0);
-    const newDue = Math.max(0, currentDue - amount);
-    await db.collection('customers').doc(selectedCustomer.id).update({ dueAmt: newDue, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-    selectedCustomer.dueAmt = newDue;
-    const idx = allCustomers.findIndex(x => x.id === selectedCustomer.id);
-    if (idx >= 0) allCustomers[idx].dueAmt = newDue;
-    showToast('₹' + amount + ' saved!');
+    applyLocalDue(selectedCustomer.id, newDue);
+    showToast('₹' + amount + ' saved' + (payType === 'partial' ? ' (partial)' : '') + '!');
     closeModal();
-    if (!document.getElementById('page-billing').classList.contains('hidden')) searchBill();
     if (!document.getElementById('page-customers').classList.contains('hidden')) filterCustomers();
-  } catch (err) { showToast('Error: ' + err.message, true); }
-  finally { btn.disabled = false; btn.textContent = 'Save Collection'; }
+    if (typeof loadDashboard === 'function') loadDashboard();
+  } catch (err) {
+    if (!navigator.onLine || String(err.message).includes('OFFLINE') || err.code === 'unavailable') {
+      data.createdAt = new Date().toISOString();
+      queueCollectorOffline({ type: 'collection', data, customerId: selectedCustomer.id, newDue });
+      applyLocalDue(selectedCustomer.id, newDue);
+      showToast('Offline · saved · will sync');
+      closeModal();
+      if (!document.getElementById('page-customers').classList.contains('hidden')) filterCustomers();
+    } else {
+      showToast('Error: ' + err.message, true);
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Collection';
+  }
 }
+
+function applyLocalDue(id, newDue) {
+  if (selectedCustomer && selectedCustomer.id === id) selectedCustomer.dueAmt = newDue;
+  const idx = allCustomers.findIndex(x => x.id === id);
+  if (idx >= 0) allCustomers[idx].dueAmt = newDue;
+}
+
+const COL_OFF_KEY = 'jsv_collector_offline_queue';
+function getColQueue() {
+  try { return JSON.parse(localStorage.getItem(COL_OFF_KEY) || '[]'); } catch (e) { return []; }
+}
+function setColQueue(q) {
+  localStorage.setItem(COL_OFF_KEY, JSON.stringify(q));
+  updateColOfflineUI();
+}
+function queueCollectorOffline(op) {
+  const q = getColQueue();
+  op.id = 'coff_' + Date.now();
+  op.queuedAt = new Date().toISOString();
+  q.push(op);
+  setColQueue(q);
+}
+function updateColOfflineUI() {
+  const off = document.getElementById('colOfflineBadge');
+  const sync = document.getElementById('colSyncBadge');
+  const q = getColQueue();
+  if (off) off.classList.toggle('hidden', navigator.onLine);
+  if (sync) {
+    if (q.length) { sync.classList.remove('hidden'); sync.textContent = 'Sync ' + q.length; }
+    else sync.classList.add('hidden');
+  }
+}
+async function flushCollectorOffline() {
+  if (!navigator.onLine) return;
+  let q = getColQueue();
+  if (!q.length) { updateColOfflineUI(); return; }
+  const remain = [];
+  for (const op of q) {
+    try {
+      if (op.type === 'collection') {
+        const d = { ...op.data };
+        d.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('collections').add(d);
+        if (op.customerId) {
+          await db.collection('customers').doc(op.customerId).update({
+            dueAmt: op.newDue,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      }
+    } catch (e) { remain.push(op); }
+  }
+  setColQueue(remain);
+  if (!remain.length) showToast('Offline collections synced');
+  updateColOfflineUI();
+}
+window.addEventListener('online', () => { updateColOfflineUI(); flushCollectorOffline(); });
+window.addEventListener('offline', updateColOfflineUI);
+
 
 function searchLedger() {
   const q = document.getElementById('ledgerSearch').value.toLowerCase().trim();
