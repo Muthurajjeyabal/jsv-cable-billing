@@ -270,6 +270,53 @@ function searchCustomers() {
   renderCustomerTable(filtered);
 }
 
+
+function checkBoxDuplicate() {
+  const tip = document.getElementById('boxDupTip');
+  const boxEl = document.getElementById('custBox');
+  if (!tip || !boxEl) return;
+  const boxNo = (boxEl.value || '').trim().toUpperCase();
+  const editId = (document.getElementById('editCustomerId') || {}).value || '';
+  if (!boxNo || boxNo.length < 4) {
+    tip.className = 'text-xs mt-1 hidden';
+    tip.textContent = '';
+    boxEl.classList.remove('border-red-500', 'border-amber-500', 'border-green-500');
+    return;
+  }
+  // same box on another customer?
+  const other = allCustomers.find(c =>
+    String(c.boxNo || '').trim().toUpperCase() === boxNo && c.id !== editId
+  );
+  if (other) {
+    tip.className = 'text-xs mt-1 text-red-600 font-medium';
+    tip.textContent = '⚠ இந்த Box ஏற்கனவே: ' + (other.name || '-') +
+      ' (ID: ' + (other.custId || other.id.slice(0,6)) +
+      ', ' + (other.street || '') + ', ' + (other.status || 'ACT') + ')';
+    boxEl.classList.add('border-red-500');
+    boxEl.classList.remove('border-green-500', 'border-amber-500');
+    return;
+  }
+  // in stock?
+  const stock = (typeof allBoxes !== 'undefined' ? allBoxes : []).find(
+    b => String(b.boxNo || '').trim().toUpperCase() === boxNo
+  );
+  if (stock && stock.status === 'available') {
+    tip.className = 'text-xs mt-1 text-green-600';
+    tip.textContent = '✓ Store-ல் available — assign ஆகும்';
+    boxEl.classList.add('border-green-500');
+    boxEl.classList.remove('border-red-500', 'border-amber-500');
+  } else if (stock && stock.status === 'assigned') {
+    tip.className = 'text-xs mt-1 text-amber-600';
+    tip.textContent = 'Store-ல் assigned என்று இருக்கு — customer match பாருங்கள்';
+    boxEl.classList.add('border-amber-500');
+    boxEl.classList.remove('border-red-500', 'border-green-500');
+  } else {
+    tip.className = 'text-xs mt-1 text-slate-500';
+    tip.textContent = 'புதிய Box — save ஆனால் stock-ல் Assigned ஆகும்';
+    boxEl.classList.remove('border-red-500', 'border-green-500', 'border-amber-500');
+  }
+}
+
 async function handleSaveCustomer(e) {
   e.preventDefault();
   const editId = document.getElementById('editCustomerId').value;
@@ -311,6 +358,23 @@ async function handleSaveCustomer(e) {
     remarks: document.getElementById('custRemarks').value.trim(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
+
+  // duplicate box warning
+  const boxCheck = (data.boxNo || '').trim().toUpperCase();
+  if (boxCheck) {
+    const other = allCustomers.find(c =>
+      String(c.boxNo || '').trim().toUpperCase() === boxCheck && c.id !== editId
+    );
+    if (other) {
+      const ok = confirm(
+        'இந்த Box ஏற்கனவே இவருக்கு உள்ளது:\n' +
+        (other.name || '') + ' · ID ' + (other.custId || '') + '\n' +
+        (other.street || '') + '\n\n' +
+        'இருந்தாலும் இந்த customer-க்கு assign செய்யவா?'
+      );
+      if (!ok) return;
+    }
+  }
 
   try {
     let savedId = editId;
