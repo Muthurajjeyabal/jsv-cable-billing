@@ -203,6 +203,9 @@ async function loadCustomers() {
     allCustomers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ta'));
     renderCustomerTable(allCustomers);
     updateDashboardStats();
+    loadStreetMaster();
+    loadPackageMaster();
+    loadMsoMaster();
   } catch (err) {
     console.error(err);
     document.getElementById('customerTableBody').innerHTML =
@@ -802,21 +805,21 @@ function skipWa() {
 // Street ID codes from CableSoft Street Report (JSV S.Alangulam)
 const STREET_MASTER = [
   // AREA 1
-  { place: 'AREA 1', street: 'அக்கதிரியார் தெரு', streetId: 'AGA' },
-  { place: 'AREA 1', street: 'அனா-1', streetId: '1AN' },
-  { place: 'AREA 1', street: 'அனா-2', streetId: '2AN' },
-  { place: 'AREA 1', street: 'அம்பேத்கர்', streetId: 'AJA' },
-  { place: 'AREA 1', street: 'அழகாசன்புரம்-1', streetId: '1AL' },
-  { place: 'AREA 1', street: 'அழகாசன்புரம்-2', streetId: '2AL' },
-  { place: 'AREA 1', street: 'ஆனைமலை', streetId: 'AIN' },
+  { place: 'AREA 1', street: 'அகத்தியர் தெரு', streetId: 'AGA' },
+  { place: 'AREA 1', street: 'அன்பு-1', streetId: '1AN' },
+  { place: 'AREA 1', street: 'அன்பு-2', streetId: '2AN' },
+  { place: 'AREA 1', street: 'அம்பேத்கர் நகர்', streetId: 'AJA' },
+  { place: 'AREA 1', street: 'அழகுமலையான்-1', streetId: '1AL' },
+  { place: 'AREA 1', street: 'அழகுமலையான்-2', streetId: '2AL' },
+  { place: 'AREA 1', street: 'ஆலாய்க்காடு', streetId: 'AIN' },
   { place: 'AREA 1', street: 'ஆலமரத்துக்காடு', streetId: 'AJK' },
-  { place: 'AREA 1', street: 'இளாங்கோ அடிகள்', streetId: 'ILA' },
-  { place: 'AREA 1', street: 'கணபதி-1', streetId: '1KB' },
+  { place: 'AREA 1', street: 'இளங்கோ அடிகள்', streetId: 'ILA' },
   { place: 'AREA 1', street: 'கணபதி-2', streetId: '2KB' },
   { place: 'AREA 1', street: 'கணபதி-3', streetId: '3KB' },
-  { place: 'AREA 1', street: 'கரிய தெரு', streetId: 'KAB' },
-  { place: 'AREA 1', street: 'கீழ்ப்பட்டி', streetId: 'KSS' },
-  { place: 'AREA 1', street: 'கோபிநாதன்', streetId: 'CBP' },
+  { place: 'AREA 1', street: 'கணபதி-1', streetId: '1KB' },
+  { place: 'AREA 1', street: 'கரிசல் தெரு', streetId: 'KAB' },
+  { place: 'AREA 1', street: 'கீழ்ப்பாதி கீழக்கு', streetId: 'KSS' },
+  { place: 'AREA 1', street: 'கோபிநாயகர்', streetId: 'CBP' },
   { place: 'AREA 1', street: 'சக்தி விநாயகர்', streetId: 'SAK' },
   { place: 'AREA 1', street: 'சங்கர் தெரு', streetId: 'SLB' },
   { place: 'AREA 1', street: 'புன்னை நகர்-1', streetId: '1CE' },
@@ -827,19 +830,19 @@ const STREET_MASTER = [
   { place: 'AREA 1', street: 'தாமரைக்கால்', streetId: 'TR' },
   { place: 'AREA 1', street: 'திருமூர்த்தி', streetId: 'TJO' },
   { place: 'AREA 1', street: 'தென்னாம்பட்டி தெரு', streetId: 'THL' },
-  { place: 'AREA 1', street: 'பாண்டுரம்-1', streetId: '1BH' },
-  { place: 'AREA 1', street: 'பாண்டுரம்-2', streetId: '2BH' },
-  { place: 'AREA 1', street: 'பாண்டுரம்-3', streetId: '3BH' },
-  { place: 'AREA 1', street: 'பாண்டுரம்-4', streetId: '4BH' },
-  { place: 'AREA 1', street: 'பாண்டுரம்-5', streetId: '5BH' },
-  { place: 'AREA 1', street: 'பாண்டுரம்-6', streetId: '6BH' },
-  { place: 'AREA 1', street: 'பாண்டுரம்-7', streetId: '7BH' },
-  { place: 'AREA 1', street: 'பாண்டுரம்-8', streetId: '8BH' },
-  { place: 'AREA 1', street: 'பாண்டுரம்-9', streetId: '9BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்-1', streetId: '1BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்-2', streetId: '2BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்-3', streetId: '3BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்-4', streetId: '4BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்-5', streetId: '5BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்-6', streetId: '6BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்-7', streetId: '7BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்-8', streetId: '8BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்-9', streetId: '9BH' },
   { place: 'AREA 1', street: 'பூங்கா நகர்', streetId: '1PK' },
   { place: 'AREA 1', street: 'மங்கள விநாயகர்', streetId: 'MAN' },
-  { place: 'AREA 1', street: 'மங்கள விநாயகர் தெருக்கு', streetId: 'MAX' },
-  { place: 'AREA 1', street: 'மற்றைக்காலன் கோவில்', streetId: 'MAN' },
+  { place: 'AREA 1', street: 'மங்கள விநாயகர் குறுக்கு', streetId: 'MAX' },
+  { place: 'AREA 1', street: 'மற்றைக்காலன் கோவில்', streetId: 'MAN2' },
   { place: 'AREA 1', street: 'மண்ணங்காமன்', streetId: 'MNV' },
   { place: 'AREA 1', street: 'முனிசிபல்', streetId: 'ML' },
   { place: 'AREA 1', street: 'முனியாண்டி-1', streetId: '1MJ' },
@@ -865,7 +868,7 @@ const STREET_MASTER = [
   { place: 'AREA 2', street: 'ஓடைவளம் முத்துக்குமரர்-1', streetId: '1OV' },
   { place: 'AREA 2', street: 'ஓடைவளம் தெரு', streetId: 'OVT' },
   { place: 'AREA 2', street: 'கலியாண்', streetId: 'KLS' },
-  { place: 'AREA 2', street: 'கருப்பசாமி-குருநாதர்', streetId: 'KRK' },
+  { place: 'AREA 2', street: 'கருப்பசாமி குருநாதர்', streetId: 'KRK' },
   { place: 'AREA 2', street: 'கருப்பசாமி-1', streetId: '1KR' },
   { place: 'AREA 2', street: 'கருப்பசாமி-4', streetId: '4KR' },
   { place: 'AREA 2', street: 'காமாட்சி தெரு', streetId: 'KAM' },
@@ -874,7 +877,7 @@ const STREET_MASTER = [
   { place: 'AREA 2', street: 'சின்னபொன்னாங்கு கோவில்', streetId: 'CPK' },
   { place: 'AREA 2', street: 'செந்தூர் நகர்', streetId: 'SEN' },
   { place: 'AREA 2', street: 'பெத்தாராளன்-2', streetId: '2PK' },
-  { place: 'AREA 2', street: 'பெத்தாராளன்-1', streetId: '1PK' },
+  { place: 'AREA 2', street: 'பெத்தாராளன்-1', streetId: '1PK2' },
   { place: 'AREA 2', street: 'வெங்கட்சாமி-1', streetId: '1SG' },
   { place: 'AREA 2', street: 'வெங்கட்சாமி-2', streetId: '2SG' },
   { place: 'AREA 2', street: 'நேபால் நகர்', streetId: 'JAY' },
@@ -896,20 +899,12 @@ const STREET_MASTER = [
 ];
 
 function getStreetsForPlace(place) {
-  // One entry per streetId — prefer STREET_MASTER names (no DB spelling duplicates)
-  const byId = new Map();
-  STREET_MASTER.filter(s => s.place === place).forEach(s => {
-    byId.set(s.streetId.toUpperCase(), { place: s.place, street: s.street, streetId: s.streetId });
-  });
-  // Only add customer streets if their streetId is completely unknown
-  allCustomers.forEach(c => {
-    if ((c.place || '') !== place || !c.street) return;
-    const sid = (c.streetId || guessStreetId(c) || '').toUpperCase();
-    if (!sid) return;
-    if (byId.has(sid)) return; // already have clean master name
-    byId.set(sid, { place, street: c.street, streetId: sid });
-  });
-  const list = Array.from(byId.values());
+  // Prefer Firestore street master (streetMasterCache); fallback STREET_MASTER code list
+  const src = (streetMasterCache && streetMasterCache.length)
+    ? streetMasterCache
+    : STREET_MASTER;
+  const list = src.filter(s => s.place === place)
+    .map(s => ({ place: s.place, street: s.street, streetId: s.streetId, id: s.id }));
   list.sort((a, b) => a.street.localeCompare(b.street, 'ta'));
   return list;
 }
@@ -1381,4 +1376,314 @@ async function syncBoxesFromCustomers() {
   } catch (e) {
     showToast('Sync error: ' + e.message, true);
   }
+}
+
+// ==================== STREET MASTER (Firestore) ====================
+let streetMasterCache = [];
+let streetMasterFilter = 'ALL';
+
+async function loadStreetMaster() {
+  try {
+    const snap = await db.collection('streets').get();
+    streetMasterCache = [];
+    snap.forEach(doc => streetMasterCache.push({ id: doc.id, ...doc.data() }));
+    streetMasterCache.sort((a, b) => {
+      const p = (a.place || '').localeCompare(b.place || '');
+      if (p) return p;
+      return (a.street || '').localeCompare(b.street || '', 'ta');
+    });
+    renderStreetMasterTable();
+  } catch (e) {
+    console.error(e);
+    showToast('Street load error: ' + e.message, true);
+  }
+}
+
+function filterStreetMaster(f) {
+  streetMasterFilter = f;
+  ['All', '1', '2'].forEach((t, i) => {
+    const el = document.getElementById(['stFilterAll', 'stFilter1', 'stFilter2'][i]);
+    if (!el) return;
+    const on = (f === 'ALL' && i === 0) || (f === 'AREA 1' && i === 1) || (f === 'AREA 2' && i === 2);
+    el.className = on ? 'px-3 py-1 rounded-lg bg-slate-200 font-medium' : 'px-3 py-1 rounded-lg hover:bg-slate-100';
+  });
+  renderStreetMasterTable();
+}
+
+function renderStreetMasterTable() {
+  const tbody = document.getElementById('streetMasterBody');
+  if (!tbody) return;
+  let list = streetMasterCache;
+  if (streetMasterFilter !== 'ALL') list = list.filter(s => s.place === streetMasterFilter);
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 text-slate-400">No streets — click Import default list</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(s => `
+    <tr class="border-t">
+      <td class="px-3 py-2 text-xs">${s.place || ''}</td>
+      <td class="px-3 py-2 text-sm">${s.street || ''}</td>
+      <td class="px-3 py-2 font-mono text-xs">${s.streetId || ''}</td>
+      <td class="px-3 py-2">
+        <button type="button" onclick="editStreetMaster('${s.id}')" class="text-blue-600 text-xs mr-2">Edit</button>
+        <button type="button" onclick="deleteStreetMaster('${s.id}')" class="text-red-600 text-xs">Del</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function clearStreetForm() {
+  document.getElementById('editStreetDocId').value = '';
+  document.getElementById('mstStreet').value = '';
+  document.getElementById('mstStreetId').value = '';
+}
+
+function editStreetMaster(id) {
+  const s = streetMasterCache.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('editStreetDocId').value = id;
+  document.getElementById('mstPlace').value = s.place || 'AREA 1';
+  document.getElementById('mstStreet').value = s.street || '';
+  document.getElementById('mstStreetId').value = s.streetId || '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function saveStreetMaster() {
+  const place = document.getElementById('mstPlace').value;
+  const street = (document.getElementById('mstStreet').value || '').trim();
+  const streetId = (document.getElementById('mstStreetId').value || '').trim().toUpperCase();
+  const editId = document.getElementById('editStreetDocId').value;
+  if (!street || !streetId) { showToast('Street + Street ID தேவை', true); return; }
+  try {
+    const data = { place, street, streetId, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    if (editId) {
+      await db.collection('streets').doc(editId).update(data);
+      showToast('Street updated');
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('streets').add(data);
+      showToast('Street added');
+    }
+    clearStreetForm();
+    await loadStreetMaster();
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
+
+async function deleteStreetMaster(id) {
+  if (!confirm('Delete this street?')) return;
+  try {
+    await db.collection('streets').doc(id).delete();
+    showToast('Deleted');
+    await loadStreetMaster();
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
+
+async function seedStreetsFromCode() {
+  if (!confirm('Code-ல் உள்ள default street list-ஐ Firestore-க்கு import செய்யவா?\\n(Already இருக்கும் Street ID skip)')) return;
+  try {
+    await loadStreetMaster();
+    const existing = new Set(streetMasterCache.map(s => (s.place + '|' + (s.streetId || '').toUpperCase())));
+    let n = 0;
+    const BATCH = 400;
+    for (let i = 0; i < STREET_MASTER.length; i += BATCH) {
+      const batch = db.batch();
+      STREET_MASTER.slice(i, i + BATCH).forEach(s => {
+        const key = s.place + '|' + s.streetId.toUpperCase();
+        if (existing.has(key)) return;
+        const ref = db.collection('streets').doc();
+        batch.set(ref, {
+          place: s.place,
+          street: s.street,
+          streetId: s.streetId,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        existing.add(key);
+        n++;
+      });
+      await batch.commit();
+    }
+    showToast(n + ' streets imported');
+    await loadStreetMaster();
+  } catch (e) {
+    showToast('Import error: ' + e.message, true);
+  }
+}
+
+// preload streets after login customers load
+
+function showMasterPanel(name) {
+  const hub = document.getElementById('mastersHub');
+  document.querySelectorAll('.master-panel').forEach(p => p.classList.add('hidden'));
+  if (!name) {
+    if (hub) hub.classList.remove('hidden');
+    return;
+  }
+  if (hub) hub.classList.add('hidden');
+  const panel = document.getElementById('masterPanel-' + name);
+  if (panel) panel.classList.remove('hidden');
+  if (name === 'street') loadStreetMaster();
+  if (name === 'package') loadPackageMaster();
+  if (name === 'mso') loadMsoMaster();
+  if (name === 'company') loadCompanyInfo();
+}
+
+let packageMasterCache = [];
+let msoMasterCache = [];
+
+async function loadPackageMaster() {
+  const snap = await db.collection('packages').orderBy('amount').get().catch(() => db.collection('packages').get());
+  packageMasterCache = [];
+  (snap.forEach ? snap : { forEach: () => {} });
+  snap.forEach(doc => packageMasterCache.push({ id: doc.id, ...doc.data() }));
+  packageMasterCache.sort((a,b) => Number(a.amount||0) - Number(b.amount||0));
+  const tbody = document.getElementById('packageMasterBody');
+  if (!tbody) return;
+  tbody.innerHTML = packageMasterCache.map(p => `
+    <tr class="border-t">
+      <td class="px-3 py-2">${p.name||''}</td>
+      <td class="px-3 py-2">₹${p.amount||0}</td>
+      <td class="px-3 py-2">
+        <button type="button" class="text-blue-600 text-xs mr-2" onclick="editPackageMaster('${p.id}')">Edit</button>
+        <button type="button" class="text-red-600 text-xs" onclick="deletePackageMaster('${p.id}')">Del</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="3" class="text-center py-4 text-slate-400">Empty — Import 100–600</td></tr>';
+  refreshCustomerPackageDropdown();
+}
+
+function editPackageMaster(id) {
+  const p = packageMasterCache.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('editPkgDocId').value = id;
+  document.getElementById('mstPkgName').value = p.name || '';
+  document.getElementById('mstPkgAmt').value = p.amount || '';
+}
+
+async function savePackageMaster() {
+  const name = (document.getElementById('mstPkgName').value||'').trim();
+  const amount = Number(document.getElementById('mstPkgAmt').value||0);
+  const editId = document.getElementById('editPkgDocId').value;
+  if (!name || !amount) { showToast('Name + Amount', true); return; }
+  if (editId) await db.collection('packages').doc(editId).update({ name, amount });
+  else await db.collection('packages').add({ name, amount, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  document.getElementById('editPkgDocId').value = '';
+  document.getElementById('mstPkgName').value = '';
+  document.getElementById('mstPkgAmt').value = '';
+  showToast('Package saved');
+  await loadPackageMaster();
+}
+
+async function deletePackageMaster(id) {
+  if (!confirm('Delete package?')) return;
+  await db.collection('packages').doc(id).delete();
+  await loadPackageMaster();
+}
+
+async function seedPackages() {
+  if (!confirm('PLAN 100–600 import?')) return;
+  const amts = [100,150,180,200,220,230,250,260,275,280,290,300,305,310,315,325,350,380,400,450,500,550,600];
+  await loadPackageMaster();
+  const have = new Set(packageMasterCache.map(p => p.name));
+  for (const a of amts) {
+    const name = 'PLAN ' + a;
+    if (have.has(name)) continue;
+    await db.collection('packages').add({ name, amount: a });
+  }
+  showToast('Packages imported');
+  await loadPackageMaster();
+}
+
+function refreshCustomerPackageDropdown() {
+  const sel = document.getElementById('custPackage');
+  if (!sel || !packageMasterCache.length) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Select Package</option>' +
+    packageMasterCache.map(p => `<option value="${p.name}" data-amt="${p.amount}">${p.name}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+async function loadMsoMaster() {
+  const snap = await db.collection('msos').get();
+  msoMasterCache = [];
+  snap.forEach(doc => msoMasterCache.push({ id: doc.id, ...doc.data() }));
+  msoMasterCache.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  const tbody = document.getElementById('msoMasterBody');
+  if (!tbody) return;
+  tbody.innerHTML = msoMasterCache.map(m => `
+    <tr class="border-t">
+      <td class="px-3 py-2 font-mono text-sm">${m.name||''}</td>
+      <td class="px-3 py-2">
+        <button type="button" class="text-blue-600 text-xs mr-2" onclick="editMsoMaster('${m.id}')">Edit</button>
+        <button type="button" class="text-red-600 text-xs" onclick="deleteMsoMaster('${m.id}')">Del</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="2" class="text-center py-4 text-slate-400">Empty — Import default</td></tr>';
+  refreshCustomerMsoDropdown();
+}
+
+function editMsoMaster(id) {
+  const m = msoMasterCache.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('editMsoDocId').value = id;
+  document.getElementById('mstMsoName').value = m.name || '';
+}
+
+async function saveMsoMaster() {
+  const name = (document.getElementById('mstMsoName').value||'').trim();
+  const editId = document.getElementById('editMsoDocId').value;
+  if (!name) { showToast('MSO name', true); return; }
+  if (editId) await db.collection('msos').doc(editId).update({ name });
+  else await db.collection('msos').add({ name });
+  document.getElementById('editMsoDocId').value = '';
+  document.getElementById('mstMsoName').value = '';
+  showToast('MSO saved');
+  await loadMsoMaster();
+}
+
+async function deleteMsoMaster(id) {
+  if (!confirm('Delete MSO?')) return;
+  await db.collection('msos').doc(id).delete();
+  await loadMsoMaster();
+}
+
+async function seedMso() {
+  const list = ['SPCHE0077','SPCHE5981','TACTV25215','TACTV25257','SCV'];
+  await loadMsoMaster();
+  const have = new Set(msoMasterCache.map(m => m.name));
+  for (const name of list) {
+    if (!have.has(name)) await db.collection('msos').add({ name });
+  }
+  showToast('MSO imported');
+  await loadMsoMaster();
+}
+
+function refreshCustomerMsoDropdown() {
+  const sel = document.getElementById('custMSO');
+  if (!sel || !msoMasterCache.length) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">- Select MSO -</option>' +
+    msoMasterCache.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+async function loadCompanyInfo() {
+  const doc = await db.collection('settings').doc('company').get();
+  if (doc.exists) {
+    const d = doc.data();
+    if (document.getElementById('coName')) document.getElementById('coName').value = d.name || '';
+    if (document.getElementById('coPhone')) document.getElementById('coPhone').value = d.phone || '';
+    if (document.getElementById('coAddress')) document.getElementById('coAddress').value = d.address || '';
+  }
+}
+
+async function saveCompanyInfo() {
+  await db.collection('settings').doc('company').set({
+    name: document.getElementById('coName').value.trim(),
+    phone: document.getElementById('coPhone').value.trim(),
+    address: document.getElementById('coAddress').value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  showToast('Company saved');
 }

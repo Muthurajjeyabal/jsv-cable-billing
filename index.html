@@ -763,35 +763,147 @@
           <p class="text-center text-slate-400 text-sm mt-6">Full reports will be activated in next update.</p>
         </div>
 
-        <!-- MASTERS (Placeholder) -->
+        <!-- MASTERS -->
         <div id="page-masters" class="page hidden fade-in">
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
-              <div class="text-3xl mb-2">📍</div>
-              <div class="font-medium text-sm">Places</div>
+          <div id="mastersHub" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+            <button type="button" onclick="showMasterPanel('street')" class="bg-white rounded-xl p-4 shadow-sm border text-center hover:shadow-md">
+              <div class="text-2xl mb-1">🛣️</div><div class="font-medium text-sm">Street</div>
+            </button>
+            <button type="button" onclick="showMasterPanel('package')" class="bg-white rounded-xl p-4 shadow-sm border text-center hover:shadow-md">
+              <div class="text-2xl mb-1">📦</div><div class="font-medium text-sm">Package</div>
+            </button>
+            <button type="button" onclick="showMasterPanel('mso')" class="bg-white rounded-xl p-4 shadow-sm border text-center hover:shadow-md">
+              <div class="text-2xl mb-1">📡</div><div class="font-medium text-sm">MSO</div>
+            </button>
+            <button type="button" onclick="showMasterPanel('place')" class="bg-white rounded-xl p-4 shadow-sm border text-center hover:shadow-md">
+              <div class="text-2xl mb-1">📍</div><div class="font-medium text-sm">Place / Area</div>
+            </button>
+            <button type="button" onclick="showMasterPanel('company')" class="bg-white rounded-xl p-4 shadow-sm border text-center hover:shadow-md">
+              <div class="text-2xl mb-1">🏢</div><div class="font-medium text-sm">Company Info</div>
+            </button>
+            <button type="button" onclick="showMasterPanel('employee')" class="bg-white rounded-xl p-4 shadow-sm border text-center hover:shadow-md">
+              <div class="text-2xl mb-1">👤</div><div class="font-medium text-sm">Employee / Area</div>
+            </button>
+          </div>
+
+          <!-- STREET PANEL -->
+          <div id="masterPanel-street" class="master-panel hidden">
+            <button type="button" onclick="showMasterPanel(null)" class="text-sm text-blue-600 mb-2">← Back</button>
+            <div class="bg-white rounded-xl shadow-sm border p-4 mb-4">
+              <h3 class="font-semibold mb-3 text-sm">Street Master</h3>
+              <input type="hidden" id="editStreetDocId" value="">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                <div>
+                  <label class="text-xs text-slate-500">Place</label>
+                  <select id="mstPlace" class="w-full px-3 py-2 border rounded-lg bg-white">
+                    <option value="AREA 1">AREA 1</option>
+                    <option value="AREA 2">AREA 2</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-slate-500">Street</label>
+                  <input type="text" id="mstStreet" class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div>
+                  <label class="text-xs text-slate-500">Street ID</label>
+                  <input type="text" id="mstStreetId" class="w-full px-3 py-2 border rounded-lg font-mono">
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-2 mt-3">
+                <button type="button" onclick="saveStreetMaster()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Save</button>
+                <button type="button" onclick="clearStreetForm()" class="bg-slate-200 px-4 py-2 rounded-lg text-sm">Clear</button>
+                <button type="button" onclick="seedStreetsFromCode()" class="text-xs text-blue-600 ml-auto">Import default list</button>
+              </div>
             </div>
-            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
-              <div class="text-3xl mb-2">🛣️</div>
-              <div class="font-medium text-sm">Streets</div>
-            </div>
-            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
-              <div class="text-3xl mb-2">🎁</div>
-              <div class="font-medium text-sm">Packages</div>
-            </div>
-            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
-              <div class="text-3xl mb-2">👤</div>
-              <div class="font-medium text-sm">Employees</div>
-            </div>
-            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
-              <div class="text-3xl mb-2">📡</div>
-              <div class="font-medium text-sm">MSO Master</div>
-            </div>
-            <div class="bg-white rounded-xl p-5 shadow-sm border text-center">
-              <div class="text-3xl mb-2">🏢</div>
-              <div class="font-medium text-sm">Company Info</div>
+            <div class="bg-white rounded-xl border overflow-hidden">
+              <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                <table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr>
+                  <th class="text-left px-3 py-2">Place</th><th class="text-left px-3 py-2">Street</th><th class="text-left px-3 py-2">ID</th><th class="text-left px-3 py-2">Action</th>
+                </tr></thead><tbody id="streetMasterBody"></tbody></table>
+              </div>
             </div>
           </div>
-          <p class="text-center text-slate-400 text-sm mt-6">Master data management coming soon.</p>
+
+          <!-- PACKAGE PANEL -->
+          <div id="masterPanel-package" class="master-panel hidden">
+            <button type="button" onclick="showMasterPanel(null)" class="text-sm text-blue-600 mb-2">← Back</button>
+            <div class="bg-white rounded-xl border p-4 mb-4">
+              <h3 class="font-semibold mb-3 text-sm">Package Master</h3>
+              <input type="hidden" id="editPkgDocId" value="">
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input type="text" id="mstPkgName" placeholder="PLAN 300" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                <input type="number" id="mstPkgAmt" placeholder="Amount" class="w-28 px-3 py-2 border rounded-lg text-sm">
+                <button type="button" onclick="savePackageMaster()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Save</button>
+                <button type="button" onclick="seedPackages()" class="text-xs text-blue-600">Import 100–600</button>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl border overflow-hidden max-h-80 overflow-y-auto">
+              <table class="w-full text-sm"><thead class="bg-slate-50 sticky top-0"><tr>
+                <th class="text-left px-3 py-2">Package</th><th class="text-left px-3 py-2">Amount</th><th class="text-left px-3 py-2">Action</th>
+              </tr></thead><tbody id="packageMasterBody"></tbody></table>
+            </div>
+          </div>
+
+          <!-- MSO PANEL -->
+          <div id="masterPanel-mso" class="master-panel hidden">
+            <button type="button" onclick="showMasterPanel(null)" class="text-sm text-blue-600 mb-2">← Back</button>
+            <div class="bg-white rounded-xl border p-4 mb-4">
+              <h3 class="font-semibold mb-3 text-sm">MSO Master</h3>
+              <input type="hidden" id="editMsoDocId" value="">
+              <div class="flex gap-2">
+                <input type="text" id="mstMsoName" placeholder="MSO code / name" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                <button type="button" onclick="saveMsoMaster()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Save</button>
+                <button type="button" onclick="seedMso()" class="text-xs text-blue-600">Import default</button>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl border overflow-hidden">
+              <table class="w-full text-sm"><thead class="bg-slate-50"><tr>
+                <th class="text-left px-3 py-2">MSO</th><th class="text-left px-3 py-2">Action</th>
+              </tr></thead><tbody id="msoMasterBody"></tbody></table>
+            </div>
+          </div>
+
+          <!-- PLACE PANEL -->
+          <div id="masterPanel-place" class="master-panel hidden">
+            <button type="button" onclick="showMasterPanel(null)" class="text-sm text-blue-600 mb-2">← Back</button>
+            <div class="bg-white rounded-xl border p-4">
+              <h3 class="font-semibold mb-2 text-sm">Place / Area</h3>
+              <p class="text-xs text-slate-500 mb-3">இப்போது AREA 1, AREA 2 fixed. கூட்ட AREA 3 வேண்டுமானால் Settings-ல் சொல்லுங்கள்.</p>
+              <ul class="text-sm space-y-1">
+                <li class="px-3 py-2 bg-slate-50 rounded-lg">AREA 1</li>
+                <li class="px-3 py-2 bg-slate-50 rounded-lg">AREA 2</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- COMPANY PANEL -->
+          <div id="masterPanel-company" class="master-panel hidden">
+            <button type="button" onclick="showMasterPanel(null)" class="text-sm text-blue-600 mb-2">← Back</button>
+            <div class="bg-white rounded-xl border p-4 max-w-lg">
+              <h3 class="font-semibold mb-3 text-sm">Company Info</h3>
+              <div class="space-y-2 text-sm">
+                <input type="text" id="coName" placeholder="Company name" class="w-full px-3 py-2 border rounded-lg">
+                <input type="text" id="coPhone" placeholder="Phone" class="w-full px-3 py-2 border rounded-lg">
+                <input type="text" id="coAddress" placeholder="Address" class="w-full px-3 py-2 border rounded-lg">
+                <button type="button" onclick="saveCompanyInfo()" class="bg-blue-600 text-white px-4 py-2 rounded-lg">Save</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- EMPLOYEE PANEL -->
+          <div id="masterPanel-employee" class="master-panel hidden">
+            <button type="button" onclick="showMasterPanel(null)" class="text-sm text-blue-600 mb-2">← Back</button>
+            <div class="bg-white rounded-xl border p-4">
+              <h3 class="font-semibold mb-2 text-sm">Employee / Area Allotment</h3>
+              <p class="text-xs text-slate-500 mb-3">Collectors Firebase users. Area mapping:</p>
+              <ul class="text-sm space-y-2">
+                <li class="flex justify-between px-3 py-2 bg-slate-50 rounded-lg"><span>Muthumari</span><span class="font-medium">AREA 1</span></li>
+                <li class="flex justify-between px-3 py-2 bg-slate-50 rounded-lg"><span>Uma</span><span class="font-medium">AREA 2</span></li>
+                <li class="flex justify-between px-3 py-2 bg-slate-50 rounded-lg"><span>Office / Online</span><span class="font-medium">ALL</span></li>
+              </ul>
+              <p class="text-xs text-slate-400 mt-3">User create → Settings. Area change → code update (ask me).</p>
+            </div>
+          </div>
         </div>
 
         <!-- SETTINGS -->
