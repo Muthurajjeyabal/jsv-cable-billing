@@ -120,6 +120,9 @@
         <button onclick="showPage('billing')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="billing">
           <span class="text-lg">🧾</span> Billing
         </button>
+        <button onclick="showPage('cancelled')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="cancelled">
+          <span class="text-lg">🚫</span> Cancelled Bills
+        </button>
         <button onclick="showPage('pending')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm hover:bg-slate-800 transition" data-page="pending">
           <span class="text-lg">⚠️</span> Pending / Due
         </button>
@@ -170,20 +173,21 @@
         <div id="page-dashboard" class="page fade-in">
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-              <div class="text-xs text-slate-500 mb-1">Total Customers</div>
+              <div class="text-xs text-slate-500 mb-1">Customers (A + DC)</div>
               <div class="text-2xl font-bold text-blue-600" id="statCustomers">0</div>
+              <div class="text-[10px] text-slate-400 mt-1" id="statCustSplit">A: 0 · DC: 0</div>
             </div>
             <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-              <div class="text-xs text-slate-500 mb-1">Active</div>
-              <div class="text-2xl font-bold text-green-600" id="statActive">0</div>
-            </div>
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-              <div class="text-xs text-slate-500 mb-1">DC / Pending</div>
-              <div class="text-2xl font-bold text-red-600" id="statPending">0</div>
-            </div>
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-              <div class="text-xs text-slate-500 mb-1">Total Boxes</div>
+              <div class="text-xs text-slate-500 mb-1">Total Box</div>
               <div class="text-2xl font-bold text-purple-600" id="statBoxes">0</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+              <div class="text-xs text-slate-500 mb-1">Distributed</div>
+              <div class="text-2xl font-bold text-indigo-600" id="statBoxAssigned">0</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
+              <div class="text-xs text-slate-500 mb-1">Balance Stock</div>
+              <div class="text-2xl font-bold text-emerald-600" id="statBoxBalance">0</div>
             </div>
           </div>
 
@@ -551,18 +555,30 @@
                 <h3 class="font-semibold text-lg" id="ledgerCustName">-</h3>
                 <p class="text-sm text-slate-700 mt-0.5" id="ledgerStreetLine">-</p>
                 <p class="text-xs text-slate-500 mt-1" id="ledgerCustInfo">-</p>
-                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
                   <div class="bg-slate-50 rounded-lg px-3 py-2">
                     <div class="text-[10px] text-slate-500 uppercase">MSO</div>
                     <div class="font-semibold" id="ledgerMso">-</div>
                   </div>
                   <div class="bg-slate-50 rounded-lg px-3 py-2">
-                    <div class="text-[10px] text-slate-500 uppercase">VC / SC No</div>
-                    <div class="font-mono font-semibold" id="ledgerVc">-</div>
+                    <div class="text-[10px] text-slate-500 uppercase">Package / Amt</div>
+                    <div class="font-semibold" id="ledgerPkg">-</div>
                   </div>
-                  <div class="bg-blue-50 rounded-lg px-3 py-2 sm:col-span-2">
+                  <div class="bg-slate-50 rounded-lg px-3 py-2 col-span-2">
+                    <div class="text-[10px] text-slate-500 uppercase">VC / SC No (tap to copy)</div>
+                    <button type="button" id="ledgerVcBtn" onclick="copyLedgerField('vc')" class="font-mono font-semibold text-left w-full break-all">-</button>
+                  </div>
+                  <div class="bg-blue-50 rounded-lg px-3 py-2 col-span-2">
                     <div class="text-[10px] text-blue-600 uppercase">Box No (tap to copy)</div>
-                    <button type="button" id="ledgerBoxBtn" onclick="copyLedgerBox()" class="font-mono font-bold text-blue-800 text-base break-all text-left w-full">-</button>
+                    <button type="button" id="ledgerBoxBtn" onclick="copyLedgerField('box')" class="font-mono font-bold text-blue-800 text-base break-all text-left w-full">-</button>
+                  </div>
+                  <div class="bg-slate-50 rounded-lg px-3 py-2">
+                    <div class="text-[10px] text-slate-500 uppercase">Connection Date</div>
+                    <div class="font-medium" id="ledgerConDate">-</div>
+                  </div>
+                  <div class="bg-slate-50 rounded-lg px-3 py-2">
+                    <div class="text-[10px] text-slate-500 uppercase">CAF / Addon</div>
+                    <div class="font-medium text-xs" id="ledgerCafAddon">-</div>
                   </div>
                 </div>
               </div>
@@ -585,11 +601,12 @@
               <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-600">
                   <tr>
-                    <th class="text-left px-3 py-3 font-medium">Date</th>
-                    <th class="text-left px-3 py-3 font-medium">Amount</th>
-                    <th class="text-left px-3 py-3 font-medium">Mode</th>
-                    <th class="text-left px-3 py-3 font-medium">Remarks</th>
-                    <th class="text-left px-3 py-3 font-medium">By</th>
+                    <th class="text-left px-2 py-3 font-medium">Bill No</th>
+                    <th class="text-left px-2 py-3 font-medium">Date</th>
+                    <th class="text-left px-2 py-3 font-medium">Amount</th>
+                    <th class="text-left px-2 py-3 font-medium">Mode</th>
+                    <th class="text-left px-2 py-3 font-medium">By</th>
+                    <th class="text-left px-2 py-3 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody id="ledgerTableBody">
@@ -780,6 +797,31 @@
             </button>
           </div>
           <p class="text-center text-slate-400 text-sm mt-6">Full reports will be activated in next update.</p>
+        </div>
+
+
+        <!-- CANCELLED BILLS -->
+        <div id="page-cancelled" class="page hidden fade-in">
+          <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div class="px-4 py-3 border-b font-semibold text-sm">Cancelled Bills</div>
+            <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50 sticky top-0">
+                  <tr>
+                    <th class="text-left px-3 py-2">Bill No</th>
+                    <th class="text-left px-3 py-2">Date</th>
+                    <th class="text-left px-3 py-2">Customer</th>
+                    <th class="text-left px-3 py-2">Amount</th>
+                    <th class="text-left px-3 py-2">Collected By</th>
+                    <th class="text-left px-3 py-2">Cancelled By</th>
+                  </tr>
+                </thead>
+                <tbody id="cancelledBillsBody">
+                  <tr><td colspan="6" class="text-center py-6 text-slate-400">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- MASTERS -->

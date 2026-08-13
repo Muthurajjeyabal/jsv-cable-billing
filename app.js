@@ -804,6 +804,9 @@ async function loadCancelledBills() {
 
 // ==================== DASHBOARD ====================
 async function loadDashboard() {
+  if (typeof loadBoxes === 'function') {
+    try { await loadBoxes(); } catch (e) { console.log(e); }
+  }
   updateDashboardStats();
 
   const today = new Date().toISOString().split('T')[0];
@@ -869,17 +872,42 @@ function classifyAgent(d) {
 function updateDashboardStats() {
   const total = allCustomers.length;
   const active = allCustomers.filter(c => (c.status || 'ACT') === 'ACT').length;
-  const pending = allCustomers.filter(c => c.status === 'DC').length;
-  const boxes = allCustomers.filter(c => c.boxNo).length;
+  const dc = allCustomers.filter(c => c.status === 'DC').length;
   const totalDue = allCustomers.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
 
-  document.getElementById('statCustomers').textContent = total;
-  document.getElementById('statActive').textContent = active;
-  document.getElementById('statPending').textContent = pending;
-  document.getElementById('statBoxes').textContent = boxes;
-  document.getElementById('statDue').textContent = '₹ ' + totalDue.toLocaleString('en-IN');
+  // Customers
+  const sc = document.getElementById('statCustomers');
+  if (sc) sc.textContent = total;
+  const split = document.getElementById('statCustSplit');
+  if (split) split.textContent = 'A: ' + active + ' · DC: ' + dc;
+  const sa = document.getElementById('statActive');
+  if (sa) sa.textContent = active;
+  const sp = document.getElementById('statPending');
+  if (sp) sp.textContent = dc;
+
+  // Boxes: prefer boxes collection; else customers with boxNo = distributed
+  let totalBox = 0, assigned = 0, balance = 0;
+  if (typeof allBoxes !== 'undefined' && allBoxes.length > 0) {
+    totalBox = allBoxes.length;
+    assigned = allBoxes.filter(b => b.status === 'assigned').length;
+    balance = allBoxes.filter(b => b.status === 'available').length;
+  } else {
+    // fallback until stock imported
+    assigned = allCustomers.filter(c => c.boxNo && String(c.boxNo).trim()).length;
+    totalBox = assigned; // unknown stock
+    balance = 0;
+  }
+  const sb = document.getElementById('statBoxes');
+  if (sb) sb.textContent = totalBox;
+  const sba = document.getElementById('statBoxAssigned');
+  if (sba) sba.textContent = assigned;
+  const sbb = document.getElementById('statBoxBalance');
+  if (sbb) sbb.textContent = balance;
+
+  const sd = document.getElementById('statDue');
+  if (sd) sd.textContent = '₹ ' + totalDue.toLocaleString('en-IN');
   const boxDisplay = document.getElementById('boxCountDisplay');
-  if (boxDisplay) boxDisplay.textContent = boxes;
+  if (boxDisplay) boxDisplay.textContent = totalBox;
 }
 
 // ==================== WHATSAPP ====================
