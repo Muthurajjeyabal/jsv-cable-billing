@@ -574,10 +574,6 @@
                   </div>
                 </div>
                 <div>
-                  <label class="block text-xs font-medium mb-1 text-slate-600">Door No</label>
-                  <input type="text" id="custDoor" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                </div>
-                <div>
                   <label class="block text-xs font-medium mb-1 text-slate-600">MSO *</label>
                   <select id="custMSO" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white">
                     <option value="">- Select MSO -</option>
@@ -641,13 +637,8 @@
                   <label class="block text-xs font-medium mb-1 text-slate-600">Due Amount</label>
                   <input type="number" id="custDueAmt" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
-                <div>
-                  <label class="block text-xs font-medium mb-1 text-slate-600">Status</label>
-                  <select id="custStatus" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                    <option value="ACT">Active</option>
-                    <option value="DC">DC</option>
-                  </select>
-                </div>
+                <input type="hidden" id="custStatus" value="ACT">
+                <input type="hidden" id="custDoor" value="">
                 <div>
                   <label class="block text-xs font-medium mb-1 text-slate-600">Connection Date</label>
                   <input type="date" id="custConDate" onchange="calcNewConnectionBilling()" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
