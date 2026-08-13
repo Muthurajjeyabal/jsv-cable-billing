@@ -1048,8 +1048,8 @@ function classifyAgent(d) {
 
 function updateDashboardStats() {
   const total = allCustomers.length;
-  const active = allCustomers.filter(c => (c.status || 'ACT') === 'ACT').length;
-  const dc = allCustomers.filter(c => c.status === 'DC').length;
+  const active = allCustomers.filter(c => String(c.status || 'ACT').toUpperCase() === 'ACT').length;
+  const dc = allCustomers.filter(c => String(c.status || '').toUpperCase() === 'DC').length;
   const totalDue = allCustomers.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
 
   // Customers
@@ -2327,47 +2327,75 @@ document.addEventListener('click', (e) => {
 });
 
 async function importDcList() {
-  if (!confirm('CableSoft DC list import?\n\nஇந்த customers status = DC ஆகும்.\nBox return → Store (optional in list).')) return;
+  if (!confirm('DC list import?\n\n• App-ல் இருந்தால் → status DC\n• இல்லையென்றால் → புதிய DC customer ADD')) return;
   try {
     showToast('Loading DC list...');
     const res = await fetch('dc_list.json?t=' + Date.now());
-    if (!res.ok) throw new Error('dc_list.json upload பண்ணுங்கள் (GitHub-ல் index.html பக்கம்)');
+    if (!res.ok) throw new Error('dc_list.json upload ஆகவில்லை');
     const list = await res.json();
+    await loadCustomers();
     const byId = new Map();
+    const byBox = new Map();
     allCustomers.forEach(c => {
       const id = String(c.custId || '').trim().toUpperCase();
       if (id) byId.set(id, c);
+      const b = String(c.boxNo || '').trim().toUpperCase();
+      if (b && b !== '0') byBox.set(b, c);
     });
-    let updated = 0, missing = 0;
-    for (let i = 0; i < list.length; i += 400) {
-      const chunk = list.slice(i, i + 400);
+    let updated = 0, added = 0;
+    for (let i = 0; i < list.length; i += 200) {
+      const chunk = list.slice(i, i + 200);
       const batch = db.batch();
-      let ops = 0;
       for (const r of chunk) {
-        const cust = byId.get(String(r.custId || '').trim().toUpperCase());
-        if (!cust) { missing++; continue; }
+        const cid = String(r.custId || '').trim();
+        const cidU = cid.toUpperCase();
+        const box = String(r.box || '').trim();
+        const boxU = box.toUpperCase();
+        let cust = byId.get(cidU) || (boxU && boxU !== '0' && boxU !== '0000' ? byBox.get(boxU) : null);
         const bal = Number(r.balance || 0);
-        batch.update(db.collection('customers').doc(cust.id), {
-          status: 'DC',
-          dcDate: r.dcDate || '',
-          dueAmt: bal > 0 ? bal : Number(cust.dueAmt || cust.due || 0),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        ops++;
-        updated++;
-        // box to store if had box
-        const boxNo = (r.box && r.box !== '0' && r.box !== '0000') ? r.box : (cust.boxNo || '');
-        if (boxNo) {
-          // handled after via sync optional
+        if (cust) {
+          batch.update(db.collection('customers').doc(cust.id), {
+            status: 'DC',
+            dcDate: r.dcDate || '',
+            dueAmt: bal > 0 ? bal : Number(cust.dueAmt || 0),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          updated++;
+        } else {
+          const ref = db.collection('customers').doc();
+          batch.set(ref, {
+            custId: cid,
+            name: r.name || '',
+            mobile: (r.mobile && r.mobile !== '0') ? String(r.mobile) : '',
+            boxNo: (box && box !== '0' && box !== '0000') ? box : '',
+            scNo: r.sc || '',
+            smartCard: r.sc || '',
+            status: 'DC',
+            dcDate: r.dcDate || '',
+            dueAmt: bal,
+            packageAmt: 0,
+            place: '',
+            street: '',
+            billing: 'No',
+            source: 'dc-import',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          added++;
+          // avoid dup in same batch
+          if (cidU) byId.set(cidU, { id: ref.id });
+          if (boxU && boxU !== '0') byBox.set(boxU, { id: ref.id });
         }
       }
-      if (ops) await batch.commit();
+      await batch.commit();
     }
-    showToast('DC updated: ' + updated + ' · Not found: ' + missing);
     await loadCustomers();
-    loadDashboard();
+    updateDashboardStats();
+    showToast('DC · Updated: ' + updated + ' · Added: ' + added + ' · Total list: ' + list.length);
   } catch (e) {
+    console.error(e);
     showToast('DC import error: ' + e.message, true);
   }
 }
+
 
