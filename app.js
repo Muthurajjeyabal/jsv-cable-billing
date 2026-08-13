@@ -172,12 +172,13 @@ function showPage(pageId) {
     ledger: 'Customer Ledger',
     pending: 'Pending / Due Report',
     boxes: 'Box Management',
-    reports: 'Reports',
+    reports: 'Collection Report',
     masters: 'Masters',
     settings: 'Settings'
   };
   document.getElementById('pageTitle').textContent = titles[pageId] || pageId;
   if (pageId === 'settings') refreshMonthBillLockUI();
+  if (pageId === 'reports') renderCollectionReport();
 
   if (pageId === 'newCustomer') {
     document.getElementById('customerForm').reset();
@@ -2654,3 +2655,234 @@ async function deleteEmployee(id) {
   }
 }
 
+// ==================== COLLECTION REPORT (Street-wise Print) ====================
+function getCollectionReportData(area) {
+  const list = allCustomers.filter(c => {
+    if (Number(c.dueAmt || c.due || 0) <= 0) return false;
+    if ((c.status || 'ACT').toUpperCase() === 'DC') return false; // optional: skip DC
+    if (area && (c.place || '') !== area) return false;
+    return true;
+  });
+  // group by street
+  const map = new Map();
+  list.forEach(c => {
+    const st = (c.street || '— No Street —').trim();
+    if (!map.has(st)) map.set(st, []);
+    map.get(st).push(c);
+  });
+  // sort streets Tamil-friendly, customers by custId
+  const streets = Array.from(map.keys()).sort((a, b) => a.localeCompare(b, 'ta'));
+  streets.forEach(st => {
+    map.get(st).sort((a, b) => String(a.custId || '').localeCompare(String(b.custId || ''), 'en', { numeric: true }));
+  });
+  return { streets, map, list };
+}
+
+function renderCollectionReport() {
+  const area = (document.getElementById('colRepArea') || {}).value || 'AREA 1';
+  const box = document.getElementById('colRepPrint');
+  const sum = document.getElementById('colRepSummary');
+  if (!box) return;
+  const { streets, map, list } = getCollectionReportData(area);
+  const totalDue = list.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
+  if (sum) {
+    sum.textContent = area + ' · ' + list.length + ' customers · ' + streets.length + ' streets · Total ₹' + totalDue.toLocaleString('en-IN');
+  }
+  const month = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+  if (!list.length) {
+    box.innerHTML = '<div class="text-center text-slate-400 text-sm py-8">No pending in ' + area + '</div>';
+    return;
+  }
+  let html = `
+    <div class="col-rep-head">
+      <h2>JSV CABLE TV — Collection Report</h2>
+      <p>${area} · ${month} · Pending Due · ${list.length} customers</p>
+      <p>Total Due: ₹${totalDue.toLocaleString('en-IN')}</p>
+    </div>`;
+  streets.forEach(st => {
+    const rows = map.get(st);
+    const stTotal = rows.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
+    html += `<div class="col-street">
+      <h4>${st} <span style="float:right;font-weight:600">₹${stTotal.toLocaleString('en-IN')} · ${rows.length}</span></h4>
+      <table>
+        <thead><tr><th style="width:22%">ID</th><th>Name</th><th style="width:18%;text-align:right">Amount</th></tr></thead>
+        <tbody>`;
+    rows.forEach(c => {
+      const amt = Number(c.dueAmt || c.due || 0);
+      html += `<tr>
+        <td>${c.custId || '-'}</td>
+        <td>${c.name || '-'}</td>
+        <td class="amt">₹${amt.toLocaleString('en-IN')}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+  html += `<div style="margin-top:12px;font-size:10px;text-align:center;color:#64748b">JSV Cable TV · S. Alangulam · ${area}</div>`;
+  box.innerHTML = html;
+}
+
+function printCollectionReport() {
+  renderCollectionReport();
+  setTimeout(() => window.print(), 200);
+}
+
+// ==================== FULL MONTHLY BACKUP ====================
+function downloadBlob(filename, content, mime) {
+  const blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
+}
+
+function toCSV(rows, headers) {
+  const esc = (v) => {
+    const s = v == null ? '' : String(v);
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  };
+  const lines = [headers.join(',')];
+  rows.forEach(r => lines.push(headers.map(h => esc(r[h])).join(',')));
+  return '\uFEFF' + lines.join('\n'); // BOM for Excel Tamil
+}
+
+async function runFullBackup() {
+  const btn = document.getElementById('backupBtn');
+  const st = document.getElementById('backupStatus');
+  if (btn) { btn.disabled = true; btn.textContent = 'Backing up...'; }
+  if (st) st.textContent = 'Loading data from Firebase...';
+
+  try {
+    // Ensure fresh data
+    await loadCustomers();
+    let boxes = [];
+    try {
+      const bs = await db.collection('boxes').get();
+      bs.forEach(d => boxes.push({ id: d.id, ...d.data() }));
+    } catch (e) {}
+    let collections = [];
+    try {
+      const cs = await db.collection('collections').get();
+      cs.forEach(d => collections.push({ id: d.id, ...d.data() }));
+    } catch (e) {}
+    let streets = [];
+    try {
+      const ss = await db.collection('streets').get();
+      ss.forEach(d => streets.push({ id: d.id, ...d.data() }));
+    } catch (e) {}
+    let employees = [];
+    try {
+      const es = await db.collection('employees').get();
+      es.forEach(d => employees.push({ id: d.id, ...d.data() }));
+    } catch (e) {}
+    let company = {};
+    try {
+      const cd = await db.collection('settings').doc('company').get();
+      if (cd.exists) company = cd.data();
+    } catch (e) {}
+    let monthBill = {};
+    try {
+      const md = await db.collection('settings').doc('monthBill').get();
+      if (md.exists) monthBill = md.data();
+    } catch (e) {}
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    const ym = new Date().toISOString().slice(0, 7);
+
+    // 1) Full JSON backup
+    if (st) st.textContent = '1/3 JSON full backup...';
+    const full = {
+      meta: {
+        app: 'JSV Cable TV',
+        place: 'S. Alangulam',
+        exportedAt: new Date().toISOString(),
+        month: ym
+      },
+      company,
+      monthBill,
+      customers: allCustomers.map(({ id, ...r }) => ({ id, ...r })),
+      boxes,
+      collections: collections.map(c => {
+        const o = { ...c };
+        // stringify timestamps
+        if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString();
+        if (o.updatedAt && o.updatedAt.toDate) o.updatedAt = o.updatedAt.toDate().toISOString();
+        return o;
+      }),
+      streets,
+      employees
+    };
+    downloadBlob(
+      'JSV_Backup_FULL_' + stamp + '.json',
+      JSON.stringify(full, null, 2),
+      'application/json'
+    );
+
+    await new Promise(r => setTimeout(r, 400));
+
+    // 2) Customers CSV (Excel-friendly)
+    if (st) st.textContent = '2/3 Customers CSV...';
+    const custRows = allCustomers.map(c => ({
+      custId: c.custId || '',
+      name: c.name || '',
+      mobile: c.mobile || '',
+      place: c.place || '',
+      street: c.street || '',
+      boxNo: c.boxNo || '',
+      scNo: c.scNo || c.smartCard || '',
+      mso: c.mso || '',
+      package: c.package || '',
+      packageAmt: c.packageAmt || c.package || '',
+      dueAmt: c.dueAmt || c.due || 0,
+      status: c.status || 'ACT',
+      dcDate: c.dcDate || '',
+      doorNo: c.doorNo || '',
+      signal: c.signal || ''
+    }));
+    const custHeaders = ['custId','name','mobile','place','street','boxNo','scNo','mso','package','packageAmt','dueAmt','status','dcDate','doorNo','signal'];
+    downloadBlob(
+      'JSV_Customers_' + stamp + '.csv',
+      toCSV(custRows, custHeaders),
+      'text/csv;charset=utf-8'
+    );
+
+    await new Promise(r => setTimeout(r, 400));
+
+    // 3) Collections CSV
+    if (st) st.textContent = '3/3 Collections CSV...';
+    const colRows = collections.map(c => ({
+      billNo: c.billNo || '',
+      date: c.date || c.billDate || '',
+      customerId: c.customerId || '',
+      customerName: c.customerName || '',
+      amount: c.amount || 0,
+      mode: c.mode || '',
+      collectedBy: c.collectedBy || c.employee || '',
+      createdBy: c.createdBy || '',
+      remarks: c.remarks || '',
+      status: c.status || ''
+    }));
+    const colHeaders = ['billNo','date','customerId','customerName','amount','mode','collectedBy','createdBy','remarks','status'];
+    downloadBlob(
+      'JSV_Collections_' + stamp + '.csv',
+      toCSV(colRows, colHeaders),
+      'text/csv;charset=utf-8'
+    );
+
+    const msg = 'Backup OK · Customers ' + allCustomers.length +
+      ' · Boxes ' + boxes.length +
+      ' · Collections ' + collections.length +
+      ' · 3 files downloaded';
+    if (st) st.textContent = '✅ ' + msg;
+    showToast('Backup complete — 3 files');
+  } catch (e) {
+    console.error(e);
+    if (st) st.textContent = 'Error: ' + e.message;
+    showToast('Backup error: ' + e.message, true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Backup Now'; }
+  }
+}
