@@ -2774,32 +2774,58 @@ async function importDcList() {
 let allEmployees = [];
 
 async function loadEmployees() {
+  const el = document.getElementById('empList');
+  if (el) el.innerHTML = '<div class="p-3 text-slate-400 text-center text-sm">Loading...</div>';
+  const defaults = [
+    { name: 'Muthumari', email: 'muthumari@jsvcable.com', area: 'AREA 1', role: 'collector' },
+    { name: 'Uma', email: 'uma@jsvcable.com', area: 'AREA 2', role: 'collector' },
+    { name: 'Office', email: 'office@jsvcable.com', area: 'ALL', role: 'office' },
+    { name: 'Online', email: 'online@jsvcable.com', area: 'ALL', role: 'online' }
+  ];
   try {
     const snap = await db.collection('employees').get();
     allEmployees = [];
     snap.forEach(doc => allEmployees.push({ id: doc.id, ...doc.data() }));
     allEmployees.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    // seed defaults if empty
+
     if (allEmployees.length === 0) {
-      const defaults = [
-        { name: 'Muthumari', email: 'muthumari@jsvcable.com', area: 'AREA 1', role: 'collector' },
-        { name: 'Uma', email: 'uma@jsvcable.com', area: 'AREA 2', role: 'collector' },
-        { name: 'Office', email: 'office@jsvcable.com', area: 'ALL', role: 'office' },
-        { name: 'Online', email: 'online@jsvcable.com', area: 'ALL', role: 'online' }
-      ];
-      const batch = db.batch();
-      defaults.forEach(d => {
-        const ref = db.collection('employees').doc();
-        batch.set(ref, { ...d, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      });
-      await batch.commit();
-      return loadEmployees();
+      // seed once — no recursive hang
+      for (const d of defaults) {
+        try {
+          await db.collection('employees').add({
+            ...d,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } catch (se) {
+          console.warn('seed employee failed', se);
+        }
+      }
+      try {
+        const snap2 = await db.collection('employees').get();
+        allEmployees = [];
+        snap2.forEach(doc => allEmployees.push({ id: doc.id, ...doc.data() }));
+      } catch (e2) {}
+      // if still empty (permission), show local defaults for display only
+      if (!allEmployees.length) {
+        allEmployees = defaults.map((d, i) => ({ id: 'local_' + i, ...d, _local: true }));
+        if (el) {
+          renderEmployeeList();
+          el.insertAdjacentHTML('afterbegin',
+            '<div class="p-2 text-xs text-amber-700 bg-amber-50 border-b">Firestore employees write fail — local list. Firebase Rules-ல் employees allow check பண்ணுங்கள்.</div>');
+          return;
+        }
+      }
     }
     renderEmployeeList();
   } catch (e) {
     console.error(e);
-    const el = document.getElementById('empList');
-    if (el) el.innerHTML = '<div class="p-3 text-red-500 text-sm">' + e.message + '</div>';
+    // permission / network — still show usable list
+    allEmployees = defaults.map((d, i) => ({ id: 'local_' + i, ...d, _local: true }));
+    if (el) {
+      el.innerHTML = '<div class="p-2 text-xs text-red-600 bg-red-50 border-b">Error: ' + (e.message || e) +
+        '<br>Firebase Console → Firestore → Rules: employees read/write allow authenticated.</div>';
+      renderEmployeeList();
+    }
   }
 }
 
@@ -2868,6 +2894,7 @@ async function saveEmployee() {
 }
 
 async function deleteEmployee(id) {
+  if (String(id).startsWith('local_')) { showToast('Local only — Firestore-ல் save முதலில்', true); return; }
   if (!confirm('Delete this employee mapping?')) return;
   try {
     await db.collection('employees').doc(id).delete();
