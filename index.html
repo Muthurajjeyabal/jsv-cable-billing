@@ -304,8 +304,12 @@
                   <input type="text" id="custDoor" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
-                  <label class="block text-xs font-medium mb-1 text-slate-600">Place</label>
-                  <input type="text" id="custPlace" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">Place / Area *</label>
+                  <select id="custPlace" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                    <option value="">- Select Area -</option>
+                    <option value="AREA 1">AREA 1</option>
+                    <option value="AREA 2">AREA 2</option>
+                  </select>
                 </div>
                 <div>
                   <label class="block text-xs font-medium mb-1 text-slate-600">Street</label>
@@ -372,8 +376,15 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-xs font-medium mb-1 text-slate-600">MSO Name</label>
-                  <input type="text" id="custMSO" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="e.g. SPCHE0077">
+                  <label class="block text-xs font-medium mb-1 text-slate-600">MSO Name *</label>
+                  <select id="custMSO" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                    <option value="">- Select MSO -</option>
+                    <option value="SPCHE0077">SPCHE0077</option>
+                    <option value="SPCHE5981">SPCHE5981</option>
+                    <option value="TACTV25215">TACTV25215</option>
+                    <option value="TACTV25257">TACTV25257</option>
+                    <option value="SCV">SCV</option>
+                  </select>
                 </div>
                 <div>
                   <label class="block text-xs font-medium mb-1 text-slate-600">Box Number</label>
@@ -415,21 +426,36 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="block text-xs font-medium mb-1 text-slate-600">Package</label>
-                  <select id="custPackage" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                  <select id="custPackage" onchange="onPackageChange()" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white">
                     <option value="">Select Package</option>
-                    <option value="PLAN 250">PLAN 250</option>
-                    <option value="PLAN 280">PLAN 280</option>
-                    <option value="PLAN 290">PLAN 290</option>
-                    <option value="PLAN 300">PLAN 300</option>
-                    <option value="PLAN 350">PLAN 350</option>
-                    <option value="Basic">Basic</option>
-                    <option value="Standard">Standard</option>
-                    <option value="Premium">Premium</option>
+                    <option value="PLAN 100" data-amt="100">PLAN 100</option>
+                    <option value="PLAN 150" data-amt="150">PLAN 150</option>
+                    <option value="PLAN 180" data-amt="180">PLAN 180</option>
+                    <option value="PLAN 200" data-amt="200">PLAN 200</option>
+                    <option value="PLAN 220" data-amt="220">PLAN 220</option>
+                    <option value="PLAN 230" data-amt="230">PLAN 230</option>
+                    <option value="PLAN 250" data-amt="250">PLAN 250</option>
+                    <option value="PLAN 260" data-amt="260">PLAN 260</option>
+                    <option value="PLAN 275" data-amt="275">PLAN 275</option>
+                    <option value="PLAN 280" data-amt="280">PLAN 280</option>
+                    <option value="PLAN 290" data-amt="290">PLAN 290</option>
+                    <option value="PLAN 300" data-amt="300">PLAN 300</option>
+                    <option value="PLAN 305" data-amt="305">PLAN 305</option>
+                    <option value="PLAN 310" data-amt="310">PLAN 310</option>
+                    <option value="PLAN 315" data-amt="315">PLAN 315</option>
+                    <option value="PLAN 325" data-amt="325">PLAN 325</option>
+                    <option value="PLAN 350" data-amt="350">PLAN 350</option>
+                    <option value="PLAN 380" data-amt="380">PLAN 380</option>
+                    <option value="PLAN 400" data-amt="400">PLAN 400</option>
+                    <option value="PLAN 450" data-amt="450">PLAN 450</option>
+                    <option value="PLAN 500" data-amt="500">PLAN 500</option>
+                    <option value="PLAN 550" data-amt="550">PLAN 550</option>
+                    <option value="PLAN 600" data-amt="600">PLAN 600</option>
                   </select>
                 </div>
                 <div>
                   <label class="block text-xs font-medium mb-1 text-slate-600">Package Amount</label>
-                  <input type="number" id="custPkgAmt" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                  <input type="number" id="custPkgAmt" oninput="recalcPackageTotal()" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 <div>
                   <label class="block text-xs font-medium mb-1 text-slate-600">Billing</label>
@@ -438,6 +464,22 @@
                     <option value="No">No</option>
                   </select>
                 </div>
+              </div>
+
+              <div class="mt-4 border-t pt-3">
+                <div class="text-xs font-medium text-slate-600 mb-2">Add-on Channels (type yourself)</div>
+                <div class="flex flex-col sm:flex-row gap-2 mb-2">
+                  <input type="text" id="addonNameInput" placeholder="Channel name (e.g. Jothi TV)" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                  <input type="number" id="addonAmtInput" placeholder="₹" class="w-24 px-3 py-2 border rounded-lg text-sm" inputmode="numeric">
+                  <button type="button" onclick="addCustomAddon()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">+ Add</button>
+                </div>
+                <div id="addonChips" class="flex flex-wrap gap-2 min-h-[2rem]"></div>
+                <div class="mt-3 flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                  <div class="text-sm">Add-on total: <span id="addonTotalDisp" class="font-semibold">₹0</span></div>
+                  <div class="text-sm sm:ml-auto">Monthly Total: <span id="pkgTotalDisp" class="font-bold text-blue-700 text-base">₹0</span></div>
+                </div>
+                <input type="hidden" id="custAddons" value="[]">
+                <input type="hidden" id="custAddonAmt" value="0">
               </div>
             </div>
 
@@ -597,13 +639,61 @@
           </div>
 
           <div class="bg-white rounded-xl shadow-sm border p-4 mb-4">
-            <h3 class="font-semibold mb-2 text-sm">Add Box to Store</h3>
-            <div class="flex flex-col sm:flex-row gap-2">
-              <input type="text" id="newBoxNo" placeholder="Box Number" class="flex-1 px-3 py-2 border rounded-lg text-sm">
-              <input type="text" id="newBoxMso" placeholder="MSO (optional)" class="flex-1 px-3 py-2 border rounded-lg text-sm">
-              <button onclick="addBoxToStock()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Add Stock</button>
+            <h3 class="font-semibold mb-3 text-sm">Purchase / Add Box</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <label class="text-xs text-slate-500">Type</label>
+                <select id="newBoxPurType" class="w-full px-3 py-2 border rounded-lg bg-white">
+                  <option value="New">New</option>
+                  <option value="Exchange">Exchange</option>
+                  <option value="Return">Return</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Invoice Number</label>
+                <input type="text" id="newBoxInvNo" placeholder="Invoice No" class="w-full px-3 py-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Invoice Date</label>
+                <input type="date" id="newBoxInvDate" class="w-full px-3 py-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">MSO Name *</label>
+                <select id="newBoxMso" class="w-full px-3 py-2 border rounded-lg bg-white">
+                  <option value="">- Select MSO -</option>
+                  <option value="SPCHE0077">SPCHE0077</option>
+                  <option value="SPCHE5981">SPCHE5981</option>
+                  <option value="TACTV25215">TACTV25215</option>
+                  <option value="TACTV25257">TACTV25257</option>
+                  <option value="SCV">SCV</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Box Name</label>
+                <input type="text" id="newBoxName" placeholder="Box Name (optional)" class="w-full px-3 py-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Box Type</label>
+                <select id="newBoxType" class="w-full px-3 py-2 border rounded-lg bg-white">
+                  <option value="HD">HD</option>
+                  <option value="SD">SD</option>
+                  <option value="HD+">HD+</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">SC No. *</label>
+                <input type="text" id="newBoxScNo" placeholder="Smart Card / SC Number" class="w-full px-3 py-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Box Number *</label>
+                <input type="text" id="newBoxNo" placeholder="Box Number" class="w-full px-3 py-2 border rounded-lg">
+              </div>
             </div>
-            <button onclick="syncBoxesFromCustomers()" class="mt-2 text-xs text-blue-600 hover:underline">Sync from customer list (one-time)</button>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button onclick="addBoxToStock()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">Save</button>
+              <button onclick="clearBoxForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm">Clear</button>
+              <button onclick="syncBoxesFromCustomers()" class="text-xs text-blue-600 hover:underline ml-auto self-center">Sync from customers</button>
+            </div>
           </div>
 
           <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -616,10 +706,12 @@
               <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-600 sticky top-0">
                   <tr>
-                    <th class="text-left px-3 py-2">Box No</th>
-                    <th class="text-left px-3 py-2">Status</th>
-                    <th class="text-left px-3 py-2">Customer</th>
-                    <th class="text-left px-3 py-2">MSO</th>
+                    <th class="text-left px-2 py-2 text-xs">Box No</th>
+                    <th class="text-left px-2 py-2 text-xs">SC No</th>
+                    <th class="text-left px-2 py-2 text-xs">MSO</th>
+                    <th class="text-left px-2 py-2 text-xs">Type</th>
+                    <th class="text-left px-2 py-2 text-xs">Status</th>
+                    <th class="text-left px-2 py-2 text-xs">Customer</th>
                   </tr>
                 </thead>
                 <tbody id="boxTableBody">
@@ -711,6 +803,24 @@
                 <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Create User</button>
               </form>
               <p class="text-xs text-slate-500 mt-2">Only Admin should create users.</p>
+            </div>
+
+            <div class="border rounded-xl p-4 border-blue-200 bg-blue-50">
+              <div class="font-medium mb-1 text-blue-900">Bulk Add-on (All / Area)</div>
+              <p class="text-xs text-blue-800 mb-2">Active customers-க்கு add-on சேர்க்கும். Package amount-உடன் கூடும்.</p>
+              <div class="flex flex-col sm:flex-row gap-2 mb-2">
+                <input type="text" id="bulkAddonName" placeholder="Channel name" class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                <input type="number" id="bulkAddonAmt" placeholder="₹" class="w-24 px-3 py-2 border rounded-lg text-sm">
+              </div>
+              <div class="flex flex-wrap gap-2 mb-2">
+                <select id="bulkAddonArea" class="px-3 py-2 border rounded-lg text-sm bg-white">
+                  <option value="ALL">All Areas</option>
+                  <option value="AREA 1">AREA 1 only</option>
+                  <option value="AREA 2">AREA 2 only</option>
+                </select>
+                <button type="button" onclick="bulkAddAddon()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Apply to Customers</button>
+              </div>
+              <div id="bulkAddonStatus" class="text-xs text-slate-600 hidden"></div>
             </div>
 
             <div class="border rounded-xl p-4 border-amber-200 bg-amber-50">

@@ -169,6 +169,8 @@ function showPage(pageId) {
     document.getElementById('customerForm').reset();
     document.getElementById('editCustomerId').value = '';
     document.getElementById('customerFormTitle').textContent = 'New Customer';
+    currentAddons = [];
+    if (typeof renderAddonChips === 'function') renderAddonChips();
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('custConDate').value = today;
   }
@@ -279,7 +281,10 @@ async function handleSaveCustomer(e) {
     scNo: document.getElementById('custSC').value.trim(),
     smartCard: document.getElementById('custSC').value.trim(),
     package: document.getElementById('custPackage').value,
-    packageAmt: Number(document.getElementById('custPkgAmt').value) || 0,
+    packageAmt: (Number(document.getElementById('custPkgAmt').value) || 0) + (Number(document.getElementById('custAddonAmt')?.value) || 0),
+    packageBase: Number(document.getElementById('custPkgAmt').value) || 0,
+    addons: (() => { try { return JSON.parse(document.getElementById('custAddons')?.value || '[]'); } catch(e) { return []; } })(),
+    addonAmt: Number(document.getElementById('custAddonAmt')?.value) || 0,
     dueAmt: Number(document.getElementById('custDueAmt')?.value) || 0,
     otherCharges: Number(document.getElementById('custOtherCharges')?.value) || 0,
     discount: Number(document.getElementById('custDiscount')?.value) || 0,
@@ -333,7 +338,8 @@ function editCustomer(id) {
   document.getElementById('custBox').value = c.boxNo || '';
   document.getElementById('custSC').value = c.scNo || c.smartCard || '';
   document.getElementById('custPackage').value = c.package || '';
-  document.getElementById('custPkgAmt').value = c.packageAmt || '';
+  document.getElementById('custPkgAmt').value = c.packageBase != null ? c.packageBase : (c.packageAmt || '');
+  setAddonsFromCustomer(c);
   if (document.getElementById('custDueAmt')) document.getElementById('custDueAmt').value = c.dueAmt || c.due || 0;
   if (document.getElementById('custOtherCharges')) document.getElementById('custOtherCharges').value = c.otherCharges || 0;
   if (document.getElementById('custDiscount')) document.getElementById('custDiscount').value = c.discount || 0;
@@ -784,6 +790,137 @@ function skipWa() {
 }
 
 // ==================== TOAST ====================
+function onPackageChange() {
+  const sel = document.getElementById('custPackage');
+  if (!sel) return;
+  const opt = sel.options[sel.selectedIndex];
+  const amt = opt && opt.dataset ? opt.dataset.amt : '';
+  const pkgAmt = document.getElementById('custPkgAmt');
+  if (pkgAmt && amt) pkgAmt.value = amt;
+  recalcPackageTotal();
+}
+
+let currentAddons = [];
+
+function renderAddonChips() {
+  const box = document.getElementById('addonChips');
+  if (!box) return;
+  if (!currentAddons.length) {
+    box.innerHTML = '<span class="text-xs text-slate-400">No add-ons</span>';
+  } else {
+    box.innerHTML = currentAddons.map((a, i) =>
+      `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-800 text-xs px-2 py-1 rounded-full border border-blue-200">
+        ${a.name} ₹${a.amount}
+        <button type="button" onclick="removeAddon(${i})" class="text-red-500 font-bold ml-1">&times;</button>
+      </span>`
+    ).join('');
+  }
+  recalcPackageTotal();
+}
+
+function addCustomAddon() {
+  const name = (document.getElementById('addonNameInput').value || '').trim();
+  const amount = Number(document.getElementById('addonAmtInput').value || 0);
+  if (!name) { showToast('Channel name type பண்ணுங்கள்', true); return; }
+  if (!amount || amount <= 0) { showToast('Amount enter பண்ணுங்கள்', true); return; }
+  currentAddons.push({ name, amount });
+  document.getElementById('addonNameInput').value = '';
+  document.getElementById('addonAmtInput').value = '';
+  renderAddonChips();
+}
+
+function removeAddon(i) {
+  currentAddons.splice(i, 1);
+  renderAddonChips();
+}
+
+function getSelectedAddons() {
+  const list = currentAddons.slice();
+  const total = list.reduce((s, a) => s + Number(a.amount || 0), 0);
+  return { list, total };
+}
+
+function recalcPackageTotal() {
+  const pkgAmt = Number((document.getElementById('custPkgAmt') || {}).value || 0);
+  const { list, total: addonAmt } = getSelectedAddons();
+  const grand = pkgAmt + addonAmt;
+  const ad = document.getElementById('addonTotalDisp');
+  const pd = document.getElementById('pkgTotalDisp');
+  const ha = document.getElementById('custAddons');
+  const ham = document.getElementById('custAddonAmt');
+  if (ad) ad.textContent = '₹' + addonAmt;
+  if (pd) pd.textContent = '₹' + grand;
+  if (ha) ha.value = JSON.stringify(list);
+  if (ham) ham.value = String(addonAmt);
+
+  const due = document.getElementById('custDueAmt');
+  const editId = document.getElementById('editCustomerId');
+  if (due && (!editId || !editId.value)) {
+    due.value = grand > 0 ? grand : '';
+  }
+}
+
+function setAddonsFromCustomer(c) {
+  let addons = c.addons || [];
+  if (typeof addons === 'string') {
+    try { addons = JSON.parse(addons); } catch(e) { addons = []; }
+  }
+  if (!Array.isArray(addons)) addons = [];
+  currentAddons = addons.map(a => ({
+    name: a.name || String(a),
+    amount: Number(a.amount != null ? a.amount : a.amt || 0)
+  }));
+  renderAddonChips();
+}
+
+async function bulkAddAddon() {
+  const name = (document.getElementById('bulkAddonName').value || '').trim();
+  const amount = Number(document.getElementById('bulkAddonAmt').value || 0);
+  const area = document.getElementById('bulkAddonArea').value;
+  if (!name || !amount) { showToast('Name + Amount தேவை', true); return; }
+  if (!confirm((area === 'ALL' ? 'All Active' : area) + ' customers-க்கு\n' + name + ' ₹' + amount + ' சேர்க்கவா?')) return;
+
+  const status = document.getElementById('bulkAddonStatus');
+  if (status) { status.classList.remove('hidden'); status.textContent = 'Processing...'; }
+
+  try {
+    let targets = allCustomers.filter(c => (c.status || 'ACT') === 'ACT');
+    if (area !== 'ALL') targets = targets.filter(c => (c.place || '') === area);
+    let updated = 0;
+    const BATCH = 400;
+    for (let i = 0; i < targets.length; i += BATCH) {
+      const batch = db.batch();
+      const chunk = targets.slice(i, i + BATCH);
+      chunk.forEach(c => {
+        let addons = c.addons || [];
+        if (typeof addons === 'string') { try { addons = JSON.parse(addons); } catch(e) { addons = []; } }
+        if (!Array.isArray(addons)) addons = [];
+        // skip if already has same name
+        if (addons.some(a => (a.name || '') === name)) return;
+        addons.push({ name, amount });
+        const addonAmt = addons.reduce((s, a) => s + Number(a.amount || 0), 0);
+        const base = c.packageBase != null ? Number(c.packageBase) : Math.max(0, Number(c.packageAmt || 0) - Number(c.addonAmt || 0));
+        batch.update(db.collection('customers').doc(c.id), {
+          addons,
+          addonAmt,
+          packageBase: base,
+          packageAmt: base + addonAmt,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        updated++;
+      });
+      await batch.commit();
+      if (status) status.textContent = updated + ' updated...';
+    }
+    await loadCustomers();
+    showToast(updated + ' customers-க்கு ' + name + ' சேர்ந்தது');
+    if (status) status.textContent = '✅ ' + updated + ' customers updated';
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+    if (status) status.textContent = e.message;
+  }
+}
+
 function showToast(msg, isError = false) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
@@ -920,22 +1057,55 @@ function renderBoxList(filter) {
   }
   tbody.innerHTML = list.map(b => `
     <tr class="border-t border-slate-100">
-      <td class="px-3 py-2 font-mono text-xs">${b.boxNo || '-'}</td>
-      <td class="px-3 py-2"><span class="text-xs px-2 py-0.5 rounded ${b.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">${b.status || '-'}</span></td>
-      <td class="px-3 py-2 text-sm">${b.customerName || (b.status === 'available' ? '—' : '-')}</td>
-      <td class="px-3 py-2 text-xs text-slate-500">${b.mso || '-'}</td>
+      <td class="px-2 py-2 font-mono text-xs">${b.boxNo || '-'}</td>
+      <td class="px-2 py-2 font-mono text-xs">${b.scNo || '-'}</td>
+      <td class="px-2 py-2 text-xs">${b.mso || '-'}</td>
+      <td class="px-2 py-2 text-xs">${b.boxType || '-'}</td>
+      <td class="px-2 py-2"><span class="text-xs px-2 py-0.5 rounded ${b.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">${b.status === 'available' ? 'In Stock' : (b.status || '-')}</span></td>
+      <td class="px-2 py-2 text-xs">${b.customerName || '—'}</td>
     </tr>
   `).join('');
 }
 
+function clearBoxForm() {
+  ['newBoxInvNo','newBoxName','newBoxScNo','newBoxNo'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const mso = document.getElementById('newBoxMso'); if (mso) mso.value = '';
+  const pt = document.getElementById('newBoxPurType'); if (pt) pt.value = 'New';
+  const bt = document.getElementById('newBoxType'); if (bt) bt.value = 'HD';
+  const idate = document.getElementById('newBoxInvDate');
+  if (idate) idate.value = new Date().toISOString().split('T')[0];
+}
+
 async function addBoxToStock() {
   const boxNo = (document.getElementById('newBoxNo').value || '').trim();
+  const scNo = (document.getElementById('newBoxScNo').value || '').trim();
   const mso = (document.getElementById('newBoxMso').value || '').trim();
-  if (!boxNo) { showToast('Box number enter பண்ணுங்கள்', true); return; }
+  const boxType = (document.getElementById('newBoxType') || {}).value || 'HD';
+  const purType = (document.getElementById('newBoxPurType') || {}).value || 'New';
+  const invNo = (document.getElementById('newBoxInvNo') || {}).value || '';
+  const invDate = (document.getElementById('newBoxInvDate') || {}).value || '';
+  const boxName = (document.getElementById('newBoxName') || {}).value || '';
+  if (!boxNo) { showToast('Box Number enter பண்ணுங்கள்', true); return; }
+  if (!scNo) { showToast('SC No enter பண்ணுங்கள்', true); return; }
+  if (!mso) { showToast('MSO select பண்ணுங்கள்', true); return; }
   try {
-    await upsertBoxStock(boxNo, { status: 'available', customerId: null, customerName: null, mso });
-    document.getElementById('newBoxNo').value = '';
-    showToast('Box ' + boxNo + ' added to store');
+    await upsertBoxStock(boxNo, {
+      status: 'available',
+      customerId: null,
+      customerName: null,
+      mso,
+      boxType,
+      scNo,
+      boxName: boxName.trim(),
+      purType,
+      invNo: invNo.trim(),
+      invDate,
+      source: 'purchase'
+    });
+    clearBoxForm();
+    showToast('Box ' + boxNo + ' (' + mso + ') saved → Store');
     await loadBoxes();
   } catch (e) {
     showToast('Error: ' + e.message, true);
