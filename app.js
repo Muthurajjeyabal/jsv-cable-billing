@@ -804,98 +804,96 @@ function skipWa() {
 // ==================== STREET MASTER + AUTO CUST ID ====================
 // Street ID codes from CableSoft Street Report (JSV S.Alangulam)
 const STREET_MASTER = [
-  // AREA 1
   { place: 'AREA 1', street: 'அகத்தியர் தெரு', streetId: 'AGA' },
-  { place: 'AREA 1', street: 'அன்பு-1', streetId: '1AN' },
-  { place: 'AREA 1', street: 'அன்பு-2', streetId: '2AN' },
-  { place: 'AREA 1', street: 'அம்பேத்கர் நகர்', streetId: 'AJA' },
+  { place: 'AREA 1', street: 'அன்பு--1', streetId: '1AN' },
+  { place: 'AREA 1', street: 'அன்பு--2', streetId: '2AN' },
+  { place: 'AREA 1', street: 'அலமேலு நகர்', streetId: 'ALA' },
   { place: 'AREA 1', street: 'அழகுமலையான்-1', streetId: '1AL' },
   { place: 'AREA 1', street: 'அழகுமலையான்-2', streetId: '2AL' },
-  { place: 'AREA 1', street: 'ஆலாய்க்காடு', streetId: 'AIN' },
-  { place: 'AREA 1', street: 'ஆலமரத்துக்காடு', streetId: 'AJK' },
+  { place: 'AREA 1', street: 'ஆனந்தா', streetId: 'ATH' },
+  { place: 'AREA 1', street: 'ஆலங்குளம்', streetId: 'ALK' },
   { place: 'AREA 1', street: 'இளங்கோ அடிகள்', streetId: 'ILA' },
-  { place: 'AREA 1', street: 'கணபதி-2', streetId: '2KB' },
-  { place: 'AREA 1', street: 'கணபதி-3', streetId: '3KB' },
-  { place: 'AREA 1', street: 'கணபதி-1', streetId: '1KB' },
-  { place: 'AREA 1', street: 'கரிசல் தெரு', streetId: 'KAB' },
-  { place: 'AREA 1', street: 'கீழ்ப்பாதி கீழக்கு', streetId: 'KSS' },
-  { place: 'AREA 1', street: 'கோபிநாயகர்', streetId: 'CBP' },
+  { place: 'AREA 1', street: 'கணபதி---2', streetId: '2GB' },
+  { place: 'AREA 1', street: 'கணபதி---3', streetId: '3GB' },
+  { place: 'AREA 1', street: 'கணபதி---I', streetId: '1GB' },
+  { place: 'AREA 1', street: 'கபிலர் தெரு', streetId: 'KAB' },
+  { place: 'AREA 1', street: 'கிருபை கிழக்கு', streetId: 'KES' },
+  { place: 'AREA 1', street: 'கேபிள் எதிர்', streetId: 'OPP' },
   { place: 'AREA 1', street: 'சக்தி விநாயகர்', streetId: 'SAK' },
-  { place: 'AREA 1', street: 'சங்கர் தெரு', streetId: 'SLB' },
-  { place: 'AREA 1', street: 'புன்னை நகர்-1', streetId: '1CE' },
-  { place: 'AREA 1', street: 'புன்னை நகர்-2', streetId: '2CE' },
-  { place: 'AREA 1', street: 'புன்னை நகர்-3', streetId: '3CE' },
-  { place: 'AREA 1', street: 'புன்னை மெயின்', streetId: 'CES' },
-  { place: 'AREA 1', street: 'டெலிபோன் காலனி', streetId: 'TEL' },
-  { place: 'AREA 1', street: 'தாமரைக்கால்', streetId: 'TR' },
-  { place: 'AREA 1', street: 'திருமூர்த்தி', streetId: 'TJO' },
-  { place: 'AREA 1', street: 'தென்னாம்பட்டி தெரு', streetId: 'THL' },
-  { place: 'AREA 1', street: 'பாரதிபுரம்-1', streetId: '1BH' },
-  { place: 'AREA 1', street: 'பாரதிபுரம்-2', streetId: '2BH' },
-  { place: 'AREA 1', street: 'பாரதிபுரம்-3', streetId: '3BH' },
-  { place: 'AREA 1', street: 'பாரதிபுரம்-4', streetId: '4BH' },
-  { place: 'AREA 1', street: 'பாரதிபுரம்-5', streetId: '5BH' },
-  { place: 'AREA 1', street: 'பாரதிபுரம்-6', streetId: '6BH' },
-  { place: 'AREA 1', street: 'பாரதிபுரம்-7', streetId: '7BH' },
-  { place: 'AREA 1', street: 'பாரதிபுரம்-8', streetId: '8BH' },
-  { place: 'AREA 1', street: 'பாரதிபுரம்-9', streetId: '9BH' },
-  { place: 'AREA 1', street: 'பூங்கா நகர்', streetId: '1PK' },
-  { place: 'AREA 1', street: 'மங்கள விநாயகர்', streetId: 'MAN' },
-  { place: 'AREA 1', street: 'மங்கள விநாயகர் குறுக்கு', streetId: 'MAX' },
-  { place: 'AREA 1', street: 'மற்றைக்காலன் கோவில்', streetId: 'MAN2' },
-  { place: 'AREA 1', street: 'மண்ணங்காமன்', streetId: 'MNV' },
-  { place: 'AREA 1', street: 'முனிசிபல்', streetId: 'ML' },
-  { place: 'AREA 1', street: 'முனியாண்டி-1', streetId: '1MJ' },
-  { place: 'AREA 1', street: 'முனியாண்டி-2', streetId: '2MJ' },
-  { place: 'AREA 1', street: 'வீரபு புதூர்', streetId: 'VER' },
-  // AREA 2
+  { place: 'AREA 1', street: 'சுந்தரர் தெரு', streetId: 'SUN' },
+  { place: 'AREA 1', street: 'டிசைன் நகர்--1', streetId: '1DE' },
+  { place: 'AREA 1', street: 'டிசைன் நகர்--2', streetId: '2DE' },
+  { place: 'AREA 1', street: 'டிசைன் நகர்--3', streetId: '3DE' },
+  { place: 'AREA 1', street: 'டிசைன் மெயின்', streetId: 'DES' },
+  { place: 'AREA 1', street: 'டெலிபோன்காலனி', streetId: 'TEL' },
+  { place: 'AREA 1', street: 'தாயுமானவர்', streetId: 'THI' },
+  { place: 'AREA 1', street: 'திருமுலர் தெரு', streetId: 'THR' },
+  { place: 'AREA 1', street: 'தொல்காப்பியர் தெரு', streetId: 'THL' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்--1', streetId: '1BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்--2', streetId: '2BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்--3', streetId: '3BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்--4', streetId: '4BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்--5', streetId: '5BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்--6', streetId: '6BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்--7', streetId: '7BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்--8', streetId: '8BH' },
+  { place: 'AREA 1', street: 'பாரதிபுரம்--9', streetId: '9BH' },
+  { place: 'AREA 1', street: 'பூங்கா நகர் -I', streetId: '1PK' },
+  { place: 'AREA 1', street: 'மங்கள விநாயகர்', streetId: 'MAV' },
+  { place: 'AREA 1', street: 'மங்கள விநாயகர் குறுக்கு', streetId: 'MAK' },
+  { place: 'AREA 1', street: 'மந்தையம்மன் கோயில்', streetId: 'MAN' },
+  { place: 'AREA 1', street: 'மாணிக்கவாசகர்', streetId: 'MKV' },
+  { place: 'AREA 1', street: 'மாவுமில் தெரு', streetId: 'MIL' },
+  { place: 'AREA 1', street: 'முனியாண்டி---1', streetId: '1MU' },
+  { place: 'AREA 1', street: 'முனியாண்டி---2', streetId: '2MU' },
+  { place: 'AREA 1', street: 'வீரமா முனிவர்', streetId: 'VER' },
   { place: 'AREA 2', street: 'SVP', streetId: 'SVP' },
-  { place: 'AREA 2', street: 'அய்யன்-1', streetId: '1AY' },
-  { place: 'AREA 2', street: 'அய்யன்-2', streetId: '2AY' },
-  { place: 'AREA 2', street: 'அய்யன்-3', streetId: '3AY' },
-  { place: 'AREA 2', street: 'அய்யன்-4', streetId: '4AY' },
-  { place: 'AREA 2', street: 'அய்யன்-5', streetId: '5AY' },
-  { place: 'AREA 2', street: 'அய்யன்-6', streetId: '6AY' },
-  { place: 'AREA 2', street: 'அஞ்சு நகர்', streetId: 'ANF' },
-  { place: 'AREA 2', street: 'அனுமந்திரன்-1', streetId: '1AG' },
-  { place: 'AREA 2', street: 'அனுமந்திரன்-2', streetId: '2AG' },
-  { place: 'AREA 2', street: 'அனுமந்திரன்-3', streetId: '3AG' },
-  { place: 'AREA 2', street: 'இசையம்', streetId: 'ISA' },
-  { place: 'AREA 2', street: 'இசையம் மெயின்', streetId: 'ISM' },
-  { place: 'AREA 2', street: 'இலுப்பை-1', streetId: '1IU' },
-  { place: 'AREA 2', street: 'வைத்தீஸ்-1', streetId: '1EV' },
-  { place: 'AREA 2', street: 'வைத்தீஸ்-2', streetId: '2EV' },
-  { place: 'AREA 2', street: 'ஓடைவளம் முத்துக்குமரர்-1', streetId: '1OV' },
-  { place: 'AREA 2', street: 'ஓடைவளம் தெரு', streetId: 'OVT' },
-  { place: 'AREA 2', street: 'கலியாண்', streetId: 'KLS' },
-  { place: 'AREA 2', street: 'கருப்பசாமி குருநாதர்', streetId: 'KRK' },
-  { place: 'AREA 2', street: 'கருப்பசாமி-1', streetId: '1KR' },
-  { place: 'AREA 2', street: 'கருப்பசாமி-4', streetId: '4KR' },
-  { place: 'AREA 2', street: 'காமாட்சி தெரு', streetId: 'KAM' },
-  { place: 'AREA 2', street: 'குறிஞ்சி தெரு', streetId: 'KUH' },
-  { place: 'AREA 2', street: 'கல்லூரி நகர்', streetId: 'CFP' },
-  { place: 'AREA 2', street: 'சின்னபொன்னாங்கு கோவில்', streetId: 'CPK' },
+  { place: 'AREA 2', street: 'அம்மன்--1', streetId: '1AM' },
+  { place: 'AREA 2', street: 'அம்மன்--2', streetId: '2AM' },
+  { place: 'AREA 2', street: 'அம்மன்--3', streetId: '3AM' },
+  { place: 'AREA 2', street: 'அம்மன்--4', streetId: '4AM' },
+  { place: 'AREA 2', street: 'அம்மன்--5', streetId: '5AM' },
+  { place: 'AREA 2', street: 'அம்மன்--6', streetId: '6AM' },
+  { place: 'AREA 2', street: 'அற்புதம் நகர்', streetId: 'ARP' },
+  { place: 'AREA 2', street: 'அழகேந்திரன் - I', streetId: '1AG' },
+  { place: 'AREA 2', street: 'அழகேந்திரன் - II', streetId: '2AG' },
+  { place: 'AREA 2', street: 'அழகேந்திரன் - III', streetId: '3AG' },
+  { place: 'AREA 2', street: 'இமயம்', streetId: 'IMA' },
+  { place: 'AREA 2', street: 'இமயம் மெயின்', streetId: 'IMM' },
+  { place: 'AREA 2', street: 'இமயம்---1', streetId: '1IM' },
+  { place: 'AREA 2', street: 'எவரெஸ்ட்-1', streetId: '1EV' },
+  { place: 'AREA 2', street: 'எவரெஸ்ட்-2', streetId: '2EV' },
+  { place: 'AREA 2', street: 'ஔவையார் குறுக்கு தெரு---1', streetId: '1OV' },
+  { place: 'AREA 2', street: 'ஔவையார்தெரு', streetId: 'OVI' },
+  { place: 'AREA 2', street: 'கமலேஷ்', streetId: 'KLS' },
+  { place: 'AREA 2', street: 'கருப்பசாமி- குறுக்கு', streetId: 'KRK' },
+  { place: 'AREA 2', street: 'கருப்பசாமி--1', streetId: '1KR' },
+  { place: 'AREA 2', street: 'கருப்பசாமி--II', streetId: '2KR' },
+  { place: 'AREA 2', street: 'காமராஜர் தெரு', streetId: 'KAM' },
+  { place: 'AREA 2', street: 'குறிஞ்சி தெரு', streetId: 'KUR' },
+  { place: 'AREA 2', street: 'சக்கரபாணி தெரு', streetId: 'SKP' },
+  { place: 'AREA 2', street: 'சின்னபொண்ணு கோவில்', streetId: 'CPK' },
   { place: 'AREA 2', street: 'செந்தூர் நகர்', streetId: 'SEN' },
-  { place: 'AREA 2', street: 'பெத்தாராளன்-2', streetId: '2PK' },
-  { place: 'AREA 2', street: 'பெத்தாராளன்-1', streetId: '1PK2' },
-  { place: 'AREA 2', street: 'வெங்கட்சாமி-1', streetId: '1SG' },
-  { place: 'AREA 2', street: 'வெங்கட்சாமி-2', streetId: '2SG' },
-  { place: 'AREA 2', street: 'நேபால் நகர்', streetId: 'JAY' },
-  { place: 'AREA 2', street: 'நேருநகர்', streetId: 'NEH' },
-  { place: 'AREA 2', street: 'பேரையன் நகர்', streetId: 'PRA' },
-  { place: 'AREA 2', street: 'போஸ் நகர்-1', streetId: '1PN' },
-  { place: 'AREA 2', street: 'போஸ் நகர்-2', streetId: '2PN' },
-  { place: 'AREA 2', street: 'மஸீதி நகர்-1', streetId: '1MR' },
-  { place: 'AREA 2', street: 'மஸீதி நகர்-2', streetId: '2MR' },
-  { place: 'AREA 2', street: 'மஸீதி மெயின்', streetId: 'MRM' },
-  { place: 'AREA 2', street: 'மாரி நகர்-1', streetId: '1ML' },
-  { place: 'AREA 2', street: 'மாரி நகர்-2', streetId: '2ML' },
-  { place: 'AREA 2', street: 'முத்தம்மாள்', streetId: 'MUT' },
-  { place: 'AREA 2', street: 'ராமலிங்கம்-1', streetId: '1RM' },
-  { place: 'AREA 2', street: 'ராமலிங்கம்-2', streetId: '2RM' },
-  { place: 'AREA 2', street: 'ராமலிங்கம்-3', streetId: '3RM' },
-  { place: 'AREA 2', street: 'சேரண்-1', streetId: '1RJ' },
-  { place: 'AREA 2', street: 'சேரண்-2', streetId: '2RJ' }
+  { place: 'AREA 2', street: 'செந்தூர்குறுக்கு--2', streetId: '2SK' },
+  { place: 'AREA 2', street: 'செந்தூர்குறுக்கு--I', streetId: '1SK' },
+  { place: 'AREA 2', street: 'செல்வாகார்டன்--1', streetId: '1SG' },
+  { place: 'AREA 2', street: 'செல்வாகார்டன்--2', streetId: '2SG' },
+  { place: 'AREA 2', street: 'ஜெயம் நகர்', streetId: 'JAY' },
+  { place: 'AREA 2', street: 'நேருதெரு', streetId: 'NEH' },
+  { place: 'AREA 2', street: 'பிரசன்னா நகர்', streetId: 'PRA' },
+  { place: 'AREA 2', street: 'பொன் நகர் 1', streetId: '1PN' },
+  { place: 'AREA 2', street: 'பொன் நகர் 2', streetId: '2PN' },
+  { place: 'AREA 2', street: 'மகரிசி நகர் I', streetId: '1MR' },
+  { place: 'AREA 2', street: 'மகரிசி நகர் II', streetId: '2MR' },
+  { place: 'AREA 2', street: 'மகரிசி மெயின்', streetId: 'MRM' },
+  { place: 'AREA 2', street: 'மலர் நகர்--1', streetId: '1ML' },
+  { place: 'AREA 2', street: 'மலர் நகர்--2', streetId: '2ML' },
+  { place: 'AREA 2', street: 'முத்தாலம்மான்', streetId: 'MUT' },
+  { place: 'AREA 2', street: 'ராமலிங்கா--1', streetId: '1RM' },
+  { place: 'AREA 2', street: 'ராமலிங்கா--2', streetId: '2RM' },
+  { place: 'AREA 2', street: 'ராமலிங்கா--3', streetId: '3RM' },
+  { place: 'AREA 2', street: 'ரோஜா--1', streetId: '1RJ' },
+  { place: 'AREA 2', street: 'ரோஜா--2', streetId: '2RJ' },
 ];
 
 function getStreetsForPlace(place) {
@@ -1483,17 +1481,22 @@ async function deleteStreetMaster(id) {
 }
 
 async function seedStreetsFromCode() {
-  if (!confirm('Code-ல் உள்ள default street list-ஐ Firestore-க்கு import செய்யவா?\\n(Already இருக்கும் Street ID skip)')) return;
+  if (!confirm('CableSoft official street list import?\n\nOLD streets in Firestore DELETE ஆகும்.\nExact 90 streets மட்டும் சேரும்.')) return;
   try {
     await loadStreetMaster();
-    const existing = new Set(streetMasterCache.map(s => (s.place + '|' + (s.streetId || '').toUpperCase())));
-    let n = 0;
-    const BATCH = 400;
-    for (let i = 0; i < STREET_MASTER.length; i += BATCH) {
+    // delete all existing
+    let del = 0;
+    for (let i = 0; i < streetMasterCache.length; i += 400) {
       const batch = db.batch();
-      STREET_MASTER.slice(i, i + BATCH).forEach(s => {
-        const key = s.place + '|' + s.streetId.toUpperCase();
-        if (existing.has(key)) return;
+      streetMasterCache.slice(i, i + 400).forEach(s => {
+        if (s.id) { batch.delete(db.collection('streets').doc(s.id)); del++; }
+      });
+      await batch.commit();
+    }
+    let n = 0;
+    for (let i = 0; i < STREET_MASTER.length; i += 400) {
+      const batch = db.batch();
+      STREET_MASTER.slice(i, i + 400).forEach(s => {
         const ref = db.collection('streets').doc();
         batch.set(ref, {
           place: s.place,
@@ -1501,12 +1504,11 @@ async function seedStreetsFromCode() {
           streetId: s.streetId,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        existing.add(key);
         n++;
       });
       await batch.commit();
     }
-    showToast(n + ' streets imported');
+    showToast('Deleted ' + del + ' · Imported ' + n + ' official streets');
     await loadStreetMaster();
   } catch (e) {
     showToast('Import error: ' + e.message, true);
