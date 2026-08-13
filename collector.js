@@ -96,7 +96,7 @@ function filterByAgentArea(list) {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0]; // today only — no backdate
   const yest = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   const fromEl = document.getElementById('colFrom');
   const toEl = document.getElementById('colTo');
@@ -295,7 +295,7 @@ async function saveCollection() {
   if (!amount || amount <= 0) { showToast('Amount உள்ளிடவும்', true); return; }
   const btn = document.getElementById('saveColBtn');
   btn.disabled = true; btn.textContent = 'Saving...';
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0]; // today only — no backdate
   const currentDue = Number(selectedCustomer.dueAmt || selectedCustomer.due || 0);
   const newDue = Math.max(0, currentDue - amount);
   const payType = amount < currentDue ? 'partial' : (amount > currentDue ? 'advance' : 'full');
@@ -454,7 +454,7 @@ async function loadColReport() {
     if (from && to) {
       snap = await db.collection('collections').where('date', '>=', from).where('date', '<=', to).get();
     } else {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0]; // today only — no backdate
       snap = await db.collection('collections').where('date', '==', today).get();
     }
     const rows = [];
@@ -512,7 +512,7 @@ async function loadDashboard() {
   const myCustIds = new Set(allCustomers.map(c => c.id));
   const myCustIdCodes = new Set(allCustomers.map(c => c.custId).filter(Boolean));
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0]; // today only — no backdate
   const yest = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   const monthStart = today.slice(0, 8) + '01';
 

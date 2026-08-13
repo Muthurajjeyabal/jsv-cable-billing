@@ -179,6 +179,10 @@ function showPage(pageId) {
     settings: 'Settings'
   , expenses: 'Expenses' };
   document.getElementById('pageTitle').textContent = titles[pageId] || pageId;
+  if (pageId === 'billing') {
+    const bd = document.getElementById('billDate');
+    if (bd) { bd.value = new Date().toISOString().slice(0, 10); bd.readOnly = true; }
+  }
   if (pageId === 'settings') { refreshMonthBillLockUI(); loadWaTemplate(); }
   if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d){ d.value=new Date().toISOString().slice(0,10); d.readOnly=true; } loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
@@ -914,12 +918,20 @@ async function handleSaveBill(e) {
     return;
   }
 
-  const billDate = document.getElementById('billDate').value || new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  // Only today allowed — block backdated bills
+  let billDate = document.getElementById('billDate')?.value || today;
+  if (billDate !== today) {
+    showToast('இன்றைய தேதி மட்டும் bill போடலாம்', true);
+    const el = document.getElementById('billDate');
+    if (el) el.value = today;
+    return;
+  }
+  billDate = today;
   let billNo = '';
   try {
     billNo = await nextDailyBillNo(billDate);
   } catch (err) {
-    // fallback if transaction fails
     billNo = String(Date.now()).slice(-3);
   }
 
