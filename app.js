@@ -796,10 +796,10 @@ function renderPendingReport() {
 function exportPendingBoxes() {
   const list = getPendingFiltered().filter(c => (c.boxNo || '').trim());
   if (!list.length) { showToast('Box numbers இல்லை', true); return; }
-  const text = list.map(c => String(c.boxNo).trim()).join('\n');
+  const text = list.map(c => String(c.boxNo).trim()).join(', ');
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(() => {
-      showToast(list.length + ' Box Nos copied — MSO site-ல் paste / OFF');
+      showToast(list.length + ' Box Nos copied (comma) — MSO paste / OFF');
     }).catch(() => fallbackCopy(text));
   } else {
     fallbackCopy(text);
