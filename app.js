@@ -180,7 +180,7 @@ function showPage(pageId) {
   , expenses: 'Expenses' };
   document.getElementById('pageTitle').textContent = titles[pageId] || pageId;
   if (pageId === 'settings') { refreshMonthBillLockUI(); loadWaTemplate(); }
-  if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d && !d.value) d.value=new Date().toISOString().slice(0,10); loadExpenses(); }
+  if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d){ d.value=new Date().toISOString().slice(0,10); d.readOnly=true; } loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
 
   if (pageId === 'newCustomer') {
@@ -3303,7 +3303,7 @@ async function saveExpense() {
     category = category + ' · ' + person;
   }
   const data = {
-    date: document.getElementById('expDate')?.value || new Date().toISOString().slice(0, 10),
+    date: new Date().toISOString().slice(0, 10), // always today only
     category,
     amount,
     personName: person || '',
@@ -3329,24 +3329,81 @@ async function saveExpense() {
 async function loadExpenses() {
   const listEl = document.getElementById('expList');
   const totEl = document.getElementById('expMonthTotal');
+  const todayEl = document.getElementById('expTodayTotal');
   if (!listEl) return;
-  const monthStart = new Date().toISOString().slice(0, 7) + '-01';
+  const today = new Date().toISOString().slice(0, 10);
+  const monthStart = today.slice(0, 7) + '-01';
   try {
     const snap = await db.collection('expenses').where('date', '>=', monthStart).get();
     const rows = [];
     snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
     rows.sort((a, b) => String(b.date).localeCompare(String(a.date)));
-    const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
-    if (totEl) totEl.textContent = '₹' + total.toLocaleString('en-IN');
-    listEl.innerHTML = rows.length ? rows.map(r => `
-      <div class="py-2.5 flex justify-between gap-2">
-        <div>
+    const monthTotal = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
+    const todayTotal = rows.filter(r => r.date === today).reduce((s, r) => s + Number(r.amount || 0), 0);
+    if (totEl) totEl.textContent = '₹' + monthTotal.toLocaleString('en-IN');
+    if (todayEl) todayEl.textContent = '₹' + todayTotal.toLocaleString('en-IN');
+    listEl.innerHTML = rows.length ? rows.map(r => {
+      const isToday = (r.date === today);
+      return `
+      <div class="py-2.5 flex justify-between gap-2 items-start">
+        <div class="min-w-0">
           <div class="font-medium">${r.category || ''}</div>
           <div class="text-[10px] text-slate-500">${r.date || ''} · ${r.note || ''}</div>
+          ${isToday ? `<div class="mt-1 flex gap-2">
+            <button type="button" onclick="editExpense('${r.id}')" class="text-xs text-blue-600">Edit</button>
+            <button type="button" onclick="deleteExpense('${r.id}')" class="text-xs text-red-600">Delete</button>
+          </div>` : `<div class="text-[10px] text-slate-400 mt-0.5">Locked (today only edit)</div>`}
         </div>
         <div class="font-bold text-rose-600 shrink-0">₹${Number(r.amount||0).toLocaleString('en-IN')}</div>
-      </div>`).join('') : '<div class="py-4 text-center text-slate-400">No expenses this month</div>';
+      </div>`;
+    }).join('') : '<div class="py-4 text-center text-slate-400">No expenses this month</div>';
   } catch (e) {
     listEl.innerHTML = '<div class="text-red-500 text-xs">' + e.message + '</div>';
+  }
+}
+
+async function editExpense(id) {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const snap = await db.collection('expenses').doc(id).get();
+    if (!snap.exists) { showToast('Not found', true); return; }
+    const r = snap.data();
+    if (r.date !== today) {
+      showToast('இன்றைய expense மட்டும் edit செய்யலாம்', true);
+      return;
+    }
+    const amt = prompt('Amount ₹', String(r.amount || ''));
+    if (amt === null) return;
+    const amount = Number(amt);
+    if (!amount || amount <= 0) { showToast('Invalid amount', true); return; }
+    const note = prompt('Note', r.note || '') ;
+    if (note === null) return;
+    await db.collection('expenses').doc(id).update({
+      amount,
+      note: String(note).trim(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast('Expense updated');
+    loadExpenses();
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
+
+async function deleteExpense(id) {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const snap = await db.collection('expenses').doc(id).get();
+    if (!snap.exists) { showToast('Not found', true); return; }
+    if (snap.data().date !== today) {
+      showToast('இன்றைய expense மட்டும் delete செய்யலாம்', true);
+      return;
+    }
+    if (!confirm('Delete this expense?')) return;
+    await db.collection('expenses').doc(id).delete();
+    showToast('Deleted');
+    loadExpenses();
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
   }
 }
