@@ -17,29 +17,54 @@ let allCustomersRaw = [];
 let selectedCustomer = null;
 let placesMap = {};
 
-// Area allotment
-const AGENT_AREAS = {
-  'uma@jsvcable.com': ['AREA 2'],
-  'muthumari@jsvcable.com': ['AREA 1'],
-  'office@jsvcable.com': null,  // all
-  'online@jsvcable.com': null,  // all
-};
+// Area allotment — loaded from Firestore `employees` (Admin Masters)
+let AGENT_AREAS = {};   // email -> ['AREA 1'] or null for ALL
+let AGENT_NAMES = {};   // email -> [display names]
+let myEmployee = null;
 
-// Names used in CableSoft collections (employee / collectedBy)
-const AGENT_NAMES = {
-  'uma@jsvcable.com': ['UMA', 'uma'],
-  'muthumari@jsvcable.com': ['MUTHUMARI', 'muthumari', 'MUTHUMARI '],
-  'office@jsvcable.com': ['LOCAL', 'OFFICE', 'office'],
-  'online@jsvcable.com': ['ONLINE', 'online'],
-};
+async function loadEmployeeMap() {
+  AGENT_AREAS = {};
+  AGENT_NAMES = {};
+  try {
+    const snap = await db.collection('employees').get();
+    snap.forEach(doc => {
+      const d = doc.data();
+      const email = String(d.email || '').toLowerCase().trim();
+      if (!email) return;
+      const area = (d.area || 'ALL').toUpperCase().trim();
+      AGENT_AREAS[email] = (area === 'ALL') ? null : [d.area];
+      const nm = (d.name || email.split('@')[0]).toUpperCase().trim();
+      AGENT_NAMES[email] = [nm, nm.replace(/\s+/g, ''), email.split('@')[0].toUpperCase()];
+    });
+  } catch (e) {
+    console.error('employees load', e);
+  }
+  // fallback if empty
+  if (!Object.keys(AGENT_AREAS).length) {
+    AGENT_AREAS = {
+      'uma@jsvcable.com': ['AREA 2'],
+      'muthumari@jsvcable.com': ['AREA 1'],
+      'office@jsvcable.com': null,
+      'online@jsvcable.com': null
+    };
+    AGENT_NAMES = {
+      'uma@jsvcable.com': ['UMA'],
+      'muthumari@jsvcable.com': ['MUTHUMARI'],
+      'office@jsvcable.com': ['LOCAL', 'OFFICE'],
+      'online@jsvcable.com': ['ONLINE']
+    };
+  }
+}
 
 function getAgentNames() {
   if (!currentUser) return [];
   const email = (currentUser.email || '').toLowerCase();
+  if (AGENT_NAMES[email]) return AGENT_NAMES[email];
   for (const [k, names] of Object.entries(AGENT_NAMES)) {
-    if (email === k || email.startsWith(k.split('@')[0])) return names.map(n => n.toUpperCase().trim());
+    if (email.startsWith(k.split('@')[0])) return names;
   }
-  return [];
+  const local = email.split('@')[0].toUpperCase();
+  return local ? [local] : [];
 }
 
 function isMyCollection(d) {
@@ -54,11 +79,13 @@ function getAgentAreas() {
   if (!currentUser) return null;
   const email = (currentUser.email || '').toLowerCase();
   if (email in AGENT_AREAS) return AGENT_AREAS[email];
-  // partial match
   for (const [k, v] of Object.entries(AGENT_AREAS)) {
     if (email.startsWith(k.split('@')[0])) return v;
   }
-  return null; // admin / unknown = all
+  // admin emails → all
+  if (email.includes('admin') || email.includes('jeyabal') || email.includes('stefi') || email.includes('muthuraj')) return null;
+  // unknown collector with no employee record → no customers (safe)
+  return [];
 }
 
 function filterByAgentArea(list) {
@@ -78,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   auth.onAuthStateChanged(async user => {
     if (user) {
+      await loadEmployeeMap();
       currentUser = user;
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
