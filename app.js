@@ -301,6 +301,7 @@ async function handleSaveCustomer(e) {
     regDate: document.getElementById('custRegDate')?.value || '',
     boxAmt: Number(document.getElementById('custBoxAmt')?.value) || 0,
     billing: document.getElementById('custBilling')?.value || 'Yes',
+    billingStart: document.getElementById('custBillingStart')?.value || '',
     remarks: document.getElementById('custRemarks').value.trim(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -976,6 +977,54 @@ function getNextNumberForStreet(streetId, street) {
   return maxN + 1;
 }
 
+
+// ==================== NEW CONNECTION BILLING SLAB ====================
+// 1-10: full package now, auto due from next month
+// 11-20: half package now, auto due from next month
+// 21-31: full package now, auto due from month+2
+function addMonths(ym, n) {
+  // ym = 'YYYY-MM'
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function calcNewConnectionBilling() {
+  // Scheme A: full package now, auto Month Due always from next month
+  const conDate = (document.getElementById('custConDate') || {}).value || '';
+  const pkgAmt = Number((document.getElementById('custPkgAmt') || {}).value || 0);
+  const addonAmt = Number((document.getElementById('custAddonAmt') || {}).value || 0);
+  const monthly = pkgAmt + addonAmt;
+  const editId = (document.getElementById('editCustomerId') || {}).value || '';
+  if (editId) return;
+  if (!conDate) return;
+
+  const ym = conDate.slice(0, 7);
+  const billingStart = addMonths(ym, 1);
+  const dueEl = document.getElementById('custDueAmt');
+  if (dueEl && monthly > 0) dueEl.value = monthly;
+
+  let hidden = document.getElementById('custBillingStart');
+  if (!hidden) {
+    hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.id = 'custBillingStart';
+    document.getElementById('customerForm')?.appendChild(hidden);
+  }
+  hidden.value = billingStart;
+
+  let tip = document.getElementById('billingSlabTip');
+  if (!tip) {
+    tip = document.createElement('p');
+    tip.id = 'billingSlabTip';
+    tip.className = 'text-xs text-blue-700 mt-1 sm:col-span-2';
+    const dueWrap = dueEl?.parentElement;
+    if (dueWrap) dueWrap.appendChild(tip);
+  }
+  tip.textContent = 'Scheme A: Full package now · Auto bill from next month (' + billingStart + ')';
+}
+
+
 function onPackageChange() {
   const sel = document.getElementById('custPackage');
   if (!sel) return;
@@ -984,6 +1033,7 @@ function onPackageChange() {
   const pkgAmt = document.getElementById('custPkgAmt');
   if (pkgAmt && amt) pkgAmt.value = amt;
   recalcPackageTotal();
+  calcNewConnectionBilling();
 }
 
 let currentAddons = [];
@@ -1044,6 +1094,7 @@ function recalcPackageTotal() {
   if (due && (!editId || !editId.value)) {
     due.value = grand > 0 ? grand : '';
   }
+  calcNewConnectionBilling();
 }
 
 function setAddonsFromCustomer(c) {
@@ -1132,6 +1183,12 @@ async function generateMonthDue() {
       if ((d.status || 'ACT') !== 'ACT') return;
       const pkg = Number(d.packageAmt || 0);
       if (pkg <= 0) return; // free / zero package = no due
+      // billingStart = YYYY-MM — skip until that month
+      const bs = d.billingStart || '';
+      if (bs) {
+        const nowYM = new Date().toISOString().slice(0, 7);
+        if (nowYM < bs) return;
+      }
       const currentDue = Number(d.dueAmt || d.due || 0);
       updates.push({ id: doc.id, newDue: currentDue + pkg, pkg, name: d.name });
     });

@@ -283,6 +283,7 @@
           <form id="customerForm" class="space-y-4 max-w-4xl">
             <input type="hidden" id="editCustomerId">
             <input type="hidden" id="custBilling" value="Yes">
+            <input type="hidden" id="custBillingStart" value="">
 
             <!-- ESSENTIAL -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
@@ -399,7 +400,7 @@
                 </div>
                 <div>
                   <label class="block text-xs font-medium mb-1 text-slate-600">Connection Date</label>
-                  <input type="date" id="custConDate" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                  <input type="date" id="custConDate" onchange="calcNewConnectionBilling()" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
               </div>
 
