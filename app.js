@@ -2326,3 +2326,48 @@ document.addEventListener('click', (e) => {
   if (!box.contains(e.target) && e.target !== inp) box.classList.add('hidden');
 });
 
+async function importDcList() {
+  if (!confirm('CableSoft DC list import?\n\nஇந்த customers status = DC ஆகும்.\nBox return → Store (optional in list).')) return;
+  try {
+    showToast('Loading DC list...');
+    const res = await fetch('dc_list.json?t=' + Date.now());
+    if (!res.ok) throw new Error('dc_list.json upload பண்ணுங்கள் (GitHub-ல் index.html பக்கம்)');
+    const list = await res.json();
+    const byId = new Map();
+    allCustomers.forEach(c => {
+      const id = String(c.custId || '').trim().toUpperCase();
+      if (id) byId.set(id, c);
+    });
+    let updated = 0, missing = 0;
+    for (let i = 0; i < list.length; i += 400) {
+      const chunk = list.slice(i, i + 400);
+      const batch = db.batch();
+      let ops = 0;
+      for (const r of chunk) {
+        const cust = byId.get(String(r.custId || '').trim().toUpperCase());
+        if (!cust) { missing++; continue; }
+        const bal = Number(r.balance || 0);
+        batch.update(db.collection('customers').doc(cust.id), {
+          status: 'DC',
+          dcDate: r.dcDate || '',
+          dueAmt: bal > 0 ? bal : Number(cust.dueAmt || cust.due || 0),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        ops++;
+        updated++;
+        // box to store if had box
+        const boxNo = (r.box && r.box !== '0' && r.box !== '0000') ? r.box : (cust.boxNo || '');
+        if (boxNo) {
+          // handled after via sync optional
+        }
+      }
+      if (ops) await batch.commit();
+    }
+    showToast('DC updated: ' + updated + ' · Not found: ' + missing);
+    await loadCustomers();
+    loadDashboard();
+  } catch (e) {
+    showToast('DC import error: ' + e.message, true);
+  }
+}
+
