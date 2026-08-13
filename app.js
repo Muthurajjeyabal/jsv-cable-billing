@@ -682,35 +682,126 @@ async function viewLedger(id) {
 }
 
 // ==================== PENDING / DUE REPORT ====================
-function renderPendingReport() {
-  const list = allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0);
-  list.sort((a, b) => Number(b.dueAmt || b.due || 0) - Number(a.dueAmt || a.due || 0));
+function getPendingFiltered() {
+  const area = (document.getElementById('pendFilterArea') || {}).value || '';
+  const street = (document.getElementById('pendFilterStreet') || {}).value || '';
+  const mso = (document.getElementById('pendFilterMso') || {}).value || '';
+  let list = allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0);
+  if (area) list = list.filter(c => (c.place || '') === area);
+  if (street) list = list.filter(c => (c.street || '') === street);
+  if (mso) list = list.filter(c => (c.mso || '') === mso);
+  list.sort((a, b) => {
+    const s = (a.street || '').localeCompare(b.street || '', 'ta');
+    if (s) return s;
+    return Number(b.dueAmt || b.due || 0) - Number(a.dueAmt || a.due || 0);
+  });
+  return list;
+}
 
+function onPendingFilterChange() {
+  const area = (document.getElementById('pendFilterArea') || {}).value || '';
+  const streetSel = document.getElementById('pendFilterStreet');
+  if (streetSel) {
+    const streets = new Set();
+    allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0)
+      .filter(c => !area || (c.place || '') === area)
+      .forEach(c => { if (c.street) streets.add(c.street); });
+    const cur = streetSel.value;
+    streetSel.innerHTML = '<option value="">All Streets</option>' +
+      Array.from(streets).sort((a,b) => a.localeCompare(b, 'ta'))
+        .map(s => `<option value="${s.replace(/"/g, '&quot;')}">${s}</option>`).join('');
+    if (cur && streets.has(cur)) streetSel.value = cur;
+  }
+  const msoSel = document.getElementById('pendFilterMso');
+  if (msoSel && msoSel.options.length <= 1) {
+    const msos = new Set();
+    allCustomers.forEach(c => { if (c.mso) msos.add(c.mso); });
+    msoSel.innerHTML = '<option value="">All MSO</option>' +
+      Array.from(msos).sort().map(m => `<option value="${m}">${m}</option>`).join('');
+  }
+  renderPendingReport();
+}
+
+function renderPendingReport() {
+  // populate MSO options once
+  const msoSel = document.getElementById('pendFilterMso');
+  if (msoSel && msoSel.options.length <= 1) {
+    const msos = new Set();
+    allCustomers.forEach(c => { if (c.mso) msos.add(c.mso); });
+    const cur = msoSel.value;
+    msoSel.innerHTML = '<option value="">All MSO</option>' +
+      Array.from(msos).sort().map(m => `<option value="${m}">${m}</option>`).join('');
+    if (cur) msoSel.value = cur;
+  }
+  // street options for current area
+  const area = (document.getElementById('pendFilterArea') || {}).value || '';
+  const streetSel = document.getElementById('pendFilterStreet');
+  if (streetSel) {
+    const streets = new Set();
+    allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0)
+      .filter(c => !area || (c.place || '') === area)
+      .forEach(c => { if (c.street) streets.add(c.street); });
+    const cur = streetSel.value;
+    streetSel.innerHTML = '<option value="">All Streets</option>' +
+      Array.from(streets).sort((a,b) => a.localeCompare(b, 'ta'))
+        .map(s => `<option value="${s.replace(/"/g, '&quot;')}">${s}</option>`).join('');
+    if (cur && [...streets].includes(cur)) streetSel.value = cur;
+  }
+
+  const list = getPendingFiltered();
   const tbody = document.getElementById('pendingTableBody');
   const totalDue = list.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
-
   document.getElementById('pendingCount').textContent = list.length;
   document.getElementById('pendingTotal').textContent = '₹' + totalDue.toLocaleString('en-IN');
 
+  if (!tbody) return;
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">No pending dues</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">No pending in this filter</td></tr>`;
     return;
   }
 
   tbody.innerHTML = list.map(c => `
     <tr class="border-t border-slate-100 hover:bg-slate-50">
       <td class="px-3 py-2 font-mono text-xs">${c.custId || c.id.slice(0,6)}</td>
-      <td class="px-3 py-2 font-medium text-sm">${c.name || '-'}</td>
+      <td class="px-3 py-2">
+        <div class="font-medium text-sm">${c.name || '-'}</div>
+        <div class="text-[10px] text-slate-500">${c.street || ''} ${c.place ? '· '+c.place : ''}</div>
+      </td>
       <td class="px-3 py-2 text-sm">${c.mobile || '-'}</td>
       <td class="px-3 py-2 font-mono text-xs">${c.boxNo || '-'}</td>
+      <td class="px-3 py-2 text-xs">${c.mso || '-'}</td>
       <td class="px-3 py-2 text-sm font-bold text-red-600">₹${Number(c.dueAmt || c.due || 0).toLocaleString('en-IN')}</td>
-      <td class="px-3 py-2">
+      <td class="px-3 py-2 whitespace-nowrap">
         <button onclick="openWhatsApp('${c.mobile || ''}', '${(c.name || '').replace(/'/g, '')}', ${Number(c.dueAmt||c.due||0)})" class="text-green-600 hover:underline text-xs mr-2">WA</button>
         <button onclick="viewLedger('${c.id}')" class="text-purple-600 hover:underline text-xs">Ledger</button>
       </td>
     </tr>
   `).join('');
 }
+
+function exportPendingBoxes() {
+  const list = getPendingFiltered().filter(c => (c.boxNo || '').trim());
+  if (!list.length) { showToast('Box numbers இல்லை', true); return; }
+  const text = list.map(c => String(c.boxNo).trim()).join('\n');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(list.length + ' Box Nos copied — MSO site-ல் paste / OFF');
+    }).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+  // also show in prompt for easy copy on some phones
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.left = '0'; ta.style.top = '0';
+    ta.style.width = '90%'; ta.style.height = '40%';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    setTimeout(() => { try { document.body.removeChild(ta); } catch(e) {} }, 8000);
+  } catch (e) {}
+}
+
 
 // ==================== BILLING ====================
 function searchForBill() {
@@ -1029,8 +1120,7 @@ let waQueue = [];
 let waQueueIndex = 0;
 
 function startWaQueue() {
-  waQueue = allCustomers
-    .filter(c => Number(c.dueAmt || c.due || 0) > 0)
+  waQueue = (typeof getPendingFiltered === "function" ? getPendingFiltered() : allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0))
     .filter(c => c.mobile && String(c.mobile).replace(/\D/g, '').length >= 10)
     .sort((a, b) => Number(b.dueAmt || b.due || 0) - Number(a.dueAmt || a.due || 0));
   waQueueIndex = 0;
