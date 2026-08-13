@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (billDateEl) billDateEl.value = today;
 
   auth.onAuthStateChanged(async user => {
+  try { await loadCompanyInfo(); } catch(e) {}
     if (user) {
       if (!isAdminUser(user)) {
         await auth.signOut();
@@ -1131,7 +1132,21 @@ function getMonthNameTa() {
 function buildDueMessage(name, due) {
   const month = getMonthNameTa();
   const dueStr = Number(due || 0).toLocaleString('en-IN');
-  return `வணக்கம் ${name},\n\nJSV Cable TV - ${month} மாதத்திற்கு இன்னும் நீங்கள் பணம் கட்டவில்லை.\nநிலுவை: ₹${dueStr}\n\nதயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.\n\nநன்றி.\nJSV Cable TV`;
+  const co = companyInfo || {};
+  const office = [co.phone, co.phone2].filter(Boolean).join(' / ');
+  const gpay = co.gpay || '9442527545';
+  return `வணக்கம் ${name},
+
+JSV Cable TV - ${month} மாதத்திற்கு இன்னும் நீங்கள் பணம் கட்டவில்லை.
+நிலுவை: ₹${dueStr}
+
+தயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.
+
+GPay: ${gpay} (பணம் மட்டும் — புகார் வேண்டாம்)
+Office / புகார்: ${office || '0452-2527545 / 8678953333'}
+
+நன்றி.
+JSV Cable TV · S. Alangulam`;
 }
 
 function openWhatsApp(mobile, name, due) {
@@ -2238,21 +2253,47 @@ function refreshCustomerMsoDropdown() {
   if (cur) sel.value = cur;
 }
 
+let companyInfo = {
+  name: 'JSV Cable TV',
+  address: 'S. Alangulam',
+  phone: '0452-2527545',
+  phone2: '8678953333',
+  gpay: '9442527545'
+};
+
 async function loadCompanyInfo() {
-  const doc = await db.collection('settings').doc('company').get();
-  if (doc.exists) {
-    const d = doc.data();
-    if (document.getElementById('coName')) document.getElementById('coName').value = d.name || '';
-    if (document.getElementById('coPhone')) document.getElementById('coPhone').value = d.phone || '';
-    if (document.getElementById('coAddress')) document.getElementById('coAddress').value = d.address || '';
-  }
+  try {
+    const doc = await db.collection('settings').doc('company').get();
+    if (doc.exists) {
+      const d = doc.data();
+      companyInfo = {
+        name: d.name || companyInfo.name,
+        address: d.address || companyInfo.address,
+        phone: d.phone || companyInfo.phone,
+        phone2: d.phone2 || companyInfo.phone2,
+        gpay: d.gpay || companyInfo.gpay
+      };
+    }
+  } catch (e) {}
+  if (document.getElementById('coName')) document.getElementById('coName').value = companyInfo.name || '';
+  if (document.getElementById('coPhone')) document.getElementById('coPhone').value = companyInfo.phone || '';
+  if (document.getElementById('coPhone2')) document.getElementById('coPhone2').value = companyInfo.phone2 || '';
+  if (document.getElementById('coGpay')) document.getElementById('coGpay').value = companyInfo.gpay || '';
+  if (document.getElementById('coAddress')) document.getElementById('coAddress').value = companyInfo.address || '';
 }
 
 async function saveCompanyInfo() {
-  await db.collection('settings').doc('company').set({
-    name: document.getElementById('coName').value.trim(),
+  companyInfo = {
+    name: document.getElementById('coName').value.trim() || 'JSV Cable TV',
     phone: document.getElementById('coPhone').value.trim(),
-    address: document.getElementById('coAddress').value.trim(),
+    phone2: (document.getElementById('coPhone2') || {}).value || '',
+    gpay: (document.getElementById('coGpay') || {}).value || '',
+    address: document.getElementById('coAddress').value.trim()
+  };
+  companyInfo.phone2 = String(companyInfo.phone2).trim();
+  companyInfo.gpay = String(companyInfo.gpay).trim();
+  await db.collection('settings').doc('company').set({
+    ...companyInfo,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
   showToast('Company saved');
