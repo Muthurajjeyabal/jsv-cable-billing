@@ -143,7 +143,17 @@
       <div class="p-3 bg-white border-b flex gap-2">
         <button onclick="loadPending()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm">Show Pending</button>
       </div>
-      <div class="bg-blue-700 text-white text-center text-xs py-1.5 font-semibold">PENDING LIST</div>
+      <div class="grid grid-cols-2 gap-0 bg-white border-b sticky top-0 z-10">
+        <div class="p-2.5 text-center border-r">
+          <div class="text-[10px] text-slate-500 uppercase">Customers</div>
+          <div class="text-lg font-bold text-red-600" id="pendingCountTop">0</div>
+        </div>
+        <div class="p-2.5 text-center">
+          <div class="text-[10px] text-slate-500 uppercase">Pending ₹</div>
+          <div class="text-lg font-bold text-red-700" id="pendingAmtTop">₹0</div>
+        </div>
+      </div>
+      <div class="bg-blue-700 text-white text-center text-xs py-1.5 font-semibold">PENDING · STREET WISE</div>
       <div id="pendingList" class="flex-1 overflow-y-auto"></div>
       <div class="bg-red-700 text-white p-2 text-center text-sm font-bold" id="pendingTotalBar">Total: ₹0 (0)</div>
     </div>

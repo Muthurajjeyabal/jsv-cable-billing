@@ -502,19 +502,50 @@ async function loadColReport() {
 }
 
 function loadPending() {
-  const list = allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0)
-    .sort((a,b) => Number(b.dueAmt||b.due||0) - Number(a.dueAmt||a.due||0));
+  const list = allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0);
   const total = list.reduce((s,c) => s + Number(c.dueAmt||c.due||0), 0);
   const box = document.getElementById('pendingList');
-  if (!list.length) box.innerHTML = '<div class="text-center py-8 text-slate-400">No pending</div>';
-  else {
-    box.innerHTML = `<table class="w-full text-xs"><thead class="bg-green-700 text-white sticky top-0"><tr>
-      <th class="p-2 text-left">SNo</th><th class="p-2 text-left">Name</th><th class="p-2 text-left">Amount</th></tr></thead><tbody>` +
-      list.map((c,i) => `<tr class="border-b bg-white" onclick="openCollect('${c.id}')">
-        <td class="p-2">${i+1}</td><td class="p-2">${c.name}<div class="text-slate-400">${c.mobile||''}</div></td>
-        <td class="p-2 font-bold text-red-600">₹${Number(c.dueAmt||c.due||0)}</td></tr>`).join('') + '</tbody></table>';
-  }
+  const cntTop = document.getElementById('pendingCountTop');
+  const amtTop = document.getElementById('pendingAmtTop');
+  if (cntTop) cntTop.textContent = String(list.length);
+  if (amtTop) amtTop.textContent = '₹' + total.toLocaleString('en-IN');
   document.getElementById('pendingTotalBar').textContent = `Total: ₹${total.toLocaleString('en-IN')} (${list.length})`;
+
+  if (!list.length) {
+    box.innerHTML = '<div class="text-center py-8 text-slate-400">No pending</div>';
+    return;
+  }
+
+  // group by street
+  const groups = {};
+  list.forEach(c => {
+    const key = (c.street || c.place || 'Other').trim() || 'Other';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(c);
+  });
+  const streets = Object.keys(groups).sort((a,b) => a.localeCompare(b, 'ta'));
+
+  let html = '';
+  let sno = 0;
+  streets.forEach(street => {
+    const arr = groups[street].sort((a,b) => Number(b.dueAmt||b.due||0) - Number(a.dueAmt||a.due||0));
+    const stTotal = arr.reduce((s,c) => s + Number(c.dueAmt||c.due||0), 0);
+    html += `<div class="bg-slate-800 text-white px-3 py-1.5 text-xs font-semibold sticky top-0 flex justify-between">
+      <span>${street}</span>
+      <span>${arr.length} · ₹${stTotal.toLocaleString('en-IN')}</span>
+    </div>`;
+    arr.forEach(c => {
+      sno++;
+      html += `<div class="bg-white border-b px-3 py-2 flex justify-between gap-2 cursor-pointer active:bg-blue-50" onclick="openCollect('${c.id}')">
+        <div class="min-w-0">
+          <div class="text-xs font-medium">${sno}. ${c.name||'-'} <span class="text-blue-600">${c.custId||''}</span></div>
+          <div class="text-[10px] text-slate-400">${c.mobile||''} · ${c.boxNo||''}</div>
+        </div>
+        <div class="text-sm font-bold text-red-600 shrink-0">₹${Number(c.dueAmt||c.due||0).toLocaleString('en-IN')}</div>
+      </div>`;
+    });
+  });
+  box.innerHTML = html;
 }
 
 async function loadDashboard() {
