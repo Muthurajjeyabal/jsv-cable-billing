@@ -405,13 +405,20 @@ window.addEventListener('offline', updateColOfflineUI);
 function searchLedger() {
   const q = document.getElementById('ledgerSearch').value.toLowerCase().trim();
   const box = document.getElementById('ledgerSearchResults');
-  if (q.length < 2) { box.classList.add('hidden'); return; }
+  if (q.length < 1) { box.classList.add('hidden'); return; }
   const matches = allCustomers.filter(c =>
-    (c.name||'').toLowerCase().includes(q) || (c.mobile||'').includes(q) || (c.boxNo||'').toLowerCase().includes(q)
-  ).slice(0, 8);
+    (c.name||'').toLowerCase().includes(q) ||
+    (c.mobile||'').includes(q) ||
+    (c.boxNo||'').toLowerCase().includes(q) ||
+    (c.custId||'').toLowerCase().includes(q) ||
+    (c.street||'').toLowerCase().includes(q)
+  ).slice(0, 10);
   box.classList.remove('hidden');
   box.innerHTML = matches.map(c =>
-    `<div class="p-2 border-b text-sm cursor-pointer hover:bg-blue-50" onclick="viewLedger('${c.id}')">${c.name} • ${c.mobile||''} • Due ₹${c.dueAmt||0}</div>`
+    `<div class="p-2 border-b text-sm cursor-pointer hover:bg-blue-50" onclick="viewLedger('${c.id}')">
+      <div class="font-medium">${c.name||'-'} <span class="text-blue-600 text-xs">${c.custId||''}</span></div>
+      <div class="text-[10px] text-slate-500">${c.street||'-'} · ${c.mobile||''} · Due ₹${c.dueAmt||0}</div>
+    </div>`
   ).join('') || '<div class="p-2 text-slate-400 text-sm">No match</div>';
 }
 
@@ -427,9 +434,12 @@ async function viewLedger(id) {
     snap.forEach(doc => rows.push(doc.data()));
     rows.sort((a,b) => (b.date||'').localeCompare(a.date||''));
     let total = 0;
+    const streetLine = [c.street, c.place].filter(Boolean).join(' · ') || '-';
     let html = `<div class="bg-white rounded-xl p-3 mb-3 border">
-      <div class="font-bold">${c.name}</div>
-      <div class="text-xs text-slate-500">${c.mobile||'-'} | ${c.boxNo||'-'} | Due: ₹${c.dueAmt||0}</div>
+      <div class="font-bold text-base">${c.name||'-'}</div>
+      <div class="text-sm text-blue-700 font-semibold mt-0.5">ID: ${c.custId||'-'}</div>
+      <div class="text-xs text-slate-600 mt-1">Street: ${streetLine}</div>
+      <div class="text-xs text-slate-500 mt-0.5">${c.mobile||'-'} | Box: ${c.boxNo||'-'} | Due: ₹${Number(c.dueAmt||c.due||0).toLocaleString('en-IN')}</div>
     </div>`;
     if (!rows.length) html += '<div class="text-center text-slate-400 py-6">No records</div>';
     else {
@@ -466,6 +476,10 @@ async function loadColReport() {
     let total = 0;
     if (!rows.length) {
       list.innerHTML = '<div class="text-center py-8 text-slate-400">No collections</div>';
+      const cnt = document.getElementById('colReportCount');
+      const amtTop = document.getElementById('colReportAmtTop');
+      if (cnt) cnt.textContent = '0';
+      if (amtTop) amtTop.textContent = '₹0';
     } else {
       list.innerHTML = `<table class="w-full text-xs"><thead class="bg-green-700 text-white sticky top-0"><tr>
         <th class="p-2 text-left">SNo</th><th class="p-2 text-left">Name</th><th class="p-2 text-left">Date</th><th class="p-2 text-left">Amt</th></tr></thead><tbody>` +
@@ -474,7 +488,13 @@ async function loadColReport() {
           return `<tr class="border-b bg-white"><td class="p-2">${i+1}</td><td class="p-2">${r.customerName||'-'}</td><td class="p-2">${r.date||'-'}</td><td class="p-2 font-semibold">₹${r.amount||0}</td></tr>`;
         }).join('') + '</tbody></table>';
     }
-    document.getElementById('colReportTotal').textContent = 'Total: ₹' + total.toLocaleString('en-IN') + ' (' + rows.length + ')';
+    const totalTxt = 'Total: ₹' + total.toLocaleString('en-IN') + ' (' + rows.length + ')';
+    const totEl = document.getElementById('colReportTotal');
+    if (totEl) totEl.textContent = totalTxt;
+    const cnt = document.getElementById('colReportCount');
+    const amtTop = document.getElementById('colReportAmtTop');
+    if (cnt) cnt.textContent = String(rows.length);
+    if (amtTop) amtTop.textContent = '₹' + total.toLocaleString('en-IN');
   } catch (e) {
     list.innerHTML = '<div class="text-red-500 text-center py-6">Error (may need index)</div>';
     console.error(e);
