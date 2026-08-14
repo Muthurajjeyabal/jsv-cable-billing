@@ -110,8 +110,10 @@ document.addEventListener('DOMContentLoaded', () => {
       currentUser = user;
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
-      document.getElementById('agentLabel').textContent = user.email;
-      document.getElementById('settingsEmail').textContent = user.email;
+      const al = document.getElementById('agentLabel');
+      if (al) al.textContent = '';
+      const se = document.getElementById('settingsEmail');
+      if (se) se.textContent = displayAgentName(user.email);
       document.getElementById('dashAgentName').textContent = (user.email || '').split('@')[0].toUpperCase();
       await loadCustomers();
       goHome();

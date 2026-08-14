@@ -55,14 +55,13 @@
 
   <div id="appScreen" class="hidden min-h-screen flex flex-col">
     <header class="bg-blue-800 text-white px-4 py-3 sticky top-0 z-30 shadow">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between gap-2">
         <button id="backBtn" onclick="goHome()" class="hidden text-white text-xl px-1">←</button>
         <div class="font-semibold text-sm flex-1 text-center" id="headerTitle">JSV CABLE TV</div>
         <span id="colOfflineBadge" class="hidden text-[10px] font-bold bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded">OFF</span>
         <span id="colSyncBadge" class="hidden text-[10px] font-bold bg-blue-400 text-white px-1.5 py-0.5 rounded">Sync</span>
-        <button onclick="logout()" class="text-red-300 text-lg">⏻</button>
       </div>
-      <div class="text-xs opacity-70 text-center" id="agentLabel"></div>
+      <div id="agentLabel" class="hidden"></div>
     </header>
 
     <div id="page-home" class="page flex-1 overflow-y-auto page-pad bg-slate-100">
