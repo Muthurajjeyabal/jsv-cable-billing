@@ -13,8 +13,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <style>
     * { -webkit-tap-highlight-color: transparent; }
-    body { font-family: system-ui, -apple-system, sans-serif; }
+    body { font-family: system-ui, -apple-system, sans-serif; background:#f1f5f9; }
     .menu-btn:active { transform: scale(0.97); }
+    .bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+    .page-pad { padding-bottom: 72px; }
+    .progress-bar { height: 6px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+    .progress-bar > span { display:block; height:100%; background: linear-gradient(90deg,#2563eb,#10b981); border-radius:99px; }
   </style>
 </head>
 <div id="splashScreen" style="position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s">
@@ -61,34 +65,93 @@
       <div class="text-xs opacity-70 text-center" id="agentLabel"></div>
     </header>
 
-    <div id="page-home" class="page flex-1 p-4 space-y-3 overflow-y-auto">
-      <div class="text-center text-blue-900 font-bold text-sm mb-1 bg-blue-100 py-2 rounded-lg">JSV CABLE TV</div>
-      <button onclick="showPage('dashboard')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">📊</span><span class="font-medium">DASHBOARD</span></button>
-      <button onclick="showPage('customers')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">👤</span><span class="font-medium">CUSTOMER INFO</span></button>
-      <button onclick="showPage('billing')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">₹</span><span class="font-medium">BILLING</span></button>
-      <button onclick="showPage('ledger')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">📒</span><span class="font-medium">LEDGER</span></button>
-      <button onclick="showPage('colReport')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">📑</span><span class="font-medium">COLLECTION REPORT</span></button>
-      <button onclick="showPage('pending')" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border"><span class="text-2xl">⏰</span><span class="font-medium">PENDING REPORT</span></button>
-      <button onclick="logout()" class="menu-btn w-full bg-white rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm border border-red-200"><span class="text-2xl">⏻</span><span class="font-medium text-red-600">LOGOUT</span></button>
-    </div>
-
-    <div id="page-dashboard" class="page hidden flex-1 overflow-y-auto p-3 space-y-2">
-      <div class="bg-blue-600 text-white text-center py-2 rounded-lg font-semibold text-sm" id="dashAgentName">AGENT</div>
-      <div class="grid grid-cols-2 gap-2">
-        <div class="bg-green-500 text-white rounded-lg p-3 text-center"><div class="text-xs">Active</div><div class="text-xl font-bold" id="dActive">0</div></div>
-        <div class="bg-orange-500 text-white rounded-lg p-3 text-center"><div class="text-xs">DC</div><div class="text-xl font-bold" id="dDC">0</div></div>
-        <div class="bg-pink-500 text-white rounded-lg p-3 text-center"><div class="text-xs">Paid Cust.</div><div class="text-xl font-bold" id="dPaidCust">0</div></div>
-        <div class="bg-purple-500 text-white rounded-lg p-3 text-center"><div class="text-xs">Unpaid Cust.</div><div class="text-xl font-bold" id="dUnpaidCust">0</div></div>
-        <div class="bg-slate-600 text-white rounded-lg p-3 text-center"><div class="text-xs">Paid Amt (month)</div><div class="text-lg font-bold" id="dPaidAmt">₹0</div></div>
-        <div class="bg-amber-500 text-white rounded-lg p-3 text-center"><div class="text-xs">Unpaid Amt</div><div class="text-lg font-bold" id="dUnpaidAmt">₹0</div></div>
+    <div id="page-home" class="page flex-1 overflow-y-auto page-pad bg-slate-100">
+      <div class="px-3 pt-3 pb-2">
+        <div class="flex items-center justify-between mb-1">
+          <div>
+            <div class="text-xs text-slate-500">Collector</div>
+            <div class="font-bold text-slate-900 text-sm" id="dashAgentName">—</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[10px] font-medium text-emerald-600" id="dashOnline">● Online</div>
+            <div class="text-[10px] text-slate-400" id="dashSync">Synced</div>
+          </div>
+        </div>
       </div>
-      <div class="bg-blue-500 text-white rounded-lg p-3 text-center"><div class="text-xs">Yesterday Collection</div><div class="text-xl font-bold" id="dYest">₹0</div></div>
-      <div class="bg-green-700 text-white rounded-lg p-3 text-center"><div class="text-xs">Today Collection</div><div class="text-xl font-bold" id="dToday">₹0</div></div>
-      <div class="bg-blue-600 text-white rounded-lg p-3 text-center"><div class="text-xs">My Total (this month)</div><div class="text-xl font-bold" id="dMyTotal">₹0</div></div>
-      <div class="bg-red-600 text-white rounded-lg p-3 text-center"><div class="text-xs">Total Pending</div><div class="text-xl font-bold" id="dPending">₹0</div></div>
+
+      <!-- TODAY COLLECTION -->
+      <div class="mx-3 mb-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">Today's Collection</div>
+        <div class="text-3xl font-bold text-slate-900 mt-1" id="dToday">₹0</div>
+        <div class="text-xs text-slate-500 mt-0.5"><span id="dTodayCount">0</span> customers collected</div>
+      </div>
+
+      <!-- SUMMARY 2x2 -->
+      <div class="mx-3 mb-3 grid grid-cols-2 gap-2">
+        <div class="bg-white rounded-xl border border-slate-200 p-3">
+          <div class="text-[10px] text-slate-400 uppercase">Active</div>
+          <div class="text-xl font-bold text-slate-800" id="dActive">0</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-3">
+          <div class="text-[10px] text-slate-400 uppercase">Today Paid</div>
+          <div class="text-xl font-bold text-emerald-600" id="dPaidCust">0</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-3">
+          <div class="text-[10px] text-slate-400 uppercase">Pending</div>
+          <div class="text-xl font-bold text-amber-600" id="dUnpaidCust">0</div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-3">
+          <div class="text-[10px] text-slate-400 uppercase">Due Amount</div>
+          <div class="text-lg font-bold text-red-600" id="dUnpaidAmt">₹0</div>
+        </div>
+      </div>
+
+      <!-- ROUTE BY STREET -->
+      <div class="mx-3 mb-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
+          <div class="text-xs font-semibold text-slate-700">Today's Route</div>
+          <button type="button" onclick="showPage('pending')" class="text-[10px] text-blue-600 font-medium">View All →</button>
+        </div>
+        <div id="dashRouteList" class="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+          <div class="p-3 text-xs text-slate-400 text-center">Loading...</div>
+        </div>
+      </div>
+
+      <!-- PENDING PREVIEW -->
+      <div class="mx-3 mb-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
+          <div class="text-xs font-semibold text-slate-700">Pending Customers</div>
+          <button type="button" onclick="showPage('pending')" class="text-[10px] text-blue-600 font-medium">View All →</button>
+        </div>
+        <div id="dashPendingPreview" class="divide-y divide-slate-100">
+          <div class="p-3 text-xs text-slate-400 text-center">—</div>
+        </div>
+      </div>
+
+      <!-- QUICK ACTIONS -->
+      <div class="mx-3 mb-3 grid grid-cols-2 gap-2">
+        <button type="button" onclick="showPage('billing')" class="bg-blue-600 text-white rounded-xl py-3.5 text-sm font-semibold shadow-sm">₹ Collect</button>
+        <button type="button" onclick="showPage('customers')" class="bg-white border border-slate-200 rounded-xl py-3.5 text-sm font-semibold text-slate-700">Search</button>
+        <button type="button" onclick="showPage('pending')" class="bg-white border border-slate-200 rounded-xl py-3.5 text-sm font-semibold text-slate-700">Pending</button>
+        <button type="button" onclick="showPage('colReport')" class="bg-white border border-slate-200 rounded-xl py-3.5 text-sm font-semibold text-slate-700">Report</button>
+      </div>
+
+      <!-- RECENT -->
+      <div class="mx-3 mb-4 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-slate-100 text-xs font-semibold text-slate-700">Recent Collections</div>
+        <div id="dashRecent" class="divide-y divide-slate-100">
+          <div class="p-3 text-xs text-slate-400 text-center">No collections today</div>
+        </div>
+      </div>
     </div>
 
-    <div id="page-customers" class="page hidden flex-1 flex flex-col overflow-hidden">
+    <!-- hidden legacy ids for compatibility -->
+    <div class="hidden">
+      <span id="dDC">0</span><span id="dPending">0</span><span id="dYest">0</span>
+      <span id="dPaidAmt">0</span><span id="dMyTotal">0</span>
+    </div>
+
+<div id="page-customers" class="page hidden flex-1 flex flex-col overflow-hidden">
       <div class="p-3 bg-white border-b space-y-2">
         <select id="filterPlace" onchange="onPlaceChange()" class="w-full px-3 py-2 border rounded-lg text-sm"><option value="">- Select Place -</option></select>
         <select id="filterStreet" onchange="filterCustomers()" class="w-full px-3 py-2 border rounded-lg text-sm"><option value="">- Select Street -</option></select>
@@ -158,12 +221,16 @@
       <div class="bg-red-700 text-white p-2 text-center text-sm font-bold" id="pendingTotalBar">Total: ₹0 (0)</div>
     </div>
 
-    <div id="page-settings" class="page hidden flex-1 p-4">
-      <div class="bg-white rounded-xl p-4 shadow-sm space-y-3">
-        <div class="text-sm text-slate-500">Logged in as</div>
-        <div class="font-semibold" id="settingsEmail">-</div>
-        <button onclick="logout()" class="w-full bg-red-600 text-white py-3 rounded-xl font-medium mt-4">Logout</button>
+    <div id="page-settings" class="page hidden flex-1 p-4 page-pad overflow-y-auto">
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-2 mb-3">
+        <div class="text-xs text-slate-400">Logged in as</div>
+        <div class="font-semibold text-sm" id="settingsEmail">-</div>
       </div>
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-3 divide-y">
+        <button type="button" onclick="showPage('ledger')" class="w-full text-left px-4 py-3.5 text-sm font-medium">📒 Ledger</button>
+        <button type="button" onclick="showPage('colReport')" class="w-full text-left px-4 py-3.5 text-sm font-medium">📑 Collection Report</button>
+      </div>
+      <button onclick="logout()" class="w-full bg-red-600 text-white py-3.5 rounded-xl font-medium">Logout</button>
       <p class="text-center text-xs text-slate-400 mt-6">JSV Cable TV · by JMR Apps</p>
     </div>
   </div>
@@ -184,7 +251,31 @@
     </div>
   </div>
 
-  <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full text-white text-sm z-50 shadow-lg"></div>
+    <!-- Bottom Nav -->
+  <nav id="bottomNav" class="bottom-nav fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 grid grid-cols-5 text-center shadow-[0_-4px_12px_rgba(0,0,0,.06)] hidden">
+    <button type="button" onclick="goHome()" class="nav-item py-2 text-blue-600" data-nav="home">
+      <div class="text-lg leading-none">⌂</div>
+      <div class="text-[9px] font-medium mt-0.5">Home</div>
+    </button>
+    <button type="button" onclick="showPage('customers')" class="nav-item py-2 text-slate-400" data-nav="customers">
+      <div class="text-lg leading-none">◎</div>
+      <div class="text-[9px] font-medium mt-0.5">Customers</div>
+    </button>
+    <button type="button" onclick="showPage('billing')" class="nav-item py-2 text-slate-400" data-nav="billing">
+      <div class="text-lg leading-none">₹</div>
+      <div class="text-[9px] font-medium mt-0.5">Collect</div>
+    </button>
+    <button type="button" onclick="showPage('pending')" class="nav-item py-2 text-slate-400" data-nav="pending">
+      <div class="text-lg leading-none">⚠</div>
+      <div class="text-[9px] font-medium mt-0.5">Due</div>
+    </button>
+    <button type="button" onclick="showPage('settings')" class="nav-item py-2 text-slate-400" data-nav="settings">
+      <div class="text-lg leading-none">≡</div>
+      <div class="text-[9px] font-medium mt-0.5">More</div>
+    </button>
+  </nav>
+
+  <div id="toast" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full text-white text-sm z-50 shadow-lg"></div>
   <script src="collector.js"></script>
 </body>
 </html>

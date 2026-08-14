@@ -137,25 +137,41 @@ async function handleLogin(e) {
 
 function logout() { if (confirm('Logout?')) auth.signOut(); }
 
+function setBottomNav(active) {
+  const nav = document.getElementById('bottomNav');
+  if (nav) nav.classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    const on = btn.getAttribute('data-nav') === active;
+    btn.classList.toggle('text-blue-600', on);
+    btn.classList.toggle('text-slate-400', !on);
+  });
+}
+
 function goHome() {
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
   document.getElementById('page-home').classList.remove('hidden');
-  document.getElementById('backBtn').classList.add('hidden');
-  document.getElementById('headerTitle').textContent = 'JSV CABLE';
+  const back = document.getElementById('backBtn');
+  if (back) back.classList.add('hidden');
+  const ht = document.getElementById('headerTitle');
+  if (ht) ht.textContent = 'Dashboard';
+  setBottomNav('home');
+  loadDashboard();
 }
 
 function showPage(id) {
   try {
+    if (id === 'dashboard' || id === 'home') { goHome(); return; }
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
     const page = document.getElementById('page-' + id);
     if (!page) { console.error('Page not found:', id); showToast('Page error: ' + id, true); return; }
     page.classList.remove('hidden');
     const back = document.getElementById('backBtn');
     if (back) back.classList.remove('hidden');
-    const titles = { dashboard:'DASHBOARD', customers:'CUSTOMER INFO', billing:'BILLING', ledger:'LEDGER', colReport:'COLLECTION REPORT', pending:'PENDING REPORT', settings:'SETTINGS' };
+    const titles = { customers:'Customers', billing:'Collect', ledger:'Ledger', colReport:'Collection Report', pending:'Pending Due', settings:'More' };
     const ht = document.getElementById('headerTitle');
     if (ht) ht.textContent = titles[id] || id;
-    if (id === 'dashboard') loadDashboard();
+    const navMap = { customers:'customers', billing:'billing', pending:'pending', settings:'settings', ledger:'home', colReport:'home' };
+    setBottomNav(navMap[id] || 'home');
     if (id === 'customers') { buildPlaceStreet(); filterCustomers(); }
     if (id === 'colReport') loadColReport();
     if (id === 'pending') loadPending();
@@ -549,46 +565,130 @@ function loadPending() {
 }
 
 async function loadDashboard() {
-  const active = allCustomers.filter(c => (c.status||'ACT')==='ACT').length;
-  const dc = allCustomers.filter(c => c.status==='DC').length;
-  const unpaidList = allCustomers.filter(c => Number(c.dueAmt||c.due||0) > 0);
-  const unpaidAmt = unpaidList.reduce((s,c) => s + Number(c.dueAmt||c.due||0), 0);
-  document.getElementById('dActive').textContent = active;
-  document.getElementById('dDC').textContent = dc;
-  document.getElementById('dUnpaidCust').textContent = unpaidList.length;
-  document.getElementById('dUnpaidAmt').textContent = '₹' + unpaidAmt.toLocaleString('en-IN');
-  document.getElementById('dPending').textContent = '₹' + unpaidAmt.toLocaleString('en-IN');
+  const agentEl = document.getElementById('dashAgentName');
+  if (agentEl) agentEl.textContent = displayAgentName(currentUser?.email || '') || 'Collector';
+  const onlineEl = document.getElementById('dashOnline');
+  if (onlineEl) {
+    onlineEl.textContent = navigator.onLine ? '● Online' : '● Offline';
+    onlineEl.className = 'text-[10px] font-medium ' + (navigator.onLine ? 'text-emerald-600' : 'text-amber-600');
+  }
+  const syncEl = document.getElementById('dashSync');
+  if (syncEl) syncEl.textContent = 'Last sync: just now';
 
-  // Only this agent's area customer IDs
+  const active = allCustomers.filter(c => (c.status||'ACT')==='ACT').length;
+  const unpaidList = allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0)
+    .sort((a,b) => Number(b.dueAmt||b.due||0) - Number(a.dueAmt||a.due||0));
+  const unpaidAmt = unpaidList.reduce((s,c) => s + Number(c.dueAmt||c.due||0), 0);
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('dActive', active);
+  set('dUnpaidCust', unpaidList.length);
+  set('dUnpaidAmt', '₹' + unpaidAmt.toLocaleString('en-IN'));
+  set('dPending', '₹' + unpaidAmt.toLocaleString('en-IN'));
+
+  // pending preview top 5
+  const prev = document.getElementById('dashPendingPreview');
+  if (prev) {
+    if (!unpaidList.length) prev.innerHTML = '<div class="p-3 text-xs text-slate-400 text-center">No pending</div>';
+    else {
+      prev.innerHTML = unpaidList.slice(0, 5).map(c => `
+        <div class="px-4 py-2.5 flex items-center gap-2">
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-medium truncate">${c.name||'-'}</div>
+            <div class="text-[10px] text-slate-400 truncate">📍 ${c.street||c.place||'-'}</div>
+          </div>
+          <div class="text-sm font-bold text-red-600">₹${Number(c.dueAmt||c.due||0).toLocaleString('en-IN')}</div>
+          <button type="button" onclick="openCollect('${c.id}')" class="text-[10px] bg-blue-600 text-white px-2 py-1 rounded-lg shrink-0">Collect</button>
+        </div>`).join('');
+    }
+  }
+
   const myCustIds = new Set(allCustomers.map(c => c.id));
   const myCustIdCodes = new Set(allCustomers.map(c => c.custId).filter(Boolean));
-
-  const today = new Date().toISOString().split('T')[0]; // today only — no backdate
-  const yest = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
   const monthStart = today.slice(0, 8) + '01';
+
+  // street route: total vs paid today
+  const streetStats = {};
+  allCustomers.filter(c => (c.status||'ACT')==='ACT').forEach(c => {
+    const k = (c.street || c.place || 'Other').trim() || 'Other';
+    if (!streetStats[k]) streetStats[k] = { total: 0, paid: 0, pendingAmt: 0, due: 0 };
+    streetStats[k].total++;
+    if (Number(c.dueAmt||c.due||0) > 0) {
+      streetStats[k].due++;
+      streetStats[k].pendingAmt += Number(c.dueAmt||c.due||0);
+    }
+  });
 
   try {
     const allCol = await db.collection('collections').where('date', '>=', monthStart).get();
-    let todayT = 0, yestT = 0, monthT = 0, myMonth = 0;
-    const paidIds = new Set();
+    let todayT = 0, todayN = 0, monthT = 0, myMonth = 0;
+    const paidTodayIds = new Set();
+    const recent = [];
     allCol.forEach(doc => {
       const d = doc.data();
-      // Filter: only collections for customers in this agent's area
       const inArea = myCustIds.has(d.customerId) || myCustIdCodes.has(d.custId);
       if (!inArea) return;
       const amt = Number(d.amount || 0);
       monthT += amt;
-      if (d.date === today) todayT += amt;
-      if (d.date === yest) yestT += amt;
       if (isMyCollection(d)) myMonth += amt;
-      if (d.customerId) paidIds.add(d.customerId);
-      else if (d.custId) paidIds.add(d.custId);
+      if (d.date === today) {
+        todayT += amt;
+        todayN++;
+        if (d.customerId) paidTodayIds.add(d.customerId);
+        recent.push(d);
+        const cust = allCustomers.find(x => x.id === d.customerId);
+        const st = cust ? ((cust.street||cust.place||'Other').trim()||'Other') : null;
+        if (st && streetStats[st]) streetStats[st].paid++;
+      }
     });
-    document.getElementById('dToday').textContent = '₹' + todayT.toLocaleString('en-IN');
-    document.getElementById('dYest').textContent = '₹' + yestT.toLocaleString('en-IN');
-    document.getElementById('dPaidAmt').textContent = '₹' + monthT.toLocaleString('en-IN');
-    document.getElementById('dMyTotal').textContent = '₹' + myMonth.toLocaleString('en-IN');
-    document.getElementById('dPaidCust').textContent = paidIds.size;
+    recent.sort((a,b) => String(b.createdAt?.toDate?.() || b.date || '').localeCompare(String(a.createdAt?.toDate?.() || a.date || '')));
+    set('dToday', '₹' + todayT.toLocaleString('en-IN'));
+    set('dTodayCount', String(todayN));
+    set('dPaidCust', String(paidTodayIds.size || todayN));
+    set('dPaidAmt', '₹' + monthT.toLocaleString('en-IN'));
+    set('dMyTotal', '₹' + myMonth.toLocaleString('en-IN'));
+
+    const routeEl = document.getElementById('dashRouteList');
+    if (routeEl) {
+      const keys = Object.keys(streetStats).sort((a,b) => streetStats[b].due - streetStats[a].due || a.localeCompare(b,'ta'));
+      if (!keys.length) routeEl.innerHTML = '<div class="p-3 text-xs text-slate-400 text-center">No streets</div>';
+      else {
+        routeEl.innerHTML = keys.slice(0, 8).map(k => {
+          const s = streetStats[k];
+          const done = Math.max(0, s.total - s.due);
+          const pct = s.total ? Math.round((done / s.total) * 100) : 0;
+          return `<div class="px-4 py-2.5">
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-medium text-slate-800 truncate">${k}</span>
+              <span class="text-slate-500 shrink-0">${done}/${s.total}</span>
+            </div>
+            <div class="progress-bar mb-1"><span style="width:${pct}%"></span></div>
+            <div class="flex justify-between text-[10px] text-slate-400">
+              <span class="text-emerald-600">${done} paid</span>
+              <span class="text-amber-600">${s.due} pending · ₹${s.pendingAmt.toLocaleString('en-IN')}</span>
+            </div>
+          </div>`;
+        }).join('');
+      }
+    }
+
+    const recentEl = document.getElementById('dashRecent');
+    if (recentEl) {
+      if (!recent.length) recentEl.innerHTML = '<div class="p-3 text-xs text-slate-400 text-center">No collections today</div>';
+      else {
+        recentEl.innerHTML = recent.slice(0, 8).map(r => `
+          <div class="px-4 py-2.5 flex justify-between items-center">
+            <div class="min-w-0">
+              <div class="text-sm font-medium truncate">${r.customerName||'-'}</div>
+              <div class="text-[10px] text-slate-400">${r.mode||'Cash'} · ${r.date||''}</div>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-sm font-bold text-slate-800">₹${Number(r.amount||0).toLocaleString('en-IN')}</div>
+              <div class="text-[9px] text-emerald-600 font-medium">✓ Paid</div>
+            </div>
+          </div>`).join('');
+      }
+    }
   } catch (e) {
     console.error(e);
   }
