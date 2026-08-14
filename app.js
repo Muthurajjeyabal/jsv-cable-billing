@@ -2631,7 +2631,27 @@ async function importAugustCollections() {
         if (!cust) { noMatch++; continue; }
 
         const ref = db.collection('collections').doc();
-        const agent = (r.collected || r.employee || '').toUpperCase();
+        const agent = (r.collected || r.employee || '').toUpperCase().trim();
+        // Map Cable Soft COLLECTED → our agents
+        // GPAY → ONLINE, LOCAL → OFFICE
+        let collectedBy = agent;
+        let mode = 'Cash';
+        let createdBy = 'import@jsvcable.com';
+        if (/GPAY|UPI|ONLINE/.test(agent)) {
+          collectedBy = 'ONLINE';
+          mode = 'UPI';
+          createdBy = 'online@jsvcable.com';
+        } else if (/LOCAL|OFFICE|BANK/.test(agent)) {
+          collectedBy = 'OFFICE';
+          mode = 'Cash';
+          createdBy = 'office@jsvcable.com';
+        } else if (/MUTHUMARI/.test(agent)) {
+          collectedBy = 'MUTHUMARI';
+          createdBy = 'muthumari@jsvcable.com';
+        } else if (/UMA/.test(agent)) {
+          collectedBy = 'UMA';
+          createdBy = 'uma@jsvcable.com';
+        }
         batch.set(ref, {
           customerId: cust.id,
           customerName: cust.name || r.name || '',
@@ -2639,13 +2659,13 @@ async function importAugustCollections() {
           date: date,
           billDate: r.billDate || date,
           billNo: billNo,
-          mode: /GPAY|UPI|ONLINE/i.test(agent) ? 'UPI' : (/LOCAL|OFFICE|BANK/i.test(agent) ? 'Cash' : 'Cash'),
-          remarks: 'Import Aug2026',
+          mode,
+          remarks: 'Import CableSoft · COLLECTED=' + (r.collected || ''),
           status: 'active',
           importCustId: cid,
-          collectedBy: r.collected || r.employee || '',
+          collectedBy,
           employee: r.employee || '',
-          createdBy: (r.collected || r.employee || 'import') + '@import',
+          createdBy,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         existingKeys.add(skipKey1);
