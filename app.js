@@ -562,21 +562,54 @@ async function toggleDC(id, currentStatus) {
 }
 
 
+function classifyAgent(d) {
+  // collectedBy = real collector (GPAY/LOCAL/UMA/MUTHUMARI) — highest priority
+  if (typeof d === 'string') d = { collectedBy: d };
+  const cb = String(d.collectedBy || '').toLowerCase().trim();
+  const mode = String(d.mode || '').toLowerCase().trim();
+  const email = String(d.createdBy || '').toLowerCase().trim();
+  const emp = String(d.employee || '').toLowerCase().trim();
+  const remarks = String(d.remarks || '').toLowerCase();
+
+  // 1) collectedBy only
+  if (cb) {
+    if (cb.includes('gpay') || cb === 'online' || cb.includes('online')) return 'online';
+    if (cb.includes('local') || cb === 'office' || cb.includes('office')) return 'office';
+    if (cb.includes('muthumari') || cb === 'muthu') return 'muthumari';
+    if (cb === 'uma' || cb.startsWith('uma@') || cb.includes('uma@')) return 'uma';
+  }
+  // 2) remarks from CableSoft import
+  if (/collected\s*=\s*gpay/.test(remarks) || remarks.includes('gpay')) return 'online';
+  if (/collected\s*=\s*local/.test(remarks)) return 'office';
+  // 3) mode
+  if (mode === 'upi' || mode.includes('gpay')) return 'online';
+  // 4) createdBy email
+  if (email.startsWith('online@')) return 'online';
+  if (email.startsWith('office@')) return 'office';
+  if (email.startsWith('muthumari@')) return 'muthumari';
+  if (email.startsWith('uma@')) return 'uma';
+  // 5) employee last (field staff name — do NOT override GPAY/LOCAL)
+  if (emp.includes('gpay') || emp.includes('online')) return 'online';
+  if (emp.includes('local') || emp.includes('office')) return 'office';
+  if (emp.includes('muthumari')) return 'muthumari';
+  if (emp === 'uma' || emp.startsWith('uma@')) return 'uma';
+  return 'other';
+}
+
 function displayAgentName(d) {
-  const raw = ((typeof d === 'string' ? d : '') + ' ' + (d && d.createdBy || '') + ' ' + (d && d.employee || '') + ' ' + (d && d.collectedBy || '')).toLowerCase();
-  const s = (typeof d === 'string' ? d : (d && (d.collectedBy || d.employee || d.createdBy) || '')).toString();
-  const lower = s.toLowerCase();
-  if (lower.includes('muthumari') || lower.startsWith('muthumari')) return 'MUTHUMARI';
-  if (lower.includes('uma@') || lower === 'uma' || /(^|[^a-z])uma([^a-z]|$)/.test(lower)) return 'UMA';
-  if (lower.includes('office') || lower.includes('local')) return 'OFFICE';
-  if (lower.includes('online') || lower.includes('gpay')) return 'ONLINE';
-  if (lower.includes('stefi')) return 'STEFI';
-  if (lower.includes('jeyabal') || lower.includes('muthuraj')) return 'ADMIN';
-  // already a short name
-  if (s && !s.includes('@') && s.length < 20) return s.toUpperCase();
+  if (typeof d === 'string') {
+    const k = classifyAgent({ collectedBy: d, createdBy: d, employee: d });
+    return ({ uma:'UMA', muthumari:'MUTHUMARI', office:'OFFICE', online:'ONLINE' })[k] || String(d).toUpperCase();
+  }
+  const k = classifyAgent(d);
+  const map = { uma: 'UMA', muthumari: 'MUTHUMARI', office: 'OFFICE', online: 'ONLINE' };
+  if (map[k]) return map[k];
+  const s = String((d && (d.collectedBy || d.employee || d.createdBy)) || '');
   if (s.includes('@')) return s.split('@')[0].toUpperCase();
+  if (s && s.length < 20) return s.toUpperCase();
   return s || '-';
 }
+
 
 // ==================== LEDGER ====================
 
@@ -1148,19 +1181,9 @@ async function loadDashboard() {
   }
 }
 
-function classifyAgent(d) {
-  const raw = ((d.createdBy || '') + ' ' + (d.employee || '') + ' ' + (d.collectedBy || '') + ' ' + (d.mode || '')).toLowerCase();
-  if (raw.includes('uma@') || raw.includes(' uma') || raw.trim() === 'uma' || /(^|\s)uma(\s|$)/.test(raw)) return 'uma';
-  if (raw.includes('muthumari') || raw.includes('muthu')) return 'muthumari';
-  if (raw.includes('office') || raw.includes('local')) return 'office';
-  if (raw.includes('online') || raw.includes('gpay') || raw.includes('upi')) return 'online';
-  const email = (d.createdBy || '').toLowerCase();
-  if (email.startsWith('uma@')) return 'uma';
-  if (email.startsWith('muthumari@')) return 'muthumari';
-  if (email.startsWith('office@')) return 'office';
-  if (email.startsWith('online@')) return 'online';
-  return 'other';
-}
+
+
+
 
 function updateDashboardStats() {
   const total = allCustomers.length;
@@ -2586,40 +2609,50 @@ async function saveCompanyInfo() {
 
 
 async function fixGpayLocalAgents() {
-  if (!confirm('GPAY → ONLINE · LOCAL → Office\n\nஏற்கனவே உள்ள collections update செய்யவா?\n(புதிய bill add ஆகாது — பெயர் மட்டும் சரியாகும்)')) return;
+  if (!confirm('GPAY → ONLINE · LOCAL → Office\n\nஏற்கனவே உள்ள collections update செய்யவா?\n(Dashboard Office/Online amount சரியாகும்)')) return;
   try {
     showToast('Updating agents...');
     const snap = await db.collection('collections').get();
-    let gpay = 0, local = 0, other = 0;
+    let gpay = 0, local = 0;
     const updates = [];
     snap.forEach(doc => {
       const d = doc.data();
-      const cb = String(d.collectedBy || d.employee || '').toUpperCase();
-      const cr = String(d.createdBy || '').toUpperCase();
-      const blob = cb + ' ' + cr;
-      if (/GPAY/.test(blob) || (cb === 'GPAY')) {
-        updates.push({ id: doc.id, collectedBy: 'ONLINE', mode: 'UPI', createdBy: 'online@jsvcable.com' });
+      const cb = String(d.collectedBy || '').toUpperCase().trim();
+      const remarks = String(d.remarks || '').toUpperCase();
+      // CableSoft import remarks: Import CableSoft · COLLECTED=GPAY
+      const fromRemarks = /COLLECTED\s*=\s*GPAY/.test(remarks) || remarks.includes('GPAY');
+      const fromRemarksLocal = /COLLECTED\s*=\s*LOCAL/.test(remarks) || (remarks.includes('LOCAL') && !remarks.includes('MUTHUMARI'));
+      if (cb === 'GPAY' || cb.includes('GPAY') || (fromRemarks && cb !== 'ONLINE' && !cb.includes('UMA') && !cb.includes('MUTHUMARI'))) {
+        if (cb !== 'ONLINE') {
+          updates.push({ id: doc.id, collectedBy: 'ONLINE', mode: 'UPI', createdBy: 'online@jsvcable.com', employee: 'ONLINE' });
+          gpay++;
+        }
+      } else if (cb === 'LOCAL' || cb.includes('LOCAL') || (fromRemarksLocal && cb !== 'OFFICE')) {
+        if (cb !== 'OFFICE') {
+          updates.push({ id: doc.id, collectedBy: 'OFFICE', mode: d.mode || 'Cash', createdBy: 'office@jsvcable.com', employee: 'OFFICE' });
+          local++;
+        }
+      } else if (cb === 'ONLINE' && d.employee && String(d.employee).toUpperCase() !== 'ONLINE') {
+        updates.push({ id: doc.id, employee: 'ONLINE', createdBy: 'online@jsvcable.com' });
         gpay++;
-      } else if (/\bLOCAL\b/.test(blob) || cb === 'LOCAL') {
-        updates.push({ id: doc.id, collectedBy: 'OFFICE', mode: d.mode || 'Cash', createdBy: 'office@jsvcable.com' });
+      } else if (cb === 'OFFICE' && d.employee && String(d.employee).toUpperCase() !== 'OFFICE') {
+        updates.push({ id: doc.id, employee: 'OFFICE', createdBy: 'office@jsvcable.com' });
         local++;
-      } else {
-        other++;
       }
     });
     for (let i = 0; i < updates.length; i += 400) {
       const batch = db.batch();
       updates.slice(i, i + 400).forEach(u => {
-        batch.update(db.collection('collections').doc(u.id), {
-          collectedBy: u.collectedBy,
-          mode: u.mode,
-          createdBy: u.createdBy,
-          agentFixedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        const payload = { agentFixedAt: firebase.firestore.FieldValue.serverTimestamp() };
+        if (u.collectedBy) payload.collectedBy = u.collectedBy;
+        if (u.mode) payload.mode = u.mode;
+        if (u.createdBy) payload.createdBy = u.createdBy;
+        if (u.employee) payload.employee = u.employee;
+        batch.update(db.collection('collections').doc(u.id), payload);
       });
       await batch.commit();
     }
-    showToast('Fixed · GPAY→Online: ' + gpay + ' · LOCAL→Office: ' + local);
+    showToast('Fixed · ONLINE: ' + gpay + ' · OFFICE: ' + local + ' · Refresh dashboard');
     if (typeof loadDashboard === 'function') loadDashboard();
   } catch (e) {
     console.error(e);
