@@ -1520,6 +1520,10 @@
                   <input type="email" id="empEmail" placeholder="name@jsvcable.com" class="w-full px-3 py-2 border rounded-lg">
                 </div>
                 <div>
+                  <label class="text-xs text-slate-500">Password <span class="text-slate-400">(புதிய user-க்கு *)</span></label>
+                  <input type="text" id="empPassword" placeholder="குறைந்தது 6 எழுத்து" class="w-full px-3 py-2 border rounded-lg" autocomplete="new-password">
+                </div>
+                <div>
                   <label class="text-xs text-slate-500">Area *</label>
                   <select id="empArea" class="w-full px-3 py-2 border rounded-lg bg-white">
                     <option value="AREA 1">AREA 1</option>
@@ -1531,8 +1535,7 @@
                   <label class="text-xs text-slate-500">Role</label>
                   <select id="empRole" class="w-full px-3 py-2 border rounded-lg bg-white">
                     <option value="collector">Collector</option>
-                    <option value="office">Office</option>
-                    <option value="online">Online</option>
+                    <option value="admin">Admin</option>
                   </select>
                 </div>
               </div>
@@ -1540,7 +1543,7 @@
                 <button type="button" onclick="saveEmployee()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Save</button>
                 <button type="button" onclick="clearEmpForm()" class="bg-slate-200 px-4 py-2 rounded-lg text-sm">Clear</button>
               </div>
-              <p class="text-[10px] text-slate-400 mt-2">Firebase Authentication-ல் user create செய்யவும் (Settings). இங்கே Area map மட்டும்.</p>
+              <p class="text-[10px] text-slate-400 mt-2">Save = Login user + Area ஒன்றாக create. Firebase Console போக வேண்டாம். Edit-ல் password காலி = password மாறாது.</p>
             </div>
             <div class="bg-white rounded-xl border overflow-hidden">
               <div class="px-3 py-2 bg-slate-50 text-xs font-medium text-slate-600 border-b">Collectors list</div>
