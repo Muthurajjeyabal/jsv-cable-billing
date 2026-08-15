@@ -3304,7 +3304,58 @@ function printPendingReport() {
 
 function printCollectionReport() {
   renderCollectionReport();
-  setTimeout(() => window.print(), 200);
+  setTimeout(() => {
+    const src = document.getElementById('colRepPrint');
+    if (!src) { showToast('Report empty', true); return; }
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>JSV Collection Report</title>
+<style>
+  @page { size: A4 portrait; margin: 6mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 2mm; font-family: Arial, sans-serif; font-size: 8px; color: #000; }
+  .col-rep-head { text-align: center; margin-bottom: 4px; }
+  .col-rep-head h2 { font-size: 12px; margin: 0; }
+  .col-rep-head p { font-size: 8px; margin: 1px 0; color: #333; }
+  .col-street { margin: 0 0 3px 0; }
+  .col-street-title {
+    color: #9a3412; border-bottom: 1px solid #9a3412;
+    font-size: 9px; font-weight: 700; padding: 2px 0; margin: 4px 0 1px;
+    display: flex; justify-content: space-between;
+  }
+  table.col-3col {
+    width: 100%; border-collapse: collapse; table-layout: fixed;
+    font-size: 8px; line-height: 1.15;
+  }
+  table.col-3col td {
+    border-bottom: 0.4px solid #999; padding: 0 2px; vertical-align: middle;
+  }
+  .c3-no { width: 5%; font-weight: 700; }
+  .c3-amt { width: 7%; text-align: right; font-weight: 600; }
+  .c3-name { width: 21%; overflow: hidden; white-space: nowrap; }
+  .col-rep-foot { margin-top: 6px; font-size: 8px; text-align: center; color: #555; }
+</style></head><body>${src.innerHTML}
+<script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
+</body></html>`;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    if (!w) {
+      // popup blocked — fallback iframe
+      let iframe = document.getElementById('printFrame');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'printFrame';
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+        document.body.appendChild(iframe);
+      }
+      iframe.onload = function() {
+        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) { console.error(e); }
+      };
+      iframe.src = url;
+      showToast('Print dialog திறக்கும்...');
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }, 100);
 }
 
 // ==================== FULL MONTHLY BACKUP ====================
