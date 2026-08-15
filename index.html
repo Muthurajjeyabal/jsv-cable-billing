@@ -349,15 +349,11 @@
         <button onclick="openMastersPanel('company')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-company">
           <span class="w-5 text-center opacity-80">🏢</span> Company
         </button>
-        <button onclick="showPage('masters')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters">
-          <span class="w-5 text-center opacity-80">⚙</span> All Masters
-        </button>
-
         <div class="nav-section">Finance</div>
         <button onclick="showPage('expenses')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="expenses">
           <span class="w-5 text-center opacity-80">₹</span> Expenses
         </button>
-        <button onclick="showPage('settings')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="settings">
+        <button onclick="showPage('monthBill')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="monthBill">
           <span class="w-5 text-center opacity-80">◷</span> Month Bill + Backup
         </button>
 
@@ -1598,74 +1594,19 @@
           </div>
         </div>
 
-        <!-- SETTINGS -->
-        <div id="page-settings" class="page hidden fade-in">
+        
+        <!-- MONTH BILL + BACKUP -->
+        <div id="page-monthBill" class="page hidden fade-in">
           <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 max-w-lg space-y-4">
-            <h3 class="font-semibold text-lg">Settings</h3>
-            
-            <div class="border rounded-xl p-4">
-              <div class="font-medium mb-2">Create New User (Staff)</div>
-              <form id="createUserForm" class="space-y-3">
-                <input type="email" id="newUserEmail" placeholder="Email" required class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
-                <input type="password" id="newUserPassword" placeholder="Password (min 6)" required minlength="6" class="w-full px-3 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
-                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Create User</button>
-              </form>
-              <p class="text-xs text-slate-500 mt-2">Only Admin should create users.</p>
-            </div>
-
-            <div class="border rounded-xl p-4 border-blue-200 bg-blue-50">
-              <div class="font-medium mb-1 text-blue-900">Bulk Add-on (All / Area)</div>
-              <p class="text-xs text-blue-800 mb-2">Active customers-க்கு add-on சேர்க்கும். Package amount-உடன் கூடும்.</p>
-              <div class="flex flex-col sm:flex-row gap-2 mb-2">
-                <input type="text" id="bulkAddonName" placeholder="Channel name" class="flex-1 px-3 py-2 border rounded-lg text-sm">
-                <input type="number" id="bulkAddonAmt" placeholder="₹" class="w-24 px-3 py-2 border rounded-lg text-sm">
-              </div>
-              <div class="flex flex-wrap gap-2 mb-2">
-                <select id="bulkAddonArea" class="px-3 py-2 border rounded-lg text-sm bg-white">
-                  <option value="ALL">All Areas</option>
-                  <option value="AREA 1">AREA 1 only</option>
-                  <option value="AREA 2">AREA 2 only</option>
-                </select>
-                <button type="button" onclick="bulkAddAddon()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Apply to Customers</button>
-              </div>
-              <div id="bulkAddonStatus" class="text-xs text-slate-600 hidden"></div>
-            </div>
+            <h3 class="font-semibold text-lg">Month Bill + Backup</h3>
 
             <div class="border rounded-xl p-4 border-amber-200 bg-amber-50">
               <div class="font-medium mb-1 text-amber-900">Next Month Bill Generation</div>
-              <p class="text-xs text-amber-800 mb-3">Active customers-க்கு மட்டும் Package Amount-ஐ Due-வோடு சேர்க்கும். DC customers skip ஆகும்.</p>
+              <p class="text-xs text-amber-800 mb-3">Active customers-க்கு மட்டும் Package Amount-ஐ Due-வோடு சேர்க்கும். DC skip.</p>
               <button type="button" onclick="generateMonthDue()" id="genDueBtn"
                 class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">Generate Next Month Bill</button>
-              <p class="text-xs text-amber-800/80 mt-2" id="genDueHint">மாதத்திற்கு <b>ஒரு முறை</b> மட்டும். Active customers-க்கு package amount Due-ல் சேரும்.</p>
+              <p class="text-xs text-amber-800/80 mt-2" id="genDueHint">மாதத்திற்கு <b>ஒரு முறை</b> மட்டும்.</p>
               <div id="genDueStatus" class="text-xs text-slate-600 mt-2"></div>
-            </div>
-
-            <div class="border rounded-xl p-4 border-green-200 bg-green-50">
-              <div class="font-medium mb-1 text-green-900">WhatsApp Templates</div>
-              <p class="text-xs text-green-800 mb-2">Due / பண்டிகை — edit → Save. Placeholders: {name} {month} {due} {gpay} {office}</p>
-              <select id="waTplSelect" onchange="onWaTplSelect()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white mb-2"></select>
-              <input type="text" id="waTplName" placeholder="Template name" class="w-full px-3 py-2 border rounded-lg text-sm mb-2">
-              <textarea id="waTemplate" rows="9" class="w-full px-3 py-2 border rounded-lg text-sm font-mono"></textarea>
-              <div class="flex flex-wrap gap-2 mt-2">
-                <button type="button" onclick="saveWaTemplate()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm">Save</button>
-                <button type="button" onclick="addWaTemplate()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">+ New</button>
-                <button type="button" onclick="deleteWaTemplate()" class="bg-red-100 text-red-700 px-3 py-2 rounded-lg text-sm">Delete</button>
-              </div>
-              <p class="text-xs text-slate-500 mt-2">Default send template:</p>
-              <select id="waDefaultTpl" onchange="saveWaDefaultTpl()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white mt-1"></select>
-              <p id="waTemplateStatus" class="text-xs text-slate-500 mt-2"></p>
-            </div>
-
-            <div class="border rounded-xl p-4 border-blue-200 bg-blue-50">
-              <div class="font-medium mb-1 text-blue-900">Import CableSoft Collections</div>
-              <p class="text-xs text-blue-800 mb-2">GPAY → Online · LOCAL → Office · UMA / MUTHUMARI as is. Duplicate bills skip.</p>
-              <button type="button" onclick="importAugustCollections()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium">
-                Import Aug Collections
-              </button>
-              <button type="button" onclick="fixGpayLocalAgents()" class="mt-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">
-                Fix GPAY→Online · LOCAL→Office
-              </button>
-              <p class="text-[10px] text-slate-500 mt-1">Already imported? Use Fix button — re-add வேண்டாம்</p>
             </div>
 
             <div class="border rounded-xl p-4 border-emerald-200 bg-emerald-50">
@@ -1677,17 +1618,18 @@
               </button>
               <div id="backupStatus" class="text-xs text-slate-600 mt-2"></div>
             </div>
+          </div>
+        </div>
 
-            <div class="border rounded-xl p-4">
-              <div class="font-medium mb-1">App Info</div>
-              <div class="text-sm text-slate-600">Version: 1.2</div>
-              <div class="text-sm text-slate-600">JSV Cable TV · S. Alangulam</div>
-              <div class="text-xs text-slate-500 mt-1">by JMR Apps</div>
-            </div>
+        <!-- SETTINGS -->
+        <div id="page-settings" class="page hidden fade-in">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 max-w-lg space-y-4">
+            <h3 class="font-semibold text-lg">Settings</h3>
           </div>
         </div>
 
       </main>
+
     </div>
   </div>
 
