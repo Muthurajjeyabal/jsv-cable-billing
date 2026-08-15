@@ -3129,37 +3129,28 @@ function renderCollectionReport() {
       <p>${area} · ${month} · Pending Due · ${list.length} customers</p>
       <p>Total Due: ₹${totalDue.toLocaleString('en-IN')}</p>
     </div>`;
-  // CableSoft style: dense 3 columns — No | Amt | Name (fit ~1 area in 2–3 pages)
+  // Continuous 3-column flow (no table row clipping on mobile print)
+  let bodyHtml = '';
+  let printed = 0;
   streets.forEach(st => {
     const rows = map.get(st);
     const stTotal = rows.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
-    html += `<div class="col-street">
-      <div class="col-street-title">${st}<span>₹${stTotal.toLocaleString('en-IN')} · ${rows.length}</span></div>
-      <table class="col-3col"><tbody>`;
-    for (let i = 0; i < rows.length; i += 3) {
-      html += '<tr>';
-      for (let j = 0; j < 3; j++) {
-        const idx = i + j;
-        const c = rows[idx];
-        if (c) {
-          const amt = Number(c.dueAmt || c.due || 0);
-          let no = String(c.doorNo || '').trim();
-          if (!no && c.custId) {
-            const m = String(c.custId).match(/(\d+[A-Za-z]?)$/);
-            no = m ? m[1] : '';
-          }
-          if (!no) no = String(idx + 1);
-          const nm = String(c.name || '-').substring(0, 18);
-          html += `<td class="c3-no">${no}</td><td class="c3-amt">${amt}</td><td class="c3-name">${nm}</td>`;
-        } else {
-          html += '<td class="c3-no"></td><td class="c3-amt"></td><td class="c3-name"></td>';
-        }
+    bodyHtml += `<div class="st-h">${st}<span>₹${stTotal.toLocaleString('en-IN')} · ${rows.length}</span></div>`;
+    rows.forEach((c, idx) => {
+      const amt = Number(c.dueAmt || c.due || 0);
+      let no = String(c.doorNo || '').trim();
+      if (!no && c.custId) {
+        const mm = String(c.custId).match(/(\d+[A-Za-z]?)$/);
+        no = mm ? mm[1] : '';
       }
-      html += '</tr>';
-    }
-    html += '</tbody></table></div>';
+      if (!no) no = String(idx + 1);
+      const nm = String(c.name || '-').substring(0, 16);
+      bodyHtml += `<div class="st-row"><span class="n">${no}</span><span class="a">${amt}</span><span class="nm">${nm}</span></div>`;
+      printed++;
+    });
   });
-  html += `<div class="col-rep-foot">JSV Cable TV · S. Alangulam · ${area} · by JMR Apps</div>`;
+  html += `<div class="flow3">${bodyHtml}</div>`;
+  html += `<div class="col-rep-foot">JSV Cable TV · ${area} · ${printed}/${list.length} customers · by JMR Apps</div>`;
   box.innerHTML = html;
 }
 
@@ -3308,54 +3299,64 @@ function printCollectionReport() {
     const src = document.getElementById('colRepPrint');
     if (!src) { showToast('Report empty', true); return; }
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
 <title>JSV Collection Report</title>
 <style>
-  @page { size: A4 portrait; margin: 6mm; }
+  @page { size: A4; margin: 5mm; }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 2mm; font-family: Arial, sans-serif; font-size: 8px; color: #000; }
-  .col-rep-head { text-align: center; margin-bottom: 4px; }
-  .col-rep-head h2 { font-size: 12px; margin: 0; }
-  .col-rep-head p { font-size: 8px; margin: 1px 0; color: #333; }
-  .col-street { margin: 0 0 3px 0; }
-  .col-street-title {
-    color: #9a3412; border-bottom: 1px solid #9a3412;
-    font-size: 9px; font-weight: 700; padding: 2px 0; margin: 4px 0 1px;
-    display: flex; justify-content: space-between;
+  body { margin: 0; padding: 2mm; font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 8px; }
+  .col-rep-head { text-align: center; margin-bottom: 3px; }
+  .col-rep-head h2 { font-size: 11px; margin: 0; }
+  .col-rep-head p { font-size: 8px; margin: 0; }
+  .flow3 {
+    column-count: 3;
+    column-gap: 6px;
+    column-fill: auto;
   }
-  table.col-3col {
-    width: 100%; border-collapse: collapse; table-layout: fixed;
-    font-size: 8px; line-height: 1.15;
+  .st-h {
+    break-inside: avoid;
+    color: #9a3412;
+    border-bottom: 1px solid #9a3412;
+    font-size: 8.5px;
+    font-weight: 700;
+    padding: 2px 0 1px;
+    margin: 3px 0 1px;
+    display: flex;
+    justify-content: space-between;
   }
-  table.col-3col td {
-    border-bottom: 0.4px solid #999; padding: 0 2px; vertical-align: middle;
+  .st-row {
+    break-inside: avoid;
+    display: flex;
+    gap: 3px;
+    line-height: 1.2;
+    border-bottom: 0.3px solid #ccc;
+    padding: 0.5px 0;
   }
-  .c3-no { width: 5%; font-weight: 700; }
-  .c3-amt { width: 7%; text-align: right; font-weight: 600; }
-  .c3-name { width: 21%; overflow: hidden; white-space: nowrap; }
-  .col-rep-foot { margin-top: 6px; font-size: 8px; text-align: center; color: #555; }
+  .st-row .n { width: 18px; flex-shrink: 0; font-weight: 700; }
+  .st-row .a { width: 28px; flex-shrink: 0; text-align: right; font-weight: 600; }
+  .st-row .nm { flex: 1; overflow: hidden; white-space: nowrap; }
+  .col-rep-foot { margin-top: 6px; text-align: center; font-size: 8px; color: #444; }
 </style></head><body>${src.innerHTML}
-<script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
-</body></html>`;
+<script>
+window.onload = function() {
+  setTimeout(function() { window.focus(); window.print(); }, 300);
+};
+</script></body></html>`;
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const w = window.open(url, '_blank');
     if (!w) {
-      // popup blocked — fallback iframe
-      let iframe = document.getElementById('printFrame');
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'printFrame';
-        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-        document.body.appendChild(iframe);
-      }
-      iframe.onload = function() {
-        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) { console.error(e); }
-      };
-      iframe.src = url;
-      showToast('Print dialog திறக்கும்...');
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast('Open ஆன page-ல் Print அழுத்தவும்');
     }
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  }, 100);
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+  }, 80);
 }
 
 // ==================== FULL MONTHLY BACKUP ====================

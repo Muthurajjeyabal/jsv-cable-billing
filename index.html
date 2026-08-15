@@ -207,6 +207,33 @@
         position: absolute; left: 0; top: 0; width: 80mm;
       }
     }
+  
+    body.printing-colrep * { visibility: hidden !important; }
+    body.printing-colrep #printRoot, body.printing-colrep #printRoot * { visibility: visible !important; }
+    body.printing-colrep #printRoot {
+      position: absolute !important; left: 0 !important; top: 0 !important;
+      width: 100% !important; height: auto !important;
+      background: #fff !important; z-index: 99999 !important;
+      padding: 4mm !important; margin: 0 !important;
+    }
+    body.printing-colrep #printRoot table.col-3col { font-size: 8px !important; }
+    body.printing-colrep #printRoot table.col-3col td { padding: 0 1px !important; line-height: 1.1 !important; }
+    body.printing-colrep #printRoot .col-street-title { font-size: 9px !important; margin: 3px 0 1px !important; }
+
+  
+    .flow3 { column-count: 3; column-gap: 8px; font-size: 10px; }
+    .st-h {
+      break-inside: avoid; color: #9a3412; border-bottom: 1.5px solid #9a3412;
+      font-size: 11px; font-weight: 700; padding: 3px 0; margin: 6px 0 2px;
+      display: flex; justify-content: space-between;
+    }
+    .st-row {
+      break-inside: avoid; display: flex; gap: 4px; line-height: 1.25;
+      border-bottom: 0.5px solid #e2e8f0; padding: 1px 0;
+    }
+    .st-row .n { width: 22px; flex-shrink: 0; font-weight: 700; font-size: 10px; }
+    .st-row .a { width: 32px; flex-shrink: 0; text-align: right; font-weight: 600; }
+    .st-row .nm { flex: 1; overflow: hidden; white-space: nowrap; font-size: 10px; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800">
