@@ -1625,6 +1625,41 @@
         <div id="page-settings" class="page hidden fade-in">
           <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 max-w-lg space-y-4">
             <h3 class="font-semibold text-lg">Settings</h3>
+
+            <div class="border rounded-xl p-4 border-green-200 bg-green-50">
+              <div class="font-medium mb-1 text-green-900">WhatsApp Templates</div>
+              <p class="text-xs text-green-800 mb-2">Due / பண்டிகை — edit → Save. Placeholders: {name} {month} {due} {gpay} {office}</p>
+              <select id="waTplSelect" onchange="onWaTplSelect()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white mb-2"></select>
+              <input type="text" id="waTplName" placeholder="Template name" class="w-full px-3 py-2 border rounded-lg text-sm mb-2">
+              <textarea id="waTemplate" rows="9" class="w-full px-3 py-2 border rounded-lg text-sm font-mono"></textarea>
+              <div class="flex flex-wrap gap-2 mt-2">
+                <button type="button" onclick="saveWaTemplate()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm">Save</button>
+                <button type="button" onclick="addWaTemplate()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">+ New</button>
+                <button type="button" onclick="deleteWaTemplate()" class="bg-red-100 text-red-700 px-3 py-2 rounded-lg text-sm">Delete</button>
+              </div>
+              <p class="text-xs text-slate-500 mt-2">Default send template:</p>
+              <select id="waDefaultTpl" onchange="saveWaDefaultTpl()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white mt-1"></select>
+              <p id="waTemplateStatus" class="text-xs text-slate-500 mt-2"></p>
+            </div>
+
+            <div class="border rounded-xl p-4 border-blue-200 bg-blue-50">
+              <div class="font-medium mb-1 text-blue-900">Import CableSoft Collections</div>
+              <p class="text-xs text-blue-800 mb-2">GPAY → Online · LOCAL → Office · UMA / MUTHUMARI as is. Duplicate bills skip.</p>
+              <button type="button" onclick="importAugustCollections()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium">
+                Import Aug Collections
+              </button>
+              <button type="button" onclick="fixGpayLocalAgents()" class="mt-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">
+                Fix GPAY→Online · LOCAL→Office
+              </button>
+              <p class="text-[10px] text-slate-500 mt-1">Already imported? Use Fix button — re-add வேண்டாம்</p>
+            </div>
+
+            <div class="border rounded-xl p-4">
+              <div class="font-medium mb-1">App Info</div>
+              <div class="text-sm text-slate-600">Version: 1.2</div>
+              <div class="text-sm text-slate-600">JSV Cable TV · S. Alangulam</div>
+              <div class="text-xs text-slate-500 mt-1">by JMR Apps</div>
+            </div>
           </div>
         </div>
 
