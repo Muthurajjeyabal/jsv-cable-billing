@@ -569,7 +569,7 @@ function displayAgentName(d) {
   if (lower.includes('muthumari') || lower.startsWith('muthumari')) return 'MUTHUMARI';
   if (lower.includes('uma@') || lower === 'uma' || /(^|[^a-z])uma([^a-z]|$)/.test(lower)) return 'UMA';
   if (lower.includes('office') || lower.includes('local')) return 'OFFICE';
-  if (lower.includes('online')) return 'ONLINE';
+  if (lower.includes('online') || lower.includes('gpay')) return 'ONLINE';
   if (lower.includes('stefi')) return 'STEFI';
   if (lower.includes('jeyabal') || lower.includes('muthuraj')) return 'ADMIN';
   // already a short name
@@ -1143,12 +1143,11 @@ async function loadDashboard() {
 }
 
 function classifyAgent(d) {
-  const raw = ((d.createdBy || '') + ' ' + (d.employee || '') + ' ' + (d.collectedBy || '')).toLowerCase();
+  const raw = ((d.createdBy || '') + ' ' + (d.employee || '') + ' ' + (d.collectedBy || '') + ' ' + (d.mode || '')).toLowerCase();
   if (raw.includes('uma@') || raw.includes(' uma') || raw.trim() === 'uma' || /(^|\s)uma(\s|$)/.test(raw)) return 'uma';
   if (raw.includes('muthumari') || raw.includes('muthu')) return 'muthumari';
   if (raw.includes('office') || raw.includes('local')) return 'office';
-  if (raw.includes('online')) return 'online';
-  // email local-part
+  if (raw.includes('online') || raw.includes('gpay') || raw.includes('upi')) return 'online';
   const email = (d.createdBy || '').toLowerCase();
   if (email.startsWith('uma@')) return 'uma';
   if (email.startsWith('muthumari@')) return 'muthumari';
@@ -2577,6 +2576,49 @@ async function saveCompanyInfo() {
     setTimeout(() => msg.classList.add('hidden'), 2500);
   }
   setCompanyEditMode(false);
+}
+
+
+async function fixGpayLocalAgents() {
+  if (!confirm('GPAY → ONLINE · LOCAL → Office\n\nஏற்கனவே உள்ள collections update செய்யவா?\n(புதிய bill add ஆகாது — பெயர் மட்டும் சரியாகும்)')) return;
+  try {
+    showToast('Updating agents...');
+    const snap = await db.collection('collections').get();
+    let gpay = 0, local = 0, other = 0;
+    const updates = [];
+    snap.forEach(doc => {
+      const d = doc.data();
+      const cb = String(d.collectedBy || d.employee || '').toUpperCase();
+      const cr = String(d.createdBy || '').toUpperCase();
+      const blob = cb + ' ' + cr;
+      if (/GPAY/.test(blob) || (cb === 'GPAY')) {
+        updates.push({ id: doc.id, collectedBy: 'ONLINE', mode: 'UPI', createdBy: 'online@jsvcable.com' });
+        gpay++;
+      } else if (/\bLOCAL\b/.test(blob) || cb === 'LOCAL') {
+        updates.push({ id: doc.id, collectedBy: 'OFFICE', mode: d.mode || 'Cash', createdBy: 'office@jsvcable.com' });
+        local++;
+      } else {
+        other++;
+      }
+    });
+    for (let i = 0; i < updates.length; i += 400) {
+      const batch = db.batch();
+      updates.slice(i, i + 400).forEach(u => {
+        batch.update(db.collection('collections').doc(u.id), {
+          collectedBy: u.collectedBy,
+          mode: u.mode,
+          createdBy: u.createdBy,
+          agentFixedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+    }
+    showToast('Fixed · GPAY→Online: ' + gpay + ' · LOCAL→Office: ' + local);
+    if (typeof loadDashboard === 'function') loadDashboard();
+  } catch (e) {
+    console.error(e);
+    showToast('Error: ' + e.message, true);
+  }
 }
 
 async function importAugustCollections() {
