@@ -204,6 +204,7 @@ function showPage(pageId, isBack) {
     reports: 'Reports',
     masters: 'Masters',
     settings: 'Settings',
+    monthBill: 'Month Bill + Backup',
     expenses: 'Expenses',
     cancelled: 'Cancelled Bills'
   };
@@ -218,7 +219,8 @@ function showPage(pageId, isBack) {
     const bd = document.getElementById('billDate');
     if (bd) { bd.value = new Date().toISOString().slice(0, 10); bd.readOnly = true; }
   }
-  if (pageId === 'settings') { refreshMonthBillLockUI(); loadWaTemplate(); }
+  if (pageId === 'settings') { loadWaTemplate(); }
+  if (pageId === 'monthBill') { refreshMonthBillLockUI(); }
   if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d){ d.value=new Date().toISOString().slice(0,10); d.readOnly=true; } loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
 
