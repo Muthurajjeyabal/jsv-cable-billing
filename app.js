@@ -3129,39 +3129,37 @@ function renderCollectionReport() {
       <p>${area} · ${month} · Pending Due · ${list.length} customers</p>
       <p>Total Due: ₹${totalDue.toLocaleString('en-IN')}</p>
     </div>`;
-  // CableSoft style: 3 columns across — No | Amt | Name
+  // CableSoft style: dense 3 columns — No | Amt | Name (fit ~1 area in 2–3 pages)
   streets.forEach(st => {
     const rows = map.get(st);
     const stTotal = rows.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
     html += `<div class="col-street">
-      <h4 class="col-street-title">${st} <span style="float:right;font-weight:600;color:#334155">₹${stTotal.toLocaleString('en-IN')} · ${rows.length}</span></h4>
+      <div class="col-street-title">${st}<span>₹${stTotal.toLocaleString('en-IN')} · ${rows.length}</span></div>
       <table class="col-3col"><tbody>`;
-    // pack into rows of 3
     for (let i = 0; i < rows.length; i += 3) {
       html += '<tr>';
       for (let j = 0; j < 3; j++) {
-        const c = rows[i + j];
+        const idx = i + j;
+        const c = rows[idx];
         if (c) {
           const amt = Number(c.dueAmt || c.due || 0);
-          // door/serial: last part of custId or doorNo
-          let no = (c.doorNo || '').toString().trim();
+          let no = String(c.doorNo || '').trim();
           if (!no && c.custId) {
-            const m = String(c.custId).match(/(\d+[A-Z]?)$/i);
-            no = m ? m[1] : String(c.custId);
+            const m = String(c.custId).match(/(\d+[A-Za-z]?)$/);
+            no = m ? m[1] : '';
           }
-          if (!no) no = String(i + j + 1);
-          html += `<td class="c3-no">${no}</td>
-            <td class="c3-amt">${amt}</td>
-            <td class="c3-name">${c.name || '-'}</td>`;
+          if (!no) no = String(idx + 1);
+          const nm = String(c.name || '-').substring(0, 18);
+          html += `<td class="c3-no">${no}</td><td class="c3-amt">${amt}</td><td class="c3-name">${nm}</td>`;
         } else {
           html += '<td class="c3-no"></td><td class="c3-amt"></td><td class="c3-name"></td>';
         }
       }
       html += '</tr>';
     }
-    html += `</tbody></table></div>`;
+    html += '</tbody></table></div>';
   });
-  html += `<div style="margin-top:12px;font-size:10px;text-align:center;color:#64748b">JSV Cable TV · S. Alangulam · ${area}<br>by JMR Apps</div>`;
+  html += `<div class="col-rep-foot">JSV Cable TV · S. Alangulam · ${area} · by JMR Apps</div>`;
   box.innerHTML = html;
 }
 
