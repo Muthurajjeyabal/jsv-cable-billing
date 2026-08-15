@@ -399,54 +399,46 @@
             </div>
 
             <div class="soft-card p-5">
-              <h3 class="text-sm font-semibold text-slate-800 mb-4">Collection by Agent</h3>
-              <div class="space-y-4">
-                <div>
-                  <div class="flex items-center justify-between text-sm mb-1">
-                    <span class="font-medium text-slate-700">UMA</span>
-                    <span class="font-bold text-slate-900" id="agentUma">₹0</span>
-                  </div>
-                  <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-                    <span id="agentUmaCnt">0 bills</span>
-                    <span id="agentUmaPct"></span>
-                  </div>
-                  <div class="progress-track"><div class="progress-fill bg-blue-500" id="agentUmaBar" style="width:0%"></div></div>
-                </div>
-                <div>
-                  <div class="flex items-center justify-between text-sm mb-1">
-                    <span class="font-medium text-slate-700">MUTHUMARI</span>
-                    <span class="font-bold text-slate-900" id="agentMuthu">₹0</span>
-                  </div>
-                  <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-                    <span id="agentMuthuCnt">0 bills</span>
-                    <span id="agentMuthuPct"></span>
-                  </div>
-                  <div class="progress-track"><div class="progress-fill bg-emerald-500" id="agentMuthuBar" style="width:0%"></div></div>
-                </div>
-                <div>
-                  <div class="flex items-center justify-between text-sm mb-1">
-                    <span class="font-medium text-slate-700">OFFICE</span>
-                    <span class="font-bold text-slate-900" id="agentOffice">₹0</span>
-                  </div>
-                  <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-                    <span id="agentOfficeCnt">0 bills</span>
-                    <span id="agentOfficePct"></span>
-                  </div>
-                  <div class="progress-track"><div class="progress-fill bg-violet-500" id="agentOfficeBar" style="width:0%"></div></div>
-                </div>
-                <div>
-                  <div class="flex items-center justify-between text-sm mb-1">
-                    <span class="font-medium text-slate-700">ONLINE</span>
-                    <span class="font-bold text-slate-900" id="agentOnline">₹0</span>
-                  </div>
-                  <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-                    <span id="agentOnlineCnt">0 bills</span>
-                    <span id="agentOnlinePct"></span>
-                  </div>
-                  <div class="progress-track"><div class="progress-fill bg-amber-500" id="agentOnlineBar" style="width:0%"></div></div>
-                </div>
+              <h3 class="text-sm font-semibold text-slate-800 mb-3">Collection by Agent</h3>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="text-[10px] uppercase tracking-wide text-slate-400 border-b">
+                      <th class="text-left py-2 font-medium">Agent</th>
+                      <th class="text-right py-2 font-medium">Today</th>
+                      <th class="text-right py-2 font-medium">This Month</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <tr>
+                      <td class="py-2.5 font-medium text-slate-700">UMA<br><span class="text-[10px] text-slate-400 font-normal" id="agentUmaCnt">0 bills today</span></td>
+                      <td class="py-2.5 text-right font-bold text-blue-600" id="agentUmaToday">₹0</td>
+                      <td class="py-2.5 text-right font-bold text-slate-900" id="agentUma">₹0</td>
+                    </tr>
+                    <tr>
+                      <td class="py-2.5 font-medium text-slate-700">MUTHUMARI<br><span class="text-[10px] text-slate-400 font-normal" id="agentMuthuCnt">0 bills today</span></td>
+                      <td class="py-2.5 text-right font-bold text-emerald-600" id="agentMuthuToday">₹0</td>
+                      <td class="py-2.5 text-right font-bold text-slate-900" id="agentMuthu">₹0</td>
+                    </tr>
+                    <tr>
+                      <td class="py-2.5 font-medium text-slate-700">OFFICE<br><span class="text-[10px] text-slate-400 font-normal" id="agentOfficeCnt">0 bills today</span></td>
+                      <td class="py-2.5 text-right font-bold text-violet-600" id="agentOfficeToday">₹0</td>
+                      <td class="py-2.5 text-right font-bold text-slate-900" id="agentOffice">₹0</td>
+                    </tr>
+                    <tr>
+                      <td class="py-2.5 font-medium text-slate-700">ONLINE<br><span class="text-[10px] text-slate-400 font-normal" id="agentOnlineCnt">0 bills today</span></td>
+                      <td class="py-2.5 text-right font-bold text-amber-600" id="agentOnlineToday">₹0</td>
+                      <td class="py-2.5 text-right font-bold text-slate-900" id="agentOnline">₹0</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div class="text-[10px] text-slate-400 mt-3 text-right">Other: <span id="agentOther">₹0</span></div>
+              <div class="text-[10px] text-slate-400 mt-3 text-right">Other (month): <span id="agentOther">₹0</span></div>
+              <!-- hidden legacy for progress bars if any code refs -->
+              <div class="hidden">
+                <span id="agentUmaPct"></span><span id="agentMuthuPct"></span><span id="agentOfficePct"></span><span id="agentOnlinePct"></span>
+                <div id="agentUmaBar"></div><div id="agentMuthuBar"></div><div id="agentOfficeBar"></div><div id="agentOnlineBar"></div>
+              </div>
             </div>
           </div>
 
@@ -1089,6 +1081,13 @@
                 <span class="block text-xs text-slate-500 mt-0.5">Street-wise · Area 1 / 2 · A4 print</span>
               </span>
             </button>
+            <button type="button" onclick="openReport('agentDay')" class="w-full soft-card p-4 text-left card-hover flex gap-3 items-start">
+              <span class="text-2xl">👤</span>
+              <span>
+                <span class="block font-semibold text-sm">Agent / Date Collection</span>
+                <span class="block text-xs text-slate-500 mt-0.5">Uma · Muthumari · Office · Online · by date</span>
+              </span>
+            </button>
             <button type="button" onclick="showPage('pending')" class="w-full soft-card p-4 text-left card-hover flex gap-3 items-start">
               <span class="text-2xl">⚠️</span>
               <span>
@@ -1151,7 +1150,62 @@
           </div>
 
           <!-- Customer list panel -->
-          <div id="reportPanel-customers" class="report-panel hidden">
+                    <div id="reportPanel-agentDay" class="report-panel hidden">
+            <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
+            <div class="soft-card p-4 mb-4 no-print">
+              <h3 class="font-semibold text-sm text-slate-800 mb-1">Agent / Date Collection</h3>
+              <p class="text-xs text-slate-500 mb-3">எந்த தேதி · யார் collect — amount + bill list</p>
+              <div class="flex flex-wrap gap-2 items-end">
+                <div>
+                  <label class="text-[10px] text-slate-500">From</label>
+                  <input type="date" id="agentRepFrom" class="block px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">To</label>
+                  <input type="date" id="agentRepTo" class="block px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">Agent</label>
+                  <select id="agentRepWho" class="block px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="ALL">All</option>
+                    <option value="uma">UMA</option>
+                    <option value="muthumari">MUTHUMARI</option>
+                    <option value="office">OFFICE</option>
+                    <option value="online">ONLINE</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">MSO</label>
+                  <select id="agentRepMso" class="block px-3 py-2 border rounded-lg text-sm bg-white min-w-[140px]">
+                    <option value="ALL">All MSO</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">Group</label>
+                  <select id="agentRepGroup" class="block px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="date">By Date</option>
+                    <option value="mso">By MSO</option>
+                  </select>
+                </div>
+                <button type="button" onclick="renderAgentDayReport()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">Show</button>
+              </div>
+              <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="bg-slate-50 rounded-lg p-2 text-center">
+                  <div class="text-[10px] text-slate-400">Bills</div>
+                  <div class="text-lg font-bold" id="agentRepCnt">0</div>
+                </div>
+                <div class="bg-slate-50 rounded-lg p-2 text-center">
+                  <div class="text-[10px] text-slate-400">Amount</div>
+                  <div class="text-lg font-bold text-emerald-600" id="agentRepAmt">₹0</div>
+                </div>
+              </div>
+              <div class="mt-2 grid grid-cols-4 gap-1.5" id="agentRepSplit"></div>
+              <p class="text-[10px] text-slate-400 mt-2">MSO தேர்ந்தால் Agent = All → Uma + Muthumari + Office + Online எல்லாம் வரும்</p>
+            </div>
+            <div id="agentRepBody" class="bg-white rounded-xl border overflow-hidden text-sm"></div>
+          </div>
+
+<div id="reportPanel-customers" class="report-panel hidden">
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
             <div class="soft-card p-4 mb-3 no-print flex flex-wrap gap-2 items-center">
               <select id="custRepStatus" onchange="renderCustomerReport()" class="px-3 py-2 border rounded-lg text-sm bg-white">

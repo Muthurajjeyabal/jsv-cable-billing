@@ -1091,52 +1091,58 @@ async function loadDashboard() {
   updateDashboardStats();
 
   const today = new Date().toISOString().split('T')[0];
+  const monthStart = today.slice(0, 8) + '01';
   try {
-    const colSnap = await db.collection('collections').where('date', '==', today).get();
-    let todayTotal = 0;
-    const agents = {
+    const emptyAgents = () => ({
       uma: { amt: 0, cnt: 0 },
       muthumari: { amt: 0, cnt: 0 },
       office: { amt: 0, cnt: 0 },
       online: { amt: 0, cnt: 0 },
       other: { amt: 0, cnt: 0 }
-    };
+    });
+    const agentsToday = emptyAgents();
+    const agentsMonth = emptyAgents();
 
-    colSnap.forEach(doc => {
+    const todaySnap = await db.collection('collections').where('date', '==', today).get();
+    let todayTotal = 0;
+    todaySnap.forEach(doc => {
       const d = doc.data();
       const amt = Number(d.amount || 0);
       todayTotal += amt;
       const key = classifyAgent(d);
-      agents[key].amt += amt;
-      agents[key].cnt += 1;
+      agentsToday[key].amt += amt;
+      agentsToday[key].cnt += 1;
     });
+    const st = document.getElementById('statTodayCol');
+    if (st) st.textContent = '₹ ' + todayTotal.toLocaleString('en-IN');
 
-    document.getElementById('statTodayCol').textContent = '₹ ' + todayTotal.toLocaleString('en-IN');
-        const totalTodayAmt = Object.values(agents).reduce((s, a) => s + Number(a.amt || 0), 0) || 1;
-    const setAgent = (id, cntId, barId, pctId, data) => {
-      const el = document.getElementById(id);
-      const cnt = document.getElementById(cntId);
-      const bar = document.getElementById(barId);
-      const pct = document.getElementById(pctId);
-      const amt = Number(data.amt || 0);
-      const p = Math.round((amt / totalTodayAmt) * 100);
-      if (el) el.textContent = '₹' + amt.toLocaleString('en-IN');
-      if (cnt) cnt.textContent = (data.cnt || 0) + ' bills';
-      if (bar) bar.style.width = p + '%';
-      if (pct) pct.textContent = p + '%';
-    };
-    setAgent('agentUma', 'agentUmaCnt', 'agentUmaBar', 'agentUmaPct', agents.uma);
-    setAgent('agentMuthu', 'agentMuthuCnt', 'agentMuthuBar', 'agentMuthuPct', agents.muthumari);
-    setAgent('agentOffice', 'agentOfficeCnt', 'agentOfficeBar', 'agentOfficePct', agents.office);
-    setAgent('agentOnline', 'agentOnlineCnt', 'agentOnlineBar', 'agentOnlinePct', agents.online);
-    const oth = document.getElementById('agentOther');
-    if (oth) oth.textContent = '₹' + agents.other.amt.toLocaleString('en-IN') + ' (' + agents.other.cnt + ')';
-
-    const monthStart = today.slice(0, 8) + '01';
     const monthSnap = await db.collection('collections').where('date', '>=', monthStart).get();
     let monthTotal = 0;
-    monthSnap.forEach(d => monthTotal += (d.data().amount || 0));
-    document.getElementById('statMonthCol').textContent = '₹ ' + monthTotal.toLocaleString('en-IN');
+    monthSnap.forEach(doc => {
+      const d = doc.data();
+      const amt = Number(d.amount || 0);
+      monthTotal += amt;
+      const key = classifyAgent(d);
+      agentsMonth[key].amt += amt;
+      agentsMonth[key].cnt += 1;
+    });
+    const sm = document.getElementById('statMonthCol');
+    if (sm) sm.textContent = '₹ ' + monthTotal.toLocaleString('en-IN');
+
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('agentUmaToday', '₹' + agentsToday.uma.amt.toLocaleString('en-IN'));
+    setTxt('agentMuthuToday', '₹' + agentsToday.muthumari.amt.toLocaleString('en-IN'));
+    setTxt('agentOfficeToday', '₹' + agentsToday.office.amt.toLocaleString('en-IN'));
+    setTxt('agentOnlineToday', '₹' + agentsToday.online.amt.toLocaleString('en-IN'));
+    setTxt('agentUma', '₹' + agentsMonth.uma.amt.toLocaleString('en-IN'));
+    setTxt('agentMuthu', '₹' + agentsMonth.muthumari.amt.toLocaleString('en-IN'));
+    setTxt('agentOffice', '₹' + agentsMonth.office.amt.toLocaleString('en-IN'));
+    setTxt('agentOnline', '₹' + agentsMonth.online.amt.toLocaleString('en-IN'));
+    setTxt('agentUmaCnt', agentsToday.uma.cnt + ' today · ' + agentsMonth.uma.cnt + ' month');
+    setTxt('agentMuthuCnt', agentsToday.muthumari.cnt + ' today · ' + agentsMonth.muthumari.cnt + ' month');
+    setTxt('agentOfficeCnt', agentsToday.office.cnt + ' today · ' + agentsMonth.office.cnt + ' month');
+    setTxt('agentOnlineCnt', agentsToday.online.cnt + ' today · ' + agentsMonth.online.cnt + ' month');
+    setTxt('agentOther', '₹' + agentsMonth.other.amt.toLocaleString('en-IN') + ' (' + agentsMonth.other.cnt + ')');
   } catch (e) {
     console.log('Collection stats error', e);
   }
@@ -3053,6 +3059,117 @@ function renderCollectionReport() {
   box.innerHTML = html;
 }
 
+
+
+function fillAgentRepMsoOptions() {
+  const sel = document.getElementById('agentRepMso');
+  if (!sel) return;
+  const set = new Set();
+  (allCustomers || []).forEach(c => {
+    const m = String(c.mso || '').trim();
+    if (m) set.add(m);
+  });
+  const cur = sel.value || 'ALL';
+  sel.innerHTML = '<option value="ALL">All MSO</option>' +
+    Array.from(set).sort().map(m => `<option value="${m}">${m}</option>`).join('');
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
+
+async function renderAgentDayReport() {
+  const from = document.getElementById('agentRepFrom')?.value;
+  const to = document.getElementById('agentRepTo')?.value;
+  const who = document.getElementById('agentRepWho')?.value || 'ALL';
+  const msoFilter = document.getElementById('agentRepMso')?.value || 'ALL';
+  const groupBy = document.getElementById('agentRepGroup')?.value || 'date';
+  const body = document.getElementById('agentRepBody');
+  if (!body) return;
+  if (!from || !to) { showToast('From / To date தேர்வு செய்யுங்கள்', true); return; }
+  body.innerHTML = '<div class="p-6 text-center text-slate-400">Loading...</div>';
+  try {
+    const byId = new Map();
+    (allCustomers || []).forEach(c => byId.set(c.id, c));
+    const snap = await db.collection('collections').where('date', '>=', from).where('date', '<=', to).get();
+    const rows = [];
+    snap.forEach(doc => {
+      const d = { id: doc.id, ...doc.data() };
+      const key = classifyAgent(d);
+      if (who !== 'ALL' && key !== who) return;
+      const cust = byId.get(d.customerId);
+      const mso = (d.mso || cust?.mso || '').toString().trim();
+      if (msoFilter !== 'ALL' && mso !== msoFilter) return;
+      rows.push({ ...d, _agent: key, _mso: mso || '-' });
+    });
+    rows.sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(a.customerName||'').localeCompare(String(b.customerName||'')));
+    const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
+    const cntEl = document.getElementById('agentRepCnt');
+    const amtEl = document.getElementById('agentRepAmt');
+    if (cntEl) cntEl.textContent = String(rows.length);
+    if (amtEl) amtEl.textContent = '₹' + total.toLocaleString('en-IN');
+    // Agent-wise split (Uma + Muthumari + Office + Online) always under this MSO/date filter
+    const split = { uma: 0, muthumari: 0, office: 0, online: 0, other: 0 };
+    const splitCnt = { uma: 0, muthumari: 0, office: 0, online: 0, other: 0 };
+    rows.forEach(r => {
+      const k = r._agent || 'other';
+      if (split[k] == null) { split.other += Number(r.amount||0); splitCnt.other++; }
+      else { split[k] += Number(r.amount||0); splitCnt[k]++; }
+    });
+    const splitEl = document.getElementById('agentRepSplit');
+    if (splitEl) {
+      splitEl.innerHTML = [
+        ['UMA', split.uma, splitCnt.uma],
+        ['MUTHUMARI', split.muthumari, splitCnt.muthumari],
+        ['OFFICE', split.office, splitCnt.office],
+        ['ONLINE', split.online, splitCnt.online]
+      ].map(([n,a,c]) => `<div class="text-center p-1.5 bg-slate-50 rounded-lg">
+          <div class="text-[9px] text-slate-400">${n}</div>
+          <div class="text-xs font-bold">₹${a.toLocaleString('en-IN')}</div>
+          <div class="text-[9px] text-slate-400">${c} bills</div>
+        </div>`).join('');
+    }
+    if (!rows.length) {
+      body.innerHTML = '<div class="p-8 text-center text-slate-400">No collections in this range</div>';
+      return;
+    }
+    const groups = {};
+    rows.forEach(r => {
+      const gk = groupBy === 'mso' ? (r._mso || '-') : (r.date || '-');
+      if (!groups[gk]) groups[gk] = [];
+      groups[gk].push(r);
+    });
+    const keys = Object.keys(groups).sort((a, b) => groupBy === 'mso' ? a.localeCompare(b) : b.localeCompare(a));
+    let html = '';
+    keys.forEach(gk => {
+      const list = groups[gk];
+      const dayTot = list.reduce((s, r) => s + Number(r.amount || 0), 0);
+      html += `<div class="bg-slate-800 text-white px-3 py-1.5 text-xs font-semibold flex justify-between">
+        <span>${gk}</span><span>${list.length} bills · ₹${dayTot.toLocaleString('en-IN')}</span></div>`;
+      html += `<table class="w-full text-xs"><thead class="bg-slate-50"><tr>
+        <th class="text-left p-2">#</th><th class="text-left p-2">Customer</th><th class="text-left p-2">ID</th>
+        <th class="text-left p-2">MSO</th><th class="text-left p-2">Agent</th>
+        <th class="text-right p-2">Amt</th><th class="text-left p-2">Mode</th><th class="text-left p-2">Date</th>
+      </tr></thead><tbody>`;
+      list.forEach((r, i) => {
+        html += `<tr class="border-t">
+          <td class="p-2">${i+1}</td>
+          <td class="p-2">${r.customerName || '-'}</td>
+          <td class="p-2 text-slate-500">${r.importCustId || r.custId || '-'}</td>
+          <td class="p-2 text-slate-600">${r._mso || '-'}</td>
+          <td class="p-2">${displayAgentName(r)}</td>
+          <td class="p-2 text-right font-semibold">₹${Number(r.amount||0).toLocaleString('en-IN')}</td>
+          <td class="p-2">${r.mode || '-'}</td>
+          <td class="p-2">${r.date || '-'}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+    });
+    body.innerHTML = html;
+  } catch (e) {
+    console.error(e);
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message + '</div>';
+  }
+}
+
+
 function printCollectionReport() {
   renderCollectionReport();
   setTimeout(() => window.print(), 200);
@@ -3220,6 +3337,22 @@ async function runFullBackup() {
 }
 
 function openReport(kind) {
+  if (kind === 'agentDay') {
+    document.getElementById('reportMenu')?.classList.add('hidden');
+    document.querySelectorAll('.report-panel').forEach(p => p.classList.add('hidden'));
+    const p = document.getElementById('reportPanel-agentDay');
+    if (p) p.classList.remove('hidden');
+    const t = new Date().toISOString().slice(0, 10);
+    const f = document.getElementById('agentRepFrom');
+    const to = document.getElementById('agentRepTo');
+    if (f && !f.value) f.value = t.slice(0, 8) + '01';
+    if (to && !to.value) to.value = t;
+    const whoEl = document.getElementById('agentRepWho');
+    if (whoEl) whoEl.value = 'ALL'; // MSO view = all collectors
+    fillAgentRepMsoOptions();
+    renderAgentDayReport();
+    return;
+  }
   const menu = document.getElementById('reportMenu');
   if (menu) menu.classList.add('hidden');
   document.querySelectorAll('.report-panel').forEach(p => p.classList.add('hidden'));
