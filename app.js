@@ -157,7 +157,34 @@ async function handleCreateUser(e) {
 }
 
 // ==================== NAVIGATION ====================
-function showPage(pageId) {
+let pageHistory = ['dashboard'];
+let currentPageId = 'dashboard';
+
+function goBackPage() {
+  // Report sub-panel open? close it first
+  const openPanel = document.querySelector('.report-panel:not(.hidden)');
+  if (openPanel && currentPageId === 'reports') {
+    if (typeof closeReportPanels === 'function') closeReportPanels();
+    return;
+  }
+  if (pageHistory.length > 1) {
+    pageHistory.pop();
+    const prev = pageHistory.pop() || 'dashboard';
+    showPage(prev, true);
+  } else {
+    showPage('dashboard', true);
+  }
+}
+
+function showPage(pageId, isBack) {
+  if (!isBack && pageId !== currentPageId) {
+    if (pageHistory[pageHistory.length - 1] !== pageId) {
+      pageHistory.push(pageId);
+      if (pageHistory.length > 30) pageHistory.shift();
+    }
+  }
+  currentPageId = pageId;
+
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
   const page = document.getElementById('page-' + pageId);
   if (page) page.classList.remove('hidden');
@@ -174,11 +201,19 @@ function showPage(pageId) {
     ledger: 'Customer Ledger',
     pending: 'Pending / Due Report',
     boxes: 'Box Management',
-    reports: 'Collection Report',
+    reports: 'Reports',
     masters: 'Masters',
-    settings: 'Settings'
-  , expenses: 'Expenses' };
-  document.getElementById('pageTitle').textContent = titles[pageId] || pageId;
+    settings: 'Settings',
+    expenses: 'Expenses',
+    cancelled: 'Cancelled Bills'
+  };
+  const pt = document.getElementById('pageTitle');
+  if (pt) pt.textContent = titles[pageId] || pageId;
+  const backBtn = document.getElementById('globalBackBtn');
+  if (backBtn) {
+    if (pageId === 'dashboard') backBtn.classList.add('hidden');
+    else backBtn.classList.remove('hidden');
+  }
   if (pageId === 'billing') {
     const bd = document.getElementById('billDate');
     if (bd) { bd.value = new Date().toISOString().slice(0, 10); bd.readOnly = true; }
@@ -401,8 +436,32 @@ async function handleSaveCustomer(e) {
   try {
     let savedId = editId;
     if (editId) {
+      const prev = allCustomers.find(c => c.id === editId) || {};
+      const oldPlace = String(prev.place || '').trim();
+      const oldStreet = String(prev.street || '').trim();
+      const newPlace = String(data.place || '').trim();
+      const newStreet = String(data.street || '').trim();
+      const transferred = (oldPlace !== newPlace || oldStreet !== newStreet);
       await db.collection('customers').doc(editId).update(data);
-      showToast('Customer updated!');
+      if (transferred) {
+        try {
+          await db.collection('transfers').add({
+            customerId: editId,
+            custId: data.custId || prev.custId || '',
+            customerName: data.name || prev.name || '',
+            fromPlace: oldPlace,
+            fromStreet: oldStreet,
+            toPlace: newPlace,
+            toStreet: newStreet,
+            date: new Date().toISOString().slice(0, 10),
+            changedBy: (currentUser && currentUser.email) || 'admin',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } catch (te) { console.error('transfer log', te); }
+        showToast('Customer updated · Transfer saved');
+      } else {
+        showToast('Customer updated!');
+      }
     } else {
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
       const manualId = (document.getElementById('custCustId')?.value || '').trim();
@@ -3070,22 +3129,36 @@ function renderCollectionReport() {
       <p>${area} · ${month} · Pending Due · ${list.length} customers</p>
       <p>Total Due: ₹${totalDue.toLocaleString('en-IN')}</p>
     </div>`;
+  // CableSoft style: 3 columns across — No | Amt | Name
   streets.forEach(st => {
     const rows = map.get(st);
     const stTotal = rows.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
     html += `<div class="col-street">
-      <h4>${st} <span style="float:right;font-weight:600">₹${stTotal.toLocaleString('en-IN')} · ${rows.length}</span></h4>
-      <table>
-        <thead><tr><th style="width:22%">ID</th><th>Name</th><th style="width:18%;text-align:right">Amount</th></tr></thead>
-        <tbody>`;
-    rows.forEach(c => {
-      const amt = Number(c.dueAmt || c.due || 0);
-      html += `<tr>
-        <td>${c.custId || '-'}</td>
-        <td>${c.name || '-'}</td>
-        <td class="amt">₹${amt.toLocaleString('en-IN')}</td>
-      </tr>`;
-    });
+      <h4 class="col-street-title">${st} <span style="float:right;font-weight:600;color:#334155">₹${stTotal.toLocaleString('en-IN')} · ${rows.length}</span></h4>
+      <table class="col-3col"><tbody>`;
+    // pack into rows of 3
+    for (let i = 0; i < rows.length; i += 3) {
+      html += '<tr>';
+      for (let j = 0; j < 3; j++) {
+        const c = rows[i + j];
+        if (c) {
+          const amt = Number(c.dueAmt || c.due || 0);
+          // door/serial: last part of custId or doorNo
+          let no = (c.doorNo || '').toString().trim();
+          if (!no && c.custId) {
+            const m = String(c.custId).match(/(\d+[A-Z]?)$/i);
+            no = m ? m[1] : String(c.custId);
+          }
+          if (!no) no = String(i + j + 1);
+          html += `<td class="c3-no">${no}</td>
+            <td class="c3-amt">${amt}</td>
+            <td class="c3-name">${c.name || '-'}</td>`;
+        } else {
+          html += '<td class="c3-no"></td><td class="c3-amt"></td><td class="c3-name"></td>';
+        }
+      }
+      html += '</tr>';
+    }
     html += `</tbody></table></div>`;
   });
   html += `<div style="margin-top:12px;font-size:10px;text-align:center;color:#64748b">JSV Cable TV · S. Alangulam · ${area}<br>by JMR Apps</div>`;
@@ -3202,6 +3275,34 @@ async function renderAgentDayReport() {
   }
 }
 
+
+function printDiv(id) {
+  const src = document.getElementById(id);
+  if (!src) { showToast('Print area not found', true); return; }
+  let root = document.getElementById('printRoot');
+  if (!root) {
+    root = document.createElement('div');
+    root.id = 'printRoot';
+    document.body.appendChild(root);
+  }
+  const title = document.getElementById('pageTitle');
+  const head = '<div style="text-align:center;margin-bottom:8px"><b>JSV Cable TV</b><br><span style="font-size:12px">' +
+    (title ? title.textContent : 'Report') + ' · ' + new Date().toLocaleDateString('en-IN') + '</span></div>';
+  root.innerHTML = head + src.innerHTML;
+  root.style.display = 'block';
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { root.innerHTML = ''; root.style.display = 'none'; }, 500);
+  }, 150);
+}
+
+function printPendingReport() {
+  const cnt = document.getElementById('pendingCount')?.textContent || '0';
+  const tot = document.getElementById('pendingTotal')?.textContent || '₹0';
+  const t = document.getElementById('pendingPrintTitle');
+  if (t) t.textContent = 'JSV Cable TV — Pending · ' + cnt + ' · ' + tot;
+  printDiv('pendingPrintArea');
+}
 
 function printCollectionReport() {
   renderCollectionReport();
@@ -3370,6 +3471,19 @@ async function runFullBackup() {
 }
 
 function openReport(kind) {
+  if (kind === 'transfer') {
+    document.getElementById('reportMenu')?.classList.add('hidden');
+    document.querySelectorAll('.report-panel').forEach(p => p.classList.add('hidden'));
+    const p = document.getElementById('reportPanel-transfer');
+    if (p) p.classList.remove('hidden');
+    const t = new Date().toISOString().slice(0, 10);
+    const f = document.getElementById('trRepFrom');
+    const to = document.getElementById('trRepTo');
+    if (f && !f.value) f.value = t.slice(0, 8) + '01';
+    if (to && !to.value) to.value = t;
+    renderTransferReport();
+    return;
+  }
   if (kind === 'agentDay') {
     document.getElementById('reportMenu')?.classList.add('hidden');
     document.querySelectorAll('.report-panel').forEach(p => p.classList.add('hidden'));
@@ -3396,6 +3510,60 @@ function openReport(kind) {
   if (kind === 'dc') renderDcReport();
   if (kind === 'package') renderPackageReport();
 }
+
+async function renderTransferReport() {
+  const from = document.getElementById('trRepFrom')?.value;
+  const to = document.getElementById('trRepTo')?.value;
+  const place = document.getElementById('trRepPlace')?.value || '';
+  const body = document.getElementById('trRepBody');
+  const sum = document.getElementById('trRepSummary');
+  if (!body) return;
+  body.innerHTML = '<div class="p-6 text-center text-slate-400">Loading...</div>';
+  try {
+    let snap;
+    if (from && to) {
+      snap = await db.collection('transfers').where('date', '>=', from).where('date', '<=', to).get();
+    } else {
+      snap = await db.collection('transfers').orderBy('date', 'desc').limit(500).get();
+    }
+    let rows = [];
+    snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
+    if (place) {
+      rows = rows.filter(r =>
+        String(r.fromPlace || '') === place || String(r.toPlace || '') === place
+      );
+    }
+    rows.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    if (sum) sum.textContent = rows.length + ' transfers';
+    if (!rows.length) {
+      body.innerHTML = '<div class="p-8 text-center text-slate-400">No transfers in this range</div>';
+      return;
+    }
+    body.innerHTML = `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-xs">
+      <thead class="bg-slate-50 sticky top-0"><tr>
+        <th class="text-left p-2">Date</th>
+        <th class="text-left p-2">ID</th>
+        <th class="text-left p-2">Name</th>
+        <th class="text-left p-2">From</th>
+        <th class="text-left p-2">To</th>
+        <th class="text-left p-2">By</th>
+      </tr></thead><tbody>` +
+      rows.map(r => `<tr class="border-t">
+        <td class="p-2">${r.date || '-'}</td>
+        <td class="p-2">${r.custId || '-'}</td>
+        <td class="p-2 font-medium">${r.customerName || '-'}</td>
+        <td class="p-2 text-slate-500">${r.fromPlace || ''} / ${r.fromStreet || ''}</td>
+        <td class="p-2 text-emerald-700">${r.toPlace || ''} / ${r.toStreet || ''}</td>
+        <td class="p-2 text-slate-400">${(r.changedBy || '').split('@')[0]}</td>
+      </tr>`).join('') + '</tbody></table></div>';
+  } catch (e) {
+    console.error(e);
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message +
+      (String(e.message).includes('index') ? '<br>Firebase index create link console-ல் open செய்யுங்கள்' : '') + '</div>';
+  }
+}
+
+
 function closeReportPanels() {
   document.querySelectorAll('.report-panel').forEach(p => p.classList.add('hidden'));
   const menu = document.getElementById('reportMenu');

@@ -118,15 +118,19 @@
   
     @media print {
       body * { visibility: hidden !important; }
-      #colRepPrint, #colRepPrint * { visibility: visible !important; }
-      #colRepPrint {
+      #colRepPrint, #colRepPrint *,
+      #printRoot, #printRoot * { visibility: visible !important; }
+      #colRepPrint, #printRoot {
         position: absolute; left: 0; top: 0; width: 100%;
         border: none !important; box-shadow: none !important;
-        padding: 0 !important; margin: 0 !important;
+        padding: 8px !important; margin: 0 !important;
+        background: #fff !important;
       }
       .no-print { display: none !important; }
       #splashScreen, #sidebar, #sidebarOverlay, header, #loginScreen { display: none !important; }
       @page { size: A4; margin: 10mm 12mm; }
+      table { width: 100%; border-collapse: collapse; font-size: 10px; }
+      th, td { border-bottom: 1px solid #e2e8f0; padding: 3px 4px; text-align: left; }
     }
     .col-street {
       break-inside: avoid;
@@ -157,6 +161,36 @@
     .col-rep-head { text-align: center; margin-bottom: 8px; }
     .col-rep-head h2 { font-size: 14px; font-weight: 700; margin: 0; }
     .col-rep-head p { font-size: 10px; color: #64748b; margin: 2px 0 0; }
+
+    .col-street-title {
+      color: #c2410c;
+      border-bottom: 2px solid #c2410c;
+      background: transparent !important;
+      border-left: none !important;
+      font-size: 12px !important;
+      padding: 4px 2px !important;
+      margin-bottom: 4px !important;
+    }
+    table.col-3col {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      table-layout: fixed;
+    }
+    table.col-3col td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 2px 3px;
+      vertical-align: top;
+    }
+    table.col-3col .c3-no { width: 6%; font-weight: 600; color: #334155; }
+    table.col-3col .c3-amt { width: 7%; text-align: right; font-weight: 600; }
+    table.col-3col .c3-name { width: 20%; padding-right: 8px; }
+    @media print {
+      table.col-3col { font-size: 9px; }
+      table.col-3col td { padding: 1px 2px; border-bottom: 1px solid #cbd5e1; }
+      .col-street-title { color: #9a3412 !important; border-bottom: 1.5px solid #9a3412 !important; }
+    }
+
   
     .receipt-sheet {
       width: 80mm;
@@ -325,6 +359,7 @@
           <button onclick="toggleSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 shrink-0">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
+          <button type="button" id="globalBackBtn" onclick="goBackPage()" class="hidden text-slate-600 hover:text-indigo-600 text-sm font-medium px-2 py-1 rounded-lg border border-slate-200 bg-white shrink-0">← Back</button>
           <h2 id="pageTitle" class="font-semibold text-base sm:text-lg shrink-0">Dashboard</h2>
           <div class="flex-1"></div>
           <div class="text-xs text-slate-500 hidden md:block" id="currentDate"></div>
@@ -904,8 +939,9 @@
                   <option value="">All MSO</option>
                 </select>
               </div>
-              <div class="flex items-end">
-                <button type="button" onclick="exportPendingBoxes()" class="w-full bg-indigo-600 text-white px-2 py-2 rounded-lg text-xs font-medium">Copy Box Nos (MSO OFF)</button>
+              <div class="flex items-end gap-1">
+                <button type="button" onclick="exportPendingBoxes()" class="flex-1 bg-indigo-600 text-white px-2 py-2 rounded-lg text-xs font-medium">Copy Box Nos</button>
+                <button type="button" onclick="printPendingReport()" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-medium shrink-0">🖨 Print</button>
               </div>
             </div>
             <p class="text-[10px] text-slate-400 mt-2">15ஆம் தேதிக்குப் பிறகு → filter பண்ணி Copy Box Nos → MSO site-ல் OFF</p>
@@ -920,7 +956,8 @@
               <div class="text-2xl font-bold text-red-600" id="pendingTotal">₹0</div>
             </div>
           </div>
-          <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+          <div id="pendingPrintArea" class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="px-3 py-2 text-sm font-semibold border-b" id="pendingPrintTitle">JSV Cable TV — Pending Report</div>
             <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
               <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-600 sticky top-0">
@@ -1088,6 +1125,13 @@
                 <span class="block text-xs text-slate-500 mt-0.5">Uma · Muthumari · Office · Online · by date</span>
               </span>
             </button>
+            <button type="button" onclick="openReport('transfer')" class="w-full soft-card p-4 text-left card-hover flex gap-3 items-start">
+              <span class="text-2xl">🔄</span>
+              <span>
+                <span class="block font-semibold text-sm">Transfer Report</span>
+                <span class="block text-xs text-slate-500 mt-0.5">Street / Area change history</span>
+              </span>
+            </button>
             <button type="button" onclick="showPage('pending')" class="w-full soft-card p-4 text-left card-hover flex gap-3 items-start">
               <span class="text-2xl">⚠️</span>
               <span>
@@ -1150,7 +1194,39 @@
           </div>
 
           <!-- Customer list panel -->
-                    <div id="reportPanel-agentDay" class="report-panel hidden">
+                              <div id="reportPanel-transfer" class="report-panel hidden">
+            <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
+            <div class="soft-card p-4 mb-4 no-print">
+              <h3 class="font-semibold text-sm text-slate-800 mb-1">Transfer Report</h3>
+              <p class="text-xs text-slate-500 mb-3">Customer Area / Street மாற்றிய history</p>
+              <div class="flex flex-wrap gap-2 items-end">
+                <div>
+                  <label class="text-[10px] text-slate-500">From</label>
+                  <input type="date" id="trRepFrom" class="block px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">To</label>
+                  <input type="date" id="trRepTo" class="block px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">Area</label>
+                  <select id="trRepPlace" class="block px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="">All</option>
+                    <option value="AREA 1">AREA 1</option>
+                    <option value="AREA 2">AREA 2</option>
+                  </select>
+                </div>
+                <button type="button" onclick="renderTransferReport()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">Show</button>
+                <button type="button" onclick="printDiv('trRepPrintArea')" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm">🖨 Print</button>
+              </div>
+              <div class="mt-2 text-xs text-slate-500" id="trRepSummary">—</div>
+            </div>
+            <div id="trRepPrintArea">
+              <div id="trRepBody" class="bg-white rounded-xl border overflow-hidden text-sm"></div>
+            </div>
+          </div>
+
+<div id="reportPanel-agentDay" class="report-panel hidden">
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
             <div class="soft-card p-4 mb-4 no-print">
               <h3 class="font-semibold text-sm text-slate-800 mb-1">Agent / Date Collection</h3>
@@ -1188,6 +1264,7 @@
                   </select>
                 </div>
                 <button type="button" onclick="renderAgentDayReport()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">Show</button>
+                <button type="button" onclick="printDiv('agentRepPrintArea')" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm">🖨 Print</button>
               </div>
               <div class="mt-3 grid grid-cols-2 gap-2">
                 <div class="bg-slate-50 rounded-lg p-2 text-center">
@@ -1202,7 +1279,10 @@
               <div class="mt-2 grid grid-cols-4 gap-1.5" id="agentRepSplit"></div>
               <p class="text-[10px] text-slate-400 mt-2">MSO தேர்ந்தால் Agent = All → Uma + Muthumari + Office + Online எல்லாம் வரும்</p>
             </div>
+            <div id="agentRepPrintArea">
+            <div class="px-3 py-2 text-center hidden print:block" id="agentRepPrintHead"></div>
             <div id="agentRepBody" class="bg-white rounded-xl border overflow-hidden text-sm"></div>
+          </div>
           </div>
 
 <div id="reportPanel-customers" class="report-panel hidden">
@@ -1214,6 +1294,7 @@
                 <option value="DC">DC</option>
               </select>
               <button type="button" onclick="renderCustomerReport()" class="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm">Refresh</button>
+              <button type="button" onclick="printDiv('custRepBody')" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-sm">🖨 Print</button>
               <span class="text-xs text-slate-500" id="custRepSummary"></span>
             </div>
             <div id="custRepBody" class="bg-white rounded-xl border overflow-hidden text-sm"></div>
