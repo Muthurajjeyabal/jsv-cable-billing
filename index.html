@@ -390,9 +390,7 @@
           <div class="text-xs text-slate-500 hidden md:block" id="currentDate"></div>
           <span id="offlineBadge" class="hidden text-[10px] font-semibold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Offline</span>
           <span id="syncBadge" class="hidden text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Sync…</span>
-          <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-red-200 shrink-0">
-            Logout
-          </button>
+
         </div>
         <div class="relative">
           <input type="text" id="globalSearch" oninput="globalCustomerSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();globalCustomerSearch(true);}"
@@ -969,8 +967,7 @@
                 <button type="button" onclick="printPendingReport()" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-medium shrink-0">🖨 Print</button>
               </div>
             </div>
-            <p class="text-[10px] text-slate-400 mt-2">15ஆம் தேதிக்குப் பிறகு → filter பண்ணி Copy Box Nos → MSO site-ல் OFF</p>
-          </div>
+                      </div>
           <div class="grid grid-cols-2 gap-3 mb-4">
             <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
               <div class="text-xs text-slate-500">Pending (filtered)</div>
@@ -1413,7 +1410,7 @@
               <div class="flex flex-wrap gap-2 mt-3">
                 <button type="button" onclick="saveStreetMaster()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Save</button>
                 <button type="button" onclick="clearStreetForm()" class="bg-slate-200 px-4 py-2 rounded-lg text-sm">Clear</button>
-                <button type="button" onclick="seedStreetsFromCode()" class="text-xs text-blue-600 ml-auto">Import CableSoft list (90)</button>
+                
               </div>
             </div>
             <div class="bg-white rounded-xl border overflow-hidden">
