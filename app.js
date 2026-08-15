@@ -3035,6 +3035,8 @@ function clearEmpForm() {
   document.getElementById('editEmpId').value = '';
   document.getElementById('empName').value = '';
   document.getElementById('empEmail').value = '';
+  const pw = document.getElementById('empPassword');
+  if (pw) pw.value = '';
   document.getElementById('empArea').value = 'AREA 1';
   document.getElementById('empRole').value = 'collector';
 }
@@ -3045,6 +3047,8 @@ function editEmployee(id) {
   document.getElementById('editEmpId').value = id;
   document.getElementById('empName').value = e.name || '';
   document.getElementById('empEmail').value = e.email || '';
+  const pw = document.getElementById('empPassword');
+  if (pw) pw.value = '';
   document.getElementById('empArea').value = e.area || 'AREA 1';
   document.getElementById('empRole').value = e.role || 'collector';
 }
@@ -3053,23 +3057,51 @@ async function saveEmployee() {
   const id = document.getElementById('editEmpId').value;
   const name = (document.getElementById('empName').value || '').trim();
   const email = (document.getElementById('empEmail').value || '').trim().toLowerCase();
+  const password = (document.getElementById('empPassword')?.value || '').trim();
   const area = document.getElementById('empArea').value;
   const role = document.getElementById('empRole').value;
   if (!name || !email) { showToast('Name + Email required', true); return; }
+  if (!id && password.length < 6) {
+    showToast('புதிய collector-க்கு Password குறைந்தது 6 எழுத்து', true);
+    return;
+  }
   try {
-    const data = { name, email, area, role, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    // New user → create Firebase Auth login (admin stays logged in)
+    if (!id) {
+      const secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary' + Date.now());
+      try {
+        await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
+        await secondaryApp.auth().signOut();
+      } catch (ae) {
+        const code = ae.code || '';
+        if (code === 'auth/email-already-in-use') {
+          // Auth already exists — just map area
+          showToast('Login ஏற்கனவே உள்ளது · Area map மட்டும் save');
+        } else {
+          throw ae;
+        }
+      } finally {
+        try { await secondaryApp.delete(); } catch (_) {}
+      }
+    }
+    const data = {
+      name, email, area, role,
+      active: true,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
     if (id) {
       await db.collection('employees').doc(id).update(data);
-      showToast('Employee updated');
+      showToast('Collector updated');
     } else {
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('employees').add(data);
-      showToast('Employee added');
+      showToast('Collector created · Login ready');
     }
     clearEmpForm();
     await loadEmployees();
   } catch (e) {
-    showToast('Error: ' + e.message, true);
+    console.error(e);
+    showToast('Error: ' + (e.message || e), true);
   }
 }
 
