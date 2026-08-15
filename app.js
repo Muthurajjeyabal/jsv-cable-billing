@@ -3138,13 +3138,14 @@ function renderCollectionReport() {
     bodyHtml += `<div class="st-h">${st}<span>₹${stTotal.toLocaleString('en-IN')} · ${rows.length}</span></div>`;
     rows.forEach((c, idx) => {
       const amt = Number(c.dueAmt || c.due || 0);
-      // Door / house no: doorNo → custId trailing number (strip street letters) → serial
+      // Door no from: doorNo (if real) → custId suffix number → serial
       let no = String(c.doorNo || c.door || '').trim();
+      if (!no || no === '-' || no === '—' || no === '0') no = '';
       if (!no) {
-        const id = String(c.custId || '').trim();
-        // e.g. AGA4 → 4, DES10 → 10, 1PN13 → 13, 2AL12 → 12, 5BH3A → 3A
-        let mm = id.match(/(\d+[A-Da-d]?)$/);
-        if (mm) no = mm[1];
+        const id = String(c.custId || '').trim().toUpperCase();
+        // AGA4→4, DES10→10, 1PN13→13, 2AM15A→15A, 5BH3A→3A
+        let mm = id.match(/(\d+[A-D]?)$/i);
+        if (mm) no = mm[1].toUpperCase();
         else {
           mm = id.match(/(\d+)/);
           if (mm) no = mm[1];
@@ -3152,7 +3153,7 @@ function renderCollectionReport() {
       }
       if (!no) no = String(idx + 1);
       const nm = String(c.name || '-').substring(0, 18);
-      bodyHtml += `<div class="st-row"><span class="n">${no}</span><span class="a">${amt}</span><span class="nm">${nm}</span></div>`;
+      bodyHtml += `<div class="st-row"><b class="n">${no}</b><span class="a">${amt}</span><span class="nm">${nm}</span></div>`;
       printed++;
     });
   });
@@ -3317,15 +3318,15 @@ function printCollectionReport() {
   .col-rep-head p { font-size: 8px; margin: 0; }
   .flow3 {
     column-count: 3;
-    column-gap: 2px;
-    column-rule: 0.5px solid #ddd;
+    column-gap: 1px;
+    column-rule: 0.4px solid #ccc;
     column-fill: auto;
   }
   .st-h {
     break-inside: avoid;
     color: #9a3412;
     border-bottom: 1px solid #9a3412;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     padding: 2px 1px 1px;
     margin: 3px 0 1px;
@@ -3336,16 +3337,16 @@ function printCollectionReport() {
     break-inside: avoid;
     display: flex;
     gap: 2px;
-    line-height: 1.25;
+    line-height: 1.3;
     border-bottom: 0.3px solid #bbb;
     padding: 0.5px 1px;
-    font-size: 9.5px;
+    font-size: 10.5px;
   }
-  .st-row .n { width: 22px; flex-shrink: 0; font-weight: 700; text-align: left; }
-  .st-row .a { width: 28px; flex-shrink: 0; text-align: right; font-weight: 600; }
+  .st-row .n, .st-row b.n { width: 26px; flex-shrink: 0; font-weight: 700; text-align: left; color: #000; }
+  .st-row .a { width: 30px; flex-shrink: 0; text-align: right; font-weight: 600; }
   .st-row .nm { flex: 1; overflow: hidden; white-space: nowrap; }
   .col-rep-foot { margin-top: 6px; text-align: center; font-size: 9px; color: #444; }
-  body { font-size: 9.5px; }
+  body { font-size: 10.5px; }
 </style></head><body>${src.innerHTML}
 <script>
 window.onload = function() {
