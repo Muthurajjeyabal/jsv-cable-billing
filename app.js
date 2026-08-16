@@ -6016,21 +6016,43 @@ async function deleteExpense(id) {
 const I18N = {
   en: {
     dashboard: 'Dashboard', customers: 'Customers', newCustomer: 'New Customer',
-    billing: 'Billing / Collection', ledger: 'Customer Ledger', pending: 'Pending / Due Report',
-    boxes: 'Box Management', reports: 'Reports', masters: 'Masters', settings: 'Settings',
+    billing: 'Collect / Bill', ledger: 'Customer Ledger', pending: 'Pending Due',
+    boxes: 'Box Stock', reports: 'Reports', masters: 'Masters', settings: 'Settings',
     monthBill: 'Month End', expenses: 'Expenses', cancelled: 'Cancelled Bills',
     appearance: 'Appearance', theme: 'Theme', language: 'Language',
     themeHint: 'Theme & language save on this device',
-    collection: 'Collection', logout: 'Logout'
+    collection: 'Collection', logout: 'Logout',
+    navMain: 'Main', navBoxes: 'Boxes', navReports: 'Reports', navSetup: 'Setup',
+    navFinance: 'Finance', navSystem: 'System',
+    streets: 'Streets', packages: 'Packages', mso: 'MSO', collectors: 'Collectors', company: 'Company',
+    secCollection: 'Collection', secCustomers: 'Customers', secService: 'Service',
+    secBilling: 'Billing', secAudit: 'Audit', secAnalytics: 'Analytics',
+    repCollection: 'Collection Report', repCustomerList: 'Customer List', repPending: 'Pending / Due',
+    repDc: 'DC List', repNewConn: 'New Connection', repTransfer: 'Transfer Report',
+    repPackage: 'Package Wise', repPayMode: 'Payment Mode', repColAudit: 'Collection Audit',
+    repActivity: 'Activity Log', repTrend: 'Collection Trend',
+    save: 'Save', cancel: 'Cancel', search: 'Search', print: 'Print', show: 'Show',
+    today: 'Today', thisMonth: 'This Month', total: 'Total', active: 'Active', due: 'Due'
   },
   ta: {
     dashboard: 'டாஷ்போர்டு', customers: 'கஸ்டமர்கள்', newCustomer: 'புதிய கஸ்டமர்',
-    billing: 'பில்லிங் / கலெக்ஷன்', ledger: 'கஸ்டமர் லெட்ஜர்', pending: 'நிலுவை / Due',
-    boxes: 'பாக்ஸ் மேனேஜ்மென்ட்', reports: 'ரிப்போர்ட்ஸ்', masters: 'மாஸ்டர்', settings: 'செட்டிங்ஸ்',
+    billing: 'வசூல் / பில்', ledger: 'கஸ்டமர் லெட்ஜர்', pending: 'நிலுவை',
+    boxes: 'பாக்ஸ் ஸ்டாக்', reports: 'ரிப்போர்ட்ஸ்', masters: 'மாஸ்டர்', settings: 'செட்டிங்ஸ்',
     monthBill: 'மாத இறுதி', expenses: 'செலவுகள்', cancelled: 'ரத்து பில்ஸ்',
     appearance: 'தோற்றம்', theme: 'தீம்', language: 'மொழி',
     themeHint: 'தீம் & மொழி இந்த போனில் சேமிக்கப்படும்',
-    collection: 'கலெக்ஷன்', logout: 'லாக் அவுட்'
+    collection: 'கலெக்ஷன்', logout: 'லாக் அவுட்',
+    navMain: 'முதன்மை', navBoxes: 'பாக்ஸ்', navReports: 'ரிப்போர்ட்ஸ்', navSetup: 'செட்டப்',
+    navFinance: 'நிதி', navSystem: 'சிஸ்டம்',
+    streets: 'தெருக்கள்', packages: 'பேக்கேஜ்', mso: 'எம்எஸ்ஓ', collectors: 'கலெக்டர்கள்', company: 'நிறுவனம்',
+    secCollection: 'கலெக்ஷன்', secCustomers: 'கஸ்டமர்கள்', secService: 'சர்வீஸ்',
+    secBilling: 'பில்லிங்', secAudit: 'ஆடிட்', secAnalytics: 'அனலிட்டிக்ஸ்',
+    repCollection: 'கலெக்ஷன் ரிப்போர்ட்', repCustomerList: 'கஸ்டமர் பட்டியல்', repPending: 'நிலுவை / Due',
+    repDc: 'டிசி பட்டியல்', repNewConn: 'புதிய கனெக்ஷன்', repTransfer: 'டிரான்ஸ்ஃபர் ரிப்போர்ட்',
+    repPackage: 'பேக்கேஜ் வாரியாக', repPayMode: 'பேமெண்ட் முறை', repColAudit: 'கலெக்ஷன் ஆடிட்',
+    repActivity: 'ஆக்டிவிட்டி லாக்', repTrend: 'கலெக்ஷன் ட்ரெண்ட்',
+    save: 'சேமி', cancel: 'ரத்து', search: 'தேடு', print: 'பிரிண்ட்', show: 'காட்டு',
+    today: 'இன்று', thisMonth: 'இந்த மாதம்', total: 'மொத்தம்', active: 'ஆக்டிவ்', due: 'நிலுவை'
   }
 };
 

@@ -317,70 +317,70 @@
 
       
       <nav class="flex-1 overflow-y-auto py-3 px-2">
-        <div class="nav-section">Main</div>
+        <div class="nav-section" data-i18n="navMain">Main</div>
         <button onclick="showPage('dashboard')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm active" data-page="dashboard">
-          <span class="w-5 text-center opacity-80">◆</span> Dashboard
+          <span class="w-5 text-center opacity-80">◆</span> <span data-i18n="dashboard">Dashboard</span>
         </button>
         <button onclick="showPage('customers')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="customers">
-          <span class="w-5 text-center opacity-80">◎</span> Customers
+          <span class="w-5 text-center opacity-80">◎</span> <span data-i18n="customers">Customers</span>
         </button>
         <button onclick="showPage('newCustomer')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="newCustomer">
-          <span class="w-5 text-center opacity-80">＋</span> New Customer
+          <span class="w-5 text-center opacity-80">＋</span> <span data-i18n="newCustomer">New Customer</span>
         </button>
         <button onclick="showPage('billing')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="billing">
-          <span class="w-5 text-center opacity-80">₹</span> Collect / Bill
+          <span class="w-5 text-center opacity-80">₹</span> <span data-i18n="billing">Collect / Bill</span>
         </button>
         <button onclick="showPage('pending')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="pending">
-          <span class="w-5 text-center opacity-80">⚠</span> Pending Due
+          <span class="w-5 text-center opacity-80">⚠</span> <span data-i18n="pending">Pending Due</span>
         </button>
 
-        <div class="nav-section">Boxes</div>
+        <div class="nav-section" data-i18n="navBoxes">Boxes</div>
         <button onclick="showPage('boxes')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="boxes">
-          <span class="w-5 text-center opacity-80">▣</span> Box Stock
+          <span class="w-5 text-center opacity-80">▣</span> <span data-i18n="boxes">Box Stock</span>
         </button>
 
-        <div class="nav-section">Reports</div>
+        <div class="nav-section" data-i18n="navReports">Reports</div>
         <button onclick="showPage('reports')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="reports">
-          <span class="w-5 text-center opacity-80">▦</span> Reports
+          <span class="w-5 text-center opacity-80">▦</span> <span data-i18n="reports">Reports</span>
         </button>
         <button onclick="showPage('cancelled')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="cancelled">
-          <span class="w-5 text-center opacity-80">⊘</span> Cancelled Bills
+          <span class="w-5 text-center opacity-80">⊘</span> <span data-i18n="cancelled">Cancelled Bills</span>
         </button>
 
-        <div class="nav-section">Setup</div>
+        <div class="nav-section" data-i18n="navSetup">Setup</div>
         <button onclick="openMastersPanel('street')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-street">
-          <span class="w-5 text-center opacity-80">⌂</span> Streets
+          <span class="w-5 text-center opacity-80">⌂</span> <span data-i18n="streets">Streets</span>
         </button>
         <button onclick="openMastersPanel('package')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-package">
-          <span class="w-5 text-center opacity-80">▦</span> Packages
+          <span class="w-5 text-center opacity-80">▦</span> <span data-i18n="packages">Packages</span>
         </button>
         <button onclick="openMastersPanel('mso')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-mso">
-          <span class="w-5 text-center opacity-80">◈</span> MSO
+          <span class="w-5 text-center opacity-80">◈</span> <span data-i18n="mso">MSO</span>
         </button>
         <button onclick="openMastersPanel('employee')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-employee">
-          <span class="w-5 text-center opacity-80">👤</span> Collectors
+          <span class="w-5 text-center opacity-80">👤</span> <span data-i18n="collectors">Collectors</span>
         </button>
         <button onclick="openMastersPanel('company')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="masters-company">
-          <span class="w-5 text-center opacity-80">🏢</span> Company
+          <span class="w-5 text-center opacity-80">🏢</span> <span data-i18n="company">Company</span>
         </button>
-        <div class="nav-section">Finance</div>
+        <div class="nav-section" data-i18n="navFinance">Finance</div>
         <button onclick="showPage('expenses')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="expenses">
-          <span class="w-5 text-center opacity-80">₹</span> Expenses
+          <span class="w-5 text-center opacity-80">₹</span> <span data-i18n="expenses">Expenses</span>
         </button>
         <button onclick="showPage('monthBill')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="monthBill">
-          <span class="w-5 text-center opacity-80">◷</span> Month End
+          <span class="w-5 text-center opacity-80">◷</span> <span data-i18n="monthBill">Month End</span>
         </button>
 
-        <div class="nav-section">System</div>
+        <div class="nav-section" data-i18n="navSystem">System</div>
         <button onclick="showPage('settings')" class="sidebar-item w-full flex items-center gap-3 px-3 py-2 text-left text-sm" data-page="settings">
-          <span class="w-5 text-center opacity-80">◇</span> Settings
+          <span class="w-5 text-center opacity-80">◇</span> <span data-i18n="settings">Settings</span>
         </button>
       </nav>
 
       <div class="p-4 border-t border-slate-800">
         <div class="text-xs text-slate-400 mb-2 truncate" id="userEmailDisplay">user@email.com</div>
         <button onclick="logout()" class="w-full bg-red-600/20 hover:bg-red-600/40 text-red-400 py-2 rounded-lg text-sm transition">
-          Logout
+          <span data-i18n="logout">Logout</span>
         </button>
         <div class="text-center text-[10px] text-slate-500 mt-3 tracking-wide">by JMR Apps</div>
       </div>
@@ -1159,91 +1159,91 @@
           
           <div id="reportMenu" class="no-print space-y-4 mb-4">
             <div>
-              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">💰 Collection</div>
+              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">💰 <span data-i18n="secCollection">Collection</span></div>
               <div class="space-y-2">
                 <button type="button" onclick="openReport('agentDay')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">👤</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Collection Report</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repCollection">Collection Report</span>
                   <span class="block text-[11px] text-slate-500">UMA · Muthumari · Office · Online</span></span>
                 </button>
               </div>
             </div>
 
             <div>
-              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">👥 Customers</div>
+              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">👥 <span data-i18n="secCustomers">Customers</span></div>
               <div class="space-y-2">
                 <button type="button" onclick="openReport('customers')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">📋</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Customer List</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repCustomerList">Customer List</span>
                   <span class="block text-[11px] text-slate-500">All · Active · DC · filters</span></span>
                 </button>
                 <button type="button" onclick="showPage('pending')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">⚠️</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Pending / Due</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repPending">Pending / Due</span>
                   <span class="block text-[11px] text-slate-500">Outstanding · filters · WhatsApp</span></span>
                 </button>
               </div>
             </div>
 
             <div>
-              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">🔌 Service</div>
+              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">🔌 <span data-i18n="secService">Service</span></div>
               <div class="space-y-2">
                 <button type="button" onclick="openReport('dc')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">🔌</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">DC List</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repDc">DC List</span>
                   <span class="block text-[11px] text-slate-500">Disconnected customers</span></span>
                 </button>
                 <button type="button" onclick="openReport('newConn')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">🆕</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">New Connection</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repNewConn">New Connection</span>
                   <span class="block text-[11px] text-slate-500">This month · Area · Package</span></span>
                 </button>
                 <button type="button" onclick="openReport('transfer')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">🔄</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Transfer Report</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repTransfer">Transfer Report</span>
                   <span class="block text-[11px] text-slate-500">Street / Area change history</span></span>
                 </button>
               </div>
             </div>
 
             <div>
-              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">💵 Billing</div>
+              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">💵 <span data-i18n="secBilling">Billing</span></div>
               <div class="space-y-2">
                 <button type="button" onclick="openReport('package')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">📦</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Package Wise</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repPackage">Package Wise</span>
                   <span class="block text-[11px] text-slate-500">Plan count · Expected billing</span></span>
                 </button>
                 <button type="button" onclick="openReport('payMode')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">💳</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Payment Mode</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repPayMode">Payment Mode</span>
                   <span class="block text-[11px] text-slate-500">Cash · UPI · Online · Office</span></span>
                 </button>
               </div>
             </div>
 
             <div>
-              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">🔐 Audit</div>
+              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">🔐 <span data-i18n="secAudit">Audit</span></div>
               <div class="space-y-2">
                 <button type="button" onclick="openReport('colAudit')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">🧾</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Collection Audit</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repColAudit">Collection Audit</span>
                   <span class="block text-[11px] text-slate-500">Collector totals · mode split</span></span>
                 </button>
                 <button type="button" onclick="openReport('activity')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">📜</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Activity Log</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repActivity">Activity Log</span>
                   <span class="block text-[11px] text-slate-500">Who changed what</span></span>
                 </button>
               </div>
             </div>
 
             <div>
-              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">📈 Analytics</div>
+              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">📈 <span data-i18n="secAnalytics">Analytics</span></div>
               <div class="space-y-2">
                 <button type="button" onclick="openReport('trend')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">📈</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Collection Trend</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm" data-i18n="repTrend">Collection Trend</span>
                   <span class="block text-[11px] text-slate-500">Day-wise trend · comparison</span></span>
                 </button>
               </div>
