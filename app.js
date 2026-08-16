@@ -204,7 +204,7 @@ function showPage(pageId, isBack) {
     reports: 'Reports',
     masters: 'Masters',
     settings: 'Settings',
-    monthBill: 'Month Bill + Backup',
+    monthBill: 'Month End',
     expenses: 'Expenses',
     cancelled: 'Cancelled Bills'
   };
