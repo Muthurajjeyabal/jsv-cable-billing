@@ -224,7 +224,7 @@ function showPage(pageId, isBack) {
   if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d){ d.value=new Date().toISOString().slice(0,10); d.readOnly=true; } loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
 
-  if (pageId === 'newCustomer') {
+  if (pageId === 'newCustomer' && !window._skipNewCustomerReset) {
     document.getElementById('customerForm').reset();
     document.getElementById('editCustomerId').value = '';
     document.getElementById('customerFormTitle').textContent = 'New Customer';
@@ -233,6 +233,7 @@ function showPage(pageId, isBack) {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('custConDate').value = today;
   }
+  window._skipNewCustomerReset = false;
 
   if (pageId === 'pending') {
     renderPendingReport();
@@ -502,45 +503,144 @@ async function handleSaveCustomer(e) {
 
 function editCustomer(id) {
   const c = allCustomers.find(x => x.id === id);
-  if (!c) return;
+  if (!c) {
+    showToast('Customer not found', true);
+    return;
+  }
+  // show page WITHOUT clearing form, then fill all fields
+  window._skipNewCustomerReset = true;
+  showPage('newCustomer');
 
   document.getElementById('editCustomerId').value = id;
   document.getElementById('customerFormTitle').textContent = 'Edit Customer';
-  document.getElementById('custName').value = c.name || '';
-  document.getElementById('custFather').value = c.fatherName || '';
-  document.getElementById('custMobile').value = c.mobile || '';
-  document.getElementById('custDoor').value = c.doorNo || '';
-  document.getElementById('custPlace').value = c.place || '';
-  onPlaceSelect();
-  document.getElementById('custStreet').value = c.street || '';
-  if (document.getElementById('custCustId')) document.getElementById('custCustId').value = c.custId || '';
-  if (document.getElementById('custIdSuffix')) document.getElementById('custIdSuffix').value = '';
-  if (document.getElementById('custLandmark')) document.getElementById('custLandmark').value = c.landmark || '';
-  if (document.getElementById('custEB')) document.getElementById('custEB').value = c.ebNo || '';
-  document.getElementById('custBox').value = c.boxNo || '';
-  document.getElementById('custSC').value = c.scNo || c.smartCard || '';
-  document.getElementById('custPackage').value = c.package || '';
-  document.getElementById('custPkgAmt').value = c.packageBase != null ? c.packageBase : (c.packageAmt || '');
-  setAddonsFromCustomer(c);
-  if (document.getElementById('custDueAmt')) document.getElementById('custDueAmt').value = c.dueAmt || c.due || 0;
-  if (document.getElementById('custOtherCharges')) document.getElementById('custOtherCharges').value = c.otherCharges || 0;
-  if (document.getElementById('custDiscount')) document.getElementById('custDiscount').value = c.discount || 0;
-  if (document.getElementById('custDisReason')) document.getElementById('custDisReason').value = c.disReason || '';
-  document.getElementById('custConDate').value = c.conDate || '';
-  document.getElementById('custStatus').value = c.status || 'ACT';
-  if (document.getElementById('custSMS')) document.getElementById('custSMS').value = c.sms || 'Yes';
-  if (document.getElementById('custSignal')) document.getElementById('custSignal').value = c.signal || 'Digital';
-  if (document.getElementById('custMSO')) document.getElementById('custMSO').value = c.mso || '';
-  if (document.getElementById('custBoxType')) document.getElementById('custBoxType').value = c.boxType || 'SD';
-  if (document.getElementById('custAadhar')) document.getElementById('custAadhar').value = c.aadhar || '';
-  if (document.getElementById('custCAF')) document.getElementById('custCAF').value = c.caf || '';
-  if (document.getElementById('custRegDate')) document.getElementById('custRegDate').value = c.regDate || '';
-  if (document.getElementById('custBoxAmt')) document.getElementById('custBoxAmt').value = c.boxAmt || 0;
-  if (document.getElementById('custBilling')) document.getElementById('custBilling').value = c.billing || 'Yes';
-  document.getElementById('custRemarks').value = c.remarks || '';
-
-  showPage('newCustomer');
+  const set = (eid, val) => {
+    const el = document.getElementById(eid);
+    if (el) el.value = val != null ? val : '';
+  };
+  set('custName', c.name || '');
+  set('custFather', c.fatherName || '');
+  set('custMobile', c.mobile || '');
+  set('custDoor', c.doorNo || '');
+  set('custPlace', c.place || '');
+  if (typeof onPlaceSelect === 'function') onPlaceSelect();
+  set('custStreet', c.street || '');
+  set('custCustId', c.custId || '');
+  set('custIdSuffix', '');
+  set('custLandmark', c.landmark || '');
+  set('custEB', c.ebNo || '');
+  set('custBox', c.boxNo || '');
+  set('custSC', c.scNo || c.smartCard || '');
+  set('custPackage', c.package || '');
+  set('custPkgAmt', c.packageBase != null ? c.packageBase : (c.packageAmt || ''));
+  if (typeof setAddonsFromCustomer === 'function') setAddonsFromCustomer(c);
+  set('custDueAmt', c.dueAmt != null ? c.dueAmt : (c.due || 0));
+  set('custOtherCharges', c.otherCharges || 0);
+  set('custDiscount', c.discount || 0);
+  set('custDisReason', c.disReason || '');
+  set('custConDate', c.conDate || '');
+  set('custStatus', c.status || 'ACT');
+  set('custSMS', c.sms || 'Yes');
+  set('custSignal', c.signal || 'Digital');
+  set('custMSO', c.mso || '');
+  set('custBoxType', c.boxType || 'SD');
+  set('custAadhar', c.aadhar || '');
+  set('custCAF', c.caf || '');
+  set('custRegDate', c.regDate || '');
+  set('custBoxAmt', c.boxAmt || 0);
+  set('custBilling', c.billing || 'Yes');
+  set('custRemarks', c.remarks || '');
+  // scroll top of form
+  const form = document.getElementById('customerForm');
+  if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+
+function ledgerToggleDC() {
+  const id = currentLedgerCustomerId;
+  if (!id) return;
+  const c = allCustomers.find(x => x.id === id);
+  if (!c) return;
+  toggleDC(id, c.status || 'ACT');
+}
+
+async function ledgerQuickTransfer() {
+  const id = currentLedgerCustomerId;
+  if (!id) return;
+  const c = allCustomers.find(x => x.id === id);
+  if (!c) return;
+  const streets = (typeof allStreets !== 'undefined' && allStreets && allStreets.length)
+    ? allStreets.map(s => s.name || s.street).filter(Boolean)
+    : [...new Set((allCustomers || []).map(x => x.street).filter(Boolean))];
+  const cur = c.street || '';
+  const next = prompt('புதிய Street / Transfer:\n(தற்போது: ' + cur + ')', cur);
+  if (next === null) return;
+  const street = next.trim();
+  if (!street || street === cur) { showToast('Street மாறவில்லை'); return; }
+  const place = prompt('Area (AREA 1 / AREA 2):', c.place || 'AREA 1');
+  if (place === null) return;
+  try {
+    const oldStreet = c.street || '';
+    const oldPlace = c.place || '';
+    await db.collection('customers').doc(id).update({
+      street,
+      place: (place || '').trim(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    // transfer log
+    try {
+      await db.collection('transfers').add({
+        customerId: id,
+        customerName: c.name || '',
+        custId: c.custId || '',
+        fromStreet: oldStreet,
+        toStreet: street,
+        fromPlace: oldPlace,
+        toPlace: (place || '').trim(),
+        date: new Date().toISOString().slice(0, 10),
+        createdBy: currentUser?.email || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (_) {}
+    const idx = allCustomers.findIndex(x => x.id === id);
+    if (idx >= 0) {
+      allCustomers[idx].street = street;
+      allCustomers[idx].place = (place || '').trim();
+    }
+    showToast('Transfer saved: ' + street);
+    await viewLedger(id);
+  } catch (e) {
+    showToast('Transfer error: ' + e.message, true);
+  }
+}
+
+async function ledgerQuickPackage() {
+  const id = currentLedgerCustomerId;
+  if (!id) return;
+  const c = allCustomers.find(x => x.id === id);
+  if (!c) return;
+  const pkg = prompt('Package name:', c.package || '');
+  if (pkg === null) return;
+  const amtStr = prompt('Package amount ₹:', String(c.packageAmt || c.packAmt || 0));
+  if (amtStr === null) return;
+  const packageAmt = Number(amtStr) || 0;
+  try {
+    await db.collection('customers').doc(id).update({
+      package: pkg.trim(),
+      packageAmt,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const idx = allCustomers.findIndex(x => x.id === id);
+    if (idx >= 0) {
+      allCustomers[idx].package = pkg.trim();
+      allCustomers[idx].packageAmt = packageAmt;
+    }
+    showToast('Package updated');
+    await viewLedger(id);
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
+
 
 // ==================== DC / RC ====================
 
@@ -617,6 +717,7 @@ async function toggleDC(id, currentStatus) {
 
     showToast(returnBox ? `${action} + Box ${boxNo} → Store` : `${action} successful!`);
     await loadCustomers();
+    if (typeof currentLedgerCustomerId !== 'undefined' && currentLedgerCustomerId === id) await viewLedger(id);
   } catch (err) {
     showToast('Error: ' + err.message, true);
   }
@@ -742,7 +843,18 @@ async function viewLedger(id) {
     ca.textContent = [caf ? 'CAF: '+caf : '', addons ? 'Add-on: '+addons : ''].filter(Boolean).join(' · ') || '-';
   }
   document.getElementById('ledgerDue').textContent = '₹' + Number(c.dueAmt || c.due || 0).toLocaleString('en-IN');
-  document.getElementById('ledgerStatus').textContent = c.status || 'ACT';
+  const st = (c.status || 'ACT').toUpperCase();
+  document.getElementById('ledgerStatus').textContent = st;
+  const dcBtn = document.getElementById('ledgerDcBtn');
+  if (dcBtn) {
+    if (st === 'DC') {
+      dcBtn.textContent = 'RC';
+      dcBtn.className = 'text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1.5 rounded-lg font-medium';
+    } else {
+      dcBtn.textContent = 'DC';
+      dcBtn.className = 'text-xs bg-red-100 text-red-700 px-2.5 py-1.5 rounded-lg font-medium';
+    }
+  }
   document.getElementById('ledgerStatus').className =
     (c.status === 'DC') ? 'px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700'
                         : 'px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700';
@@ -777,8 +889,7 @@ async function viewLedger(id) {
           <td class="px-2 py-2 text-sm">${r.mode || '-'}</td>
           <td class="px-2 py-2 text-xs text-slate-500">${displayAgentName(r)}</td>
           <td class="px-2 py-2 text-xs">
-            ${cancelled ? '<span class="text-red-500">Cancelled</span>' :
-              `<button type="button" onclick="cancelCollection('${r.id}','${id}',${Number(r.amount||0)})" class="text-red-600 hover:underline">Cancel</button>`}
+            ${cancelled ? '<span class="text-red-500 text-xs">Cancelled</span>' : ''}
           </td>
         </tr>`;
       }).join('') + `
