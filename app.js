@@ -3916,13 +3916,27 @@ async function renderAgentDayReport() {
         const mn = msoNorm(mso);
         if (!mn || (mn !== msoWant && !mn.startsWith(msoWant) && !msoWant.startsWith(mn))) return;
       }
+      const street = (cust?.street || d.street || d.streetName || '').toString().trim() || '-';
+      let mode = (d.mode || d.paymentMode || d.payMode || '').toString().trim();
+      if (!mode) {
+        const ag = String(d.collectedBy || d.agent || '').toUpperCase();
+        if (ag.includes('GPAY') || key === 'online') mode = 'UPI';
+        else mode = 'Cash';
+      } else {
+        const mu = mode.toUpperCase();
+        if (mu.includes('UPI') || mu.includes('GPAY') || mu.includes('G-PAY') || mu.includes('ONLINE')) mode = 'UPI';
+        else if (mu.includes('BANK')) mode = 'Bank';
+        else if (mu.includes('CASH') || key === 'uma' || key === 'muthumari' || key === 'office') mode = 'Cash';
+      }
       rows.push({
         ...d,
         customerName: d.customerName || cust?.name || '',
         importCustId: d.importCustId || cust?.custId || '',
         _agent: key,
         _mso: mso || '-',
-        _area: area || '-'
+        _area: area || '-',
+        _street: street,
+        _mode: mode
       });
     });
     rows.sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(a.customerName||'').localeCompare(String(b.customerName||'')));
@@ -3974,27 +3988,36 @@ async function renderAgentDayReport() {
       const dayTot = list.reduce((s, r) => s + Number(r.amount || 0), 0);
       html += `<div class="bg-slate-800 text-white px-3 py-1.5 text-xs font-semibold flex justify-between">
         <span>${gk}</span><span>${list.length} bills · ₹${dayTot.toLocaleString('en-IN')}</span></div>`;
-      html += `<table class="w-full text-xs table-fixed">
+      html += `<div class="overflow-x-auto"><table class="w-full text-xs" style="border-collapse:separate;border-spacing:0;">
         <thead class="bg-slate-50"><tr>
-          <th class="text-left p-1.5 w-6">#</th>
-          <th class="text-left p-1.5">Customer</th>
-          <th class="text-left p-1.5 w-16">Agent</th>
-          <th class="text-left p-1.5 w-20">MSO</th>
-          <th class="text-right p-1.5 w-14">Amt</th>
+          <th class="text-left px-2 py-2 w-8">#</th>
+          <th class="text-left px-2 py-2" style="min-width:120px">Customer</th>
+          <th class="text-left px-2 py-2" style="min-width:100px">Street</th>
+          <th class="text-left px-2 py-2" style="min-width:55px">Mode</th>
+          <th class="text-left px-2 py-2" style="min-width:90px">Agent</th>
+          <th class="text-left px-2 py-2" style="min-width:100px">MSO</th>
+          <th class="text-right px-2 py-2" style="min-width:65px">Amt</th>
         </tr></thead><tbody>`;
       list.forEach((r, i) => {
-        html += `<tr class="border-t">
-          <td class="p-1.5 text-slate-400 align-top">${i+1}</td>
-          <td class="p-1.5">
-            <div class="font-medium leading-tight break-words">${r.customerName || '-'}</div>
-            <div class="text-[10px] text-slate-400 leading-tight">${r.importCustId || r.custId || '-'} · ${r._mso || '-'}</div>
+        const agent = String(displayAgentName(r) || '-');
+        const mso = String(r._mso || '-');
+        const cid = String(r.importCustId || r.custId || '-');
+        const street = String(r._street || '-');
+        const mode = String(r._mode || 'Cash');
+        html += `<tr class="border-t border-slate-100">
+          <td class="px-2 py-2 text-slate-400 align-top">${i+1}</td>
+          <td class="px-2 py-2 align-top">
+            <div class="font-medium leading-snug text-slate-800">${r.customerName || '-'}</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">${cid}</div>
           </td>
-          <td class="p-1.5 text-[11px] align-top">${displayAgentName(r)}</td>
-          <td class="p-1.5 text-[10px] align-top text-slate-600 break-words">${r._mso || '-'}</td>
-          <td class="p-1.5 text-right font-semibold align-top whitespace-nowrap">₹${Number(r.amount||0).toLocaleString('en-IN')}</td>
+          <td class="px-2 py-2 text-[11px] align-top text-slate-600">${street}</td>
+          <td class="px-2 py-2 text-[11px] align-top whitespace-nowrap">${mode}</td>
+          <td class="px-2 py-2 text-[11px] align-top font-medium text-slate-700 whitespace-nowrap">${agent}</td>
+          <td class="px-2 py-2 text-[10px] align-top text-slate-500 break-all">${mso}</td>
+          <td class="px-2 py-2 text-right font-semibold align-top whitespace-nowrap text-emerald-700">₹${Number(r.amount||0).toLocaleString('en-IN')}</td>
         </tr>`;
       });
-      html += '</tbody></table>';
+      html += '</tbody></table></div>';
     });
     body.innerHTML = html;
   } catch (e) {
