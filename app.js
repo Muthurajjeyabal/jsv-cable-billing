@@ -94,8 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('appScreen').classList.remove('hidden');
       document.getElementById('userEmailDisplay').textContent = user.email;
       try { if (typeof initThemeLang === 'function') initThemeLang(); } catch (e) {}
-      loadDashboard();
-      loadCustomers();
+      // One customer download + one dashboard (not repeated every page)
+      await loadCustomers(true);
+      await loadDashboard(true);
     } else {
       currentUser = null;
       document.getElementById('loginScreen').classList.remove('hidden');
@@ -258,14 +259,25 @@ function toggleSidebar() {
 }
 
 // ==================== CUSTOMERS ====================
-async function loadCustomers() {
+// Cache: avoid re-downloading ~1800 customers on every navigation (saves huge reads)
+let _customersLoadedAt = 0;
+const CUSTOMERS_CACHE_MS = 5 * 60 * 1000; // 5 minutes
+
+async function loadCustomers(force) {
   try {
+    const fresh = allCustomers.length && (Date.now() - _customersLoadedAt) < CUSTOMERS_CACHE_MS;
+    if (!force && fresh) {
+      renderCustomerTable(allCustomers);
+      updateDashboardStats();
+      return;
+    }
     const snap = await db.collection('customers').get();
     allCustomers = [];
     snap.forEach(doc => {
       allCustomers.push({ id: doc.id, ...doc.data() });
     });
     allCustomers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ta'));
+    _customersLoadedAt = Date.now();
     renderCustomerTable(allCustomers);
     updateDashboardStats();
     loadStreetMaster();
@@ -273,9 +285,15 @@ async function loadCustomers() {
     loadMsoMaster();
   } catch (err) {
     console.error(err);
-    document.getElementById('customerTableBody').innerHTML =
+    const tb = document.getElementById('customerTableBody');
+    if (tb) tb.innerHTML =
       `<tr><td colspan="7" class="text-center py-8 text-red-500">Error: ${err.message}</td></tr>`;
   }
+}
+
+/** After add/edit/delete customer — force refresh from server */
+function invalidateCustomersCache() {
+  _customersLoadedAt = 0;
 }
 
 function renderCustomerTable(list) {
@@ -505,9 +523,11 @@ async function handleSaveCustomer(e) {
         console.error('box stock', be);
       }
     }
-    await loadCustomers();
+    invalidateCustomersCache();
+    _dashCacheAt = 0;
+    await loadCustomers(true);
     if (typeof loadBoxes === 'function') {
-      try { await loadBoxes(); } catch (e) {}
+      try { await loadBoxes(); window._boxesLoadedAt = Date.now(); } catch (e) {}
     }
     showPage('customers');
   } catch (err) {
@@ -1858,14 +1878,30 @@ async function loadCancelledBills() {
 }
 
 // ==================== DASHBOARD ====================
-async function loadDashboard() {
-  if (typeof loadBoxes === 'function') {
-    try { await loadBoxes(); } catch (e) { console.log(e); }
-  }
+let _dashCacheAt = 0;
+let _dashCacheKey = '';
+const DASH_CACHE_MS = 2 * 60 * 1000; // 2 minutes — stop re-query on every Home click
+
+async function loadDashboard(force) {
   updateDashboardStats();
 
   const today = new Date().toISOString().split('T')[0];
   const monthStart = today.slice(0, 8) + '01';
+  const cacheKey = today + '|' + monthStart;
+  if (!force && _dashCacheKey === cacheKey && (Date.now() - _dashCacheAt) < DASH_CACHE_MS) {
+    return; // reuse last numbers on screen
+  }
+
+  // Boxes: only if not loaded recently
+  if (typeof loadBoxes === 'function') {
+    try {
+      if (force || !window._boxesLoadedAt || (Date.now() - window._boxesLoadedAt) > CUSTOMERS_CACHE_MS) {
+        await loadBoxes();
+        window._boxesLoadedAt = Date.now();
+      }
+    } catch (e) { console.log(e); }
+  }
+
   try {
     const emptyAgents = () => ({
       uma: { amt: 0, cnt: 0 },
@@ -1877,21 +1913,9 @@ async function loadDashboard() {
     const agentsToday = emptyAgents();
     const agentsMonth = emptyAgents();
 
-    const todaySnap = await db.collection('collections').where('date', '==', today).get();
-    let todayTotal = 0;
-    todaySnap.forEach(doc => {
-      const d = doc.data();
-      const amt = Number(d.amount || 0);
-      todayTotal += amt;
-      const key = classifyAgent(d);
-      agentsToday[key].amt += amt;
-      agentsToday[key].cnt += 1;
-    });
-    const st = document.getElementById('statTodayCol');
-    if (st) st.textContent = '₹ ' + todayTotal.toLocaleString('en-IN');
-
+    // One query for whole month (includes today) — avoids 2 collection scans
     const monthSnap = await db.collection('collections').where('date', '>=', monthStart).get();
-    let monthTotal = 0;
+    let todayTotal = 0, monthTotal = 0;
     monthSnap.forEach(doc => {
       const d = doc.data();
       const amt = Number(d.amount || 0);
@@ -1899,11 +1923,17 @@ async function loadDashboard() {
       const key = classifyAgent(d);
       agentsMonth[key].amt += amt;
       agentsMonth[key].cnt += 1;
+      if (d.date === today) {
+        todayTotal += amt;
+        agentsToday[key].amt += amt;
+        agentsToday[key].cnt += 1;
+      }
     });
+    const st = document.getElementById('statTodayCol');
+    if (st) st.textContent = '₹ ' + todayTotal.toLocaleString('en-IN');
     const sm = document.getElementById('statMonthCol');
     if (sm) sm.textContent = '₹ ' + monthTotal.toLocaleString('en-IN');
 
-    // Month expenses + net
     try {
       let expMonth = 0, expToday = 0;
       const expSnap = await db.collection('expenses').where('date', '>=', monthStart).get();
@@ -1943,6 +1973,9 @@ async function loadDashboard() {
     setTxt('agentOther', '₹' + agentsMonth.other.amt.toLocaleString('en-IN') + ' (' + agentsMonth.other.cnt + ')');
     const oWrap = document.getElementById('agentOtherWrap');
     if (oWrap) oWrap.classList.toggle('hidden', !(agentsMonth.other.amt > 0 || agentsMonth.other.cnt > 0));
+
+    _dashCacheAt = Date.now();
+    _dashCacheKey = cacheKey;
   } catch (e) {
     console.log('Collection stats error', e);
   }
