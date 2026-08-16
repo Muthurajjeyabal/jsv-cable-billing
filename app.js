@@ -875,6 +875,21 @@ async function toggleDC(id, currentStatus) {
       updates.boxNo = '';
       updates.previousBoxNo = boxNo;
     }
+    if (newStatus === 'DC') {
+      updates.dcDate = new Date().toISOString().slice(0, 10);
+      let reason = prompt('DC Reason:\n1. Payment Pending\n2. Customer Request\n3. Temporary DC\n4. Shifted\n5. Service Issue\n6. Other\n\nType number or text:', '1');
+      if (reason === null || reason === '1') reason = 'Payment Pending';
+      else if (reason === '2') reason = 'Customer Request';
+      else if (reason === '3') reason = 'Temporary DC';
+      else if (reason === '4') reason = 'Shifted';
+      else if (reason === '5') reason = 'Service Issue';
+      else if (reason === '6') reason = 'Other';
+      updates.dcReason = reason || 'Payment Pending';
+    } else {
+      updates.dcDate = firebase.firestore.FieldValue.delete();
+      updates.dcReason = firebase.firestore.FieldValue.delete();
+      updates.rcDate = new Date().toISOString().slice(0, 10);
+    }
     await db.collection('customers').doc(id).update(updates);
 
     if (returnBox && boxNo) {
@@ -5064,24 +5079,187 @@ function renderCustomerReport() {
       </div>
     </div>`;
 }
+function setDcChip(btn) {
+  const v = btn.getAttribute('data-dcchip') || 'ALL';
+  const hid = document.getElementById('dcRepChip');
+  if (hid) hid.value = v;
+  document.querySelectorAll('.dc-chip').forEach(function (b) {
+    const on = b === btn;
+    b.className = on
+      ? 'dc-chip px-2.5 py-1 rounded-full text-xs bg-indigo-600 text-white'
+      : 'dc-chip px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200';
+  });
+  renderDcReport();
+}
+
+function parseDcDateISO(c) {
+  const raw = String(c.dcDate || '').trim();
+  if (!raw) return '';
+  let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  const t = Date.parse(raw);
+  if (!isNaN(t)) {
+    const d = new Date(t);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  return '';
+}
+
+function daysSinceDc(iso) {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (isNaN(t)) return null;
+  const ms = Date.now() - t;
+  return Math.max(0, Math.floor(ms / 86400000));
+}
+
+function onDcRepAreaChange() {
+  const area = (document.getElementById('dcRepArea') || {}).value || 'ALL';
+  const streetSel = document.getElementById('dcRepStreet');
+  if (!streetSel) return;
+  const streets = new Set();
+  (allCustomers || []).filter(function (c) { return String(c.status || '').toUpperCase() === 'DC'; }).forEach(function (c) {
+    if (area === 'ALL' || (typeof matchAreaPlace === 'function' ? matchAreaPlace(c.place, area) : true)) {
+      if (c.street) streets.add(String(c.street).trim());
+    }
+  });
+  if (typeof STREET_MASTER !== 'undefined') {
+    STREET_MASTER.forEach(function (s) {
+      if (area === 'ALL' || (typeof matchAreaPlace === 'function' ? matchAreaPlace(s.place, area) : true)) {
+        if (s.street) streets.add(String(s.street).trim());
+      }
+    });
+  }
+  streetSel.innerHTML = '<option value="ALL">All Streets</option>' +
+    Array.from(streets).filter(Boolean).sort(function (a, b) { return a.localeCompare(b, 'ta'); })
+      .map(function (s) { return '<option value="' + s.replace(/"/g, '&quot;') + '">' + s + '</option>'; }).join('');
+  renderDcReport();
+}
+
 function renderDcReport() {
-  const list = allCustomers.filter(c => String(c.status||'').toUpperCase() === 'DC')
-    .sort((a,b) => String(a.custId||'').localeCompare(String(b.custId||'')));
+  const area = (document.getElementById('dcRepArea') || {}).value || 'ALL';
+  const street = (document.getElementById('dcRepStreet') || {}).value || 'ALL';
+  const reasonF = (document.getElementById('dcRepReason') || {}).value || 'ALL';
+  const chip = (document.getElementById('dcRepChip') || {}).value || 'ALL';
+  const q = ((document.getElementById('dcRepSearch') || {}).value || '').trim().toLowerCase();
+  const monthStart = (function () {
+    const t = new Date();
+    return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-01';
+  })();
+
+  const allDc = (allCustomers || []).filter(function (c) {
+    return String(c.status || '').toUpperCase() === 'DC';
+  });
+
+  const nTotal = allDc.length;
+  const nMonth = allDc.filter(function (c) {
+    const d = parseDcDateISO(c);
+    return d && d >= monthStart;
+  }).length;
+  const nDue = allDc.filter(function (c) { return Number(c.dueAmt || c.due || 0) > 0; }).length;
+  const nNoDue = nTotal - nDue;
+  const kpi = document.getElementById('dcRepKpis');
+  if (kpi) {
+    kpi.innerHTML =
+      '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-lg font-bold text-red-600">' + nTotal + '</div><div class="text-[9px] text-slate-400">Total DC</div></div>' +
+      '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-lg font-bold text-amber-600">' + nMonth + '</div><div class="text-[9px] text-slate-400">This Month</div></div>' +
+      '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-lg font-bold text-red-500">' + nDue + '</div><div class="text-[9px] text-slate-400">With Due</div></div>' +
+      '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-lg font-bold text-emerald-600">' + nNoDue + '</div><div class="text-[9px] text-slate-400">No Due</div></div>';
+  }
+
+  let list = allDc.filter(function (c) {
+    if (area !== 'ALL' && typeof matchAreaPlace === 'function' && !matchAreaPlace(c.place, area)) return false;
+    if (street !== 'ALL' && String(c.street || '').trim() !== street) return false;
+    const reason = String(c.dcReason || c.reason || '').trim() || '—';
+    if (reasonF === '—') {
+      if (reason !== '—') return false;
+    } else if (reasonF !== 'ALL' && reason !== reasonF) return false;
+    const due = Number(c.dueAmt || c.due || 0);
+    const d = parseDcDateISO(c);
+    if (chip === 'MONTH' && !(d && d >= monthStart)) return false;
+    if (chip === 'DUE' && !(due > 0)) return false;
+    if (chip === 'NODUE' && !(due <= 0)) return false;
+    if (q) {
+      const hay = [c.name, c.custId, c.boxNo, c.mobile, c.street, reason].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  list.sort(function (a, b) {
+    const da = parseDcDateISO(a) || '';
+    const db = parseDcDateISO(b) || '';
+    if (da !== db) return db.localeCompare(da);
+    return Number(b.dueAmt || b.due || 0) - Number(a.dueAmt || a.due || 0);
+  });
+
+  const totalDue = list.reduce(function (s, c) { return s + Number(c.dueAmt || c.due || 0); }, 0);
   const sum = document.getElementById('dcRepSummary');
-  if (sum) sum.textContent = list.length + ' DC customers';
+  if (sum) sum.textContent = list.length + ' showing · Due ₹' + totalDue.toLocaleString('en-IN');
+
   const body = document.getElementById('dcRepBody');
   if (!body) return;
-  body.innerHTML = `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">
-    <thead class="bg-slate-50 sticky top-0"><tr>
-      <th class="text-left px-2 py-2">ID</th><th class="text-left px-2 py-2">Name</th>
-      <th class="text-left px-2 py-2">Box</th><th class="text-left px-2 py-2">DC Date</th>
-      <th class="text-right px-2 py-2">Balance</th>
-    </tr></thead><tbody>` + list.map(c => `<tr class="border-t">
-      <td class="px-2 py-1.5">${c.custId||''}</td><td class="px-2 py-1.5">${c.name||''}</td>
-      <td class="px-2 py-1.5 text-xs">${c.boxNo||''}</td><td class="px-2 py-1.5">${c.dcDate||''}</td>
-      <td class="px-2 py-1.5 text-right">₹${Number(c.dueAmt||c.due||0).toLocaleString('en-IN')}</td>
-    </tr>`).join('') + '</tbody></table></div>';
+  if (!list.length) {
+    body.innerHTML = '<div class="p-8 text-center text-slate-400 bg-white rounded-xl border">No DC customers in this filter</div>';
+    return;
+  }
+
+  const cards = list.map(function (c) {
+    const due = Number(c.dueAmt || c.due || 0);
+    const iso = parseDcDateISO(c);
+    const days = daysSinceDc(iso);
+    const reason = String(c.dcReason || c.reason || '').trim() || '—';
+    const mobile = String(c.mobile || '').replace(/\D/g, '');
+    let daysTxt = '';
+    if (days !== null) {
+      if (days === 0) daysTxt = 'Today';
+      else if (days === 1) daysTxt = '1 day ago';
+      else daysTxt = days + ' days ago';
+    }
+    return '<div class="bg-white rounded-xl border border-slate-100 p-3 shadow-sm">' +
+      '<div class="flex justify-between items-start gap-2">' +
+      '<div class="min-w-0"><div class="font-semibold text-slate-900 truncate">' + (c.name || '—') + '</div>' +
+      '<div class="text-[11px] text-slate-500 mt-0.5">ID: ' + (c.custId || '—') + ' · <span class="text-red-600 font-medium">DC</span></div></div>' +
+      '<div class="text-right shrink-0"><div class="text-sm font-bold ' + (due > 0 ? 'text-red-600' : 'text-emerald-600') + '">₹' + due.toLocaleString('en-IN') + '</div>' +
+      (daysTxt ? '<div class="text-[10px] text-slate-400">' + daysTxt + '</div>' : '') + '</div></div>' +
+      '<div class="text-xs text-slate-600 mt-1.5">📍 ' + (c.street || '—') + (c.place ? ' · ' + c.place : '') + '</div>' +
+      '<div class="text-[11px] text-slate-500 mt-0.5">📦 ' + (c.boxNo || '—') + (iso ? ' · DC ' + iso : '') + '</div>' +
+      '<div class="text-[11px] mt-0.5"><span class="text-slate-400">Reason:</span> ' + reason + '</div>' +
+      '<div class="flex gap-2 mt-2.5 pt-2 border-t border-slate-50">' +
+      '<button type="button" onclick="viewLedger(\'' + c.id + '\')" class="flex-1 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium">Ledger</button>' +
+      '<button type="button" onclick="toggleDC(\'' + c.id + '\', \'DC\')" class="flex-1 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium">Reconnect</button>' +
+      (mobile ? '<a href="tel:' + mobile + '" class="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-700 text-xs font-medium">Call</a>' : '') +
+      '</div></div>';
+  }).join('');
+
+  const table = '<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">' +
+    '<thead class="bg-slate-50 sticky top-0"><tr>' +
+    '<th class="text-left px-2 py-2">ID</th><th class="text-left px-2 py-2">Name</th>' +
+    '<th class="text-left px-2 py-2">DC Date</th><th class="text-left px-2 py-2">Reason</th>' +
+    '<th class="text-left px-2 py-2">Box</th><th class="text-right px-2 py-2">Due</th><th class="text-left px-2 py-2">Action</th>' +
+    '</tr></thead><tbody>' +
+    list.map(function (c) {
+      const due = Number(c.dueAmt || c.due || 0);
+      const iso = parseDcDateISO(c);
+      const reason = String(c.dcReason || c.reason || '').trim() || '—';
+      return '<tr class="border-t hover:bg-slate-50">' +
+        '<td class="px-2 py-1.5 font-mono text-xs">' + (c.custId || '') + '</td>' +
+        '<td class="px-2 py-1.5 cursor-pointer" onclick="viewLedger(\'' + c.id + '\')">' + (c.name || '') + '</td>' +
+        '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + (iso || '—') + '</td>' +
+        '<td class="px-2 py-1.5 text-xs">' + reason + '</td>' +
+        '<td class="px-2 py-1.5 text-xs font-mono">' + (c.boxNo || '') + '</td>' +
+        '<td class="px-2 py-1.5 text-right font-medium ' + (due > 0 ? 'text-red-600' : 'text-emerald-600') + '">₹' + due.toLocaleString('en-IN') + '</td>' +
+        '<td class="px-2 py-1.5 whitespace-nowrap">' +
+        '<button type="button" onclick="viewLedger(\'' + c.id + '\')" class="text-indigo-600 text-xs mr-2">Ledger</button>' +
+        '<button type="button" onclick="toggleDC(\'' + c.id + '\', \'DC\')" class="text-emerald-600 text-xs">RC</button></td></tr>';
+    }).join('') + '</tbody></table></div>';
+
+  body.innerHTML = '<div class="md:hidden space-y-2">' + cards + '</div>' +
+    '<div class="hidden md:block bg-white rounded-xl border overflow-hidden">' + table + '</div>';
 }
+
 function onPkgRepAreaChange() {
   const area = (document.getElementById('pkgRepArea') || {}).value || 'ALL';
   const streetSel = document.getElementById('pkgRepStreet');

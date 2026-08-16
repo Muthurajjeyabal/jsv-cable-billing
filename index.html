@@ -1394,8 +1394,52 @@
           <!-- DC panel -->
           <div id="reportPanel-dc" class="report-panel hidden">
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
-            <div class="soft-card p-3 mb-3 no-print text-xs text-slate-500" id="dcRepSummary">—</div>
-            <div id="dcRepBody" class="bg-white rounded-xl border overflow-hidden text-sm"></div>
+            <div class="soft-card p-3 mb-3 no-print space-y-2">
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-sm">🔌 Disconnection Report</h3>
+                <button type="button" onclick="printDiv('dcRepBody')" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs">🖨 Print</button>
+              </div>
+              <div id="dcRepKpis" class="grid grid-cols-4 gap-1.5"></div>
+              <input type="search" id="dcRepSearch" oninput="renderDcReport()" placeholder="Search name / ID / box / mobile" class="w-full px-3 py-2 border rounded-xl text-sm">
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" data-dcchip="ALL" onclick="setDcChip(this)" class="dc-chip px-2.5 py-1 rounded-full text-xs bg-indigo-600 text-white">All DC</button>
+                <button type="button" data-dcchip="MONTH" onclick="setDcChip(this)" class="dc-chip px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">This Month</button>
+                <button type="button" data-dcchip="DUE" onclick="setDcChip(this)" class="dc-chip px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">With Due</button>
+                <button type="button" data-dcchip="NODUE" onclick="setDcChip(this)" class="dc-chip px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">No Due</button>
+              </div>
+              <input type="hidden" id="dcRepChip" value="ALL">
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-[10px] text-slate-500">Area</label>
+                  <select id="dcRepArea" onchange="onDcRepAreaChange()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                    <option value="ALL">All Areas</option>
+                    <option value="AREA 1">AREA 1</option>
+                    <option value="AREA 2">AREA 2</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">Street</label>
+                  <select id="dcRepStreet" onchange="renderDcReport()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                    <option value="ALL">All Streets</option>
+                  </select>
+                </div>
+                <div class="col-span-2">
+                  <label class="text-[10px] text-slate-500">Reason</label>
+                  <select id="dcRepReason" onchange="renderDcReport()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                    <option value="ALL">All Reasons</option>
+                    <option value="Payment Pending">Payment Pending</option>
+                    <option value="Customer Request">Customer Request</option>
+                    <option value="Temporary DC">Temporary DC</option>
+                    <option value="Shifted">Shifted</option>
+                    <option value="Service Issue">Service Issue</option>
+                    <option value="Other">Other</option>
+                    <option value="—">No Reason</option>
+                  </select>
+                </div>
+              </div>
+              <div class="text-xs text-slate-500" id="dcRepSummary"></div>
+            </div>
+            <div id="dcRepBody" class="space-y-2 text-sm pb-6"></div>
           </div>
 
           <!-- Package panel -->
