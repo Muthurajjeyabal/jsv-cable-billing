@@ -5919,10 +5919,12 @@ async function saveExpense() {
   if (person && (category === 'Donation' || category === 'Monthly Salary')) {
     category = category + ' · ' + person;
   }
+  const mode = document.getElementById('expMode')?.value || 'Cash';
   const data = {
     date: new Date().toISOString().slice(0, 10), // always today only
     category,
     amount,
+    mode,
     personName: person || '',
     note: (document.getElementById('expNote')?.value || '').trim(),
     createdBy: currentUser?.email || '',
@@ -5947,36 +5949,117 @@ async function loadExpenses() {
   const listEl = document.getElementById('expList');
   const totEl = document.getElementById('expMonthTotal');
   const todayEl = document.getElementById('expTodayTotal');
+  const breakEl = document.getElementById('expBreakdown');
+  const filterTot = document.getElementById('expFilterTotal');
   if (!listEl) return;
+  listEl.innerHTML = '<div class="py-4 text-center text-slate-400">Loading...</div>';
   const today = new Date().toISOString().slice(0, 10);
-  const monthStart = today.slice(0, 7) + '-01';
+  const monthStart = today.slice(0, 8) + '01';
   try {
-    const snap = await db.collection('expenses').where('date', '>=', monthStart).get();
-    const rows = [];
-    snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
-    rows.sort((a, b) => String(b.date).localeCompare(String(a.date)));
-    const monthTotal = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
-    const todayTotal = rows.filter(r => r.date === today).reduce((s, r) => s + Number(r.amount || 0), 0);
+    let snap;
+    try {
+      snap = await db.collection('expenses').where('date', '>=', monthStart).get();
+    } catch (e1) {
+      snap = await db.collection('expenses').limit(500).get();
+    }
+    let rows = [];
+    snap.forEach(function (d) { rows.push({ id: d.id, ...d.data() }); });
+
+    // always compute month + today totals from full month data
+    const monthRows = rows.filter(function (r) { return String(r.date || '') >= monthStart; });
+    const monthTotal = monthRows.reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
+    const todayTotal = rows.filter(function (r) { return r.date === today; }).reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
     if (totEl) totEl.textContent = '₹' + monthTotal.toLocaleString('en-IN');
     if (todayEl) todayEl.textContent = '₹' + todayTotal.toLocaleString('en-IN');
-    listEl.innerHTML = rows.length ? rows.map(r => {
+
+    // category breakdown (this month)
+    const byCat = {};
+    monthRows.forEach(function (r) {
+      const c = String(r.category || 'Other').split(' · ')[0];
+      byCat[c] = (byCat[c] || 0) + Number(r.amount || 0);
+    });
+    const catEntries = Object.keys(byCat).map(function (k) { return { k: k, v: byCat[k] }; })
+      .sort(function (a, b) { return b.v - a.v; });
+    if (breakEl) {
+      if (!catEntries.length) {
+        breakEl.innerHTML = '<div class="text-slate-400 text-xs">No expenses this month</div>';
+      } else {
+        breakEl.innerHTML = catEntries.map(function (e) {
+          const pct = monthTotal ? Math.round((e.v / monthTotal) * 100) : 0;
+          return '<div class="flex items-center gap-2">' +
+            '<div class="flex-1 min-w-0 text-xs text-slate-700 truncate">' + e.k + '</div>' +
+            '<div class="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-rose-500 rounded-full" style="width:' + pct + '%"></div></div>' +
+            '<div class="text-xs font-semibold text-slate-800 w-16 text-right">₹' + e.v.toLocaleString('en-IN') + '</div>' +
+            '<div class="text-[10px] text-slate-400 w-8 text-right">' + pct + '%</div></div>';
+        }).join('');
+      }
+    }
+
+    // populate category filter
+    const catSel = document.getElementById('expFilterCat');
+    if (catSel && catSel.options.length <= 1) {
+      catEntries.forEach(function (e) {
+        const o = document.createElement('option');
+        o.value = e.k;
+        o.textContent = e.k;
+        catSel.appendChild(o);
+      });
+    }
+
+    // apply list filters
+    const range = document.getElementById('expFilterRange')?.value || 'month';
+    const catF = document.getElementById('expFilterCat')?.value || '';
+    let list = rows.slice();
+    if (range === 'today') {
+      list = list.filter(function (r) { return r.date === today; });
+    } else if (range === 'week') {
+      const d = new Date();
+      d.setDate(d.getDate() - 6);
+      const from = d.toISOString().slice(0, 10);
+      list = list.filter(function (r) { return String(r.date || '') >= from; });
+    } else if (range === 'custom') {
+      const from = document.getElementById('expFrom')?.value || '';
+      const to = document.getElementById('expTo')?.value || '';
+      if (from) list = list.filter(function (r) { return String(r.date || '') >= from; });
+      if (to) list = list.filter(function (r) { return String(r.date || '') <= to; });
+    } else {
+      list = list.filter(function (r) { return String(r.date || '') >= monthStart; });
+    }
+    if (catF) {
+      list = list.filter(function (r) { return String(r.category || '').indexOf(catF) === 0 || String(r.category || '') === catF; });
+    }
+    list.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+    const filterSum = list.reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
+    if (filterTot) filterTot.textContent = list.length + ' expenses · ₹' + filterSum.toLocaleString('en-IN');
+
+    listEl.innerHTML = list.length ? list.map(function (r) {
       const isToday = (r.date === today);
-      return `
-      <div class="py-2.5 flex justify-between gap-2 items-start">
-        <div class="min-w-0">
-          <div class="font-medium">${r.category || ''}</div>
-          <div class="text-[10px] text-slate-500">${r.date || ''} · ${r.note || ''}</div>
-          ${isToday ? `<div class="mt-1 flex gap-2">
-            <button type="button" onclick="editExpense('${r.id}')" class="text-xs text-blue-600">Edit</button>
-            <button type="button" onclick="deleteExpense('${r.id}')" class="text-xs text-red-600">Delete</button>
-          </div>` : `<div class="text-[10px] text-slate-400 mt-0.5">Locked (today only edit)</div>`}
-        </div>
-        <div class="font-bold text-rose-600 shrink-0">₹${Number(r.amount||0).toLocaleString('en-IN')}</div>
-      </div>`;
-    }).join('') : '<div class="py-4 text-center text-slate-400">No expenses this month</div>';
+      const mode = r.mode || 'Cash';
+      let dLabel = r.date || '';
+      try {
+        const dt = new Date(r.date + 'T12:00:00');
+        if (!isNaN(dt)) dLabel = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      } catch (e) {}
+      return '<div class="py-2.5 flex justify-between gap-2 items-start">' +
+        '<div class="min-w-0">' +
+          '<div class="font-medium text-slate-800">' + (r.category || '') + '</div>' +
+          '<div class="text-[11px] text-slate-500">' + dLabel + ' · ' + mode + (r.note ? ' · ' + r.note : '') + '</div>' +
+          (isToday
+            ? '<div class="mt-1 flex gap-2"><button type="button" onclick="editExpense(\'' + r.id + '\')" class="text-xs text-blue-600">Edit</button><button type="button" onclick="deleteExpense(\'' + r.id + '\')" class="text-xs text-red-600">Delete</button></div>'
+            : '<div class="text-[10px] text-slate-400 mt-0.5">🔒 Locked</div>') +
+        '</div>' +
+        '<div class="font-bold text-rose-600 shrink-0">₹' + Number(r.amount || 0).toLocaleString('en-IN') + '</div></div>';
+    }).join('') : '<div class="py-4 text-center text-slate-400">No expenses</div>';
   } catch (e) {
     listEl.innerHTML = '<div class="text-red-500 text-xs">' + e.message + '</div>';
   }
+}
+
+function onExpFilterChange() {
+  const range = document.getElementById('expFilterRange')?.value || 'month';
+  const custom = document.getElementById('expCustomDates');
+  if (custom) custom.classList.toggle('hidden', range !== 'custom');
+  loadExpenses();
 }
 
 async function editExpense(id) {
@@ -6095,17 +6178,17 @@ function getAppTheme() {
 }
 function getAppLang() {
   try {
-    var v = (localStorage.getItem('jsv_lang') || 'ta').toLowerCase();
-    if (v === 'en' || v === 'english') return 'en';
-    return 'ta';
-  } catch (e) { return 'ta'; }
+    var v = (localStorage.getItem('jsv_lang') || 'en').toLowerCase();
+    if (v === 'ta' || v === 'tamil') return 'ta';
+    return 'en';
+  } catch (e) { return 'en'; }
 }
 function setAppTheme(v) {
   localStorage.setItem('jsv_theme', v || 'light');
   applyAppTheme();
 }
 function setAppLang(v) {
-  v = (v === 'en' || v === 'english') ? 'en' : 'ta';
+  v = (v === 'ta' || v === 'tamil') ? 'ta' : 'en';
   try { localStorage.setItem('jsv_lang', v); } catch (e) {}
   applyAppLang();
   if (typeof currentPageId !== 'undefined' && currentPageId) {
