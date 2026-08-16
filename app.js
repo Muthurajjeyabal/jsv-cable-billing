@@ -3216,6 +3216,7 @@ async function renderAgentDayReport() {
   const from = document.getElementById('agentRepFrom')?.value;
   const to = document.getElementById('agentRepTo')?.value;
   const who = document.getElementById('agentRepWho')?.value || 'ALL';
+  const areaFilter = document.getElementById('agentRepArea')?.value || 'ALL';
   const msoFilter = document.getElementById('agentRepMso')?.value || 'ALL';
   const groupBy = document.getElementById('agentRepGroup')?.value || 'date';
   const body = document.getElementById('agentRepBody');
@@ -3232,9 +3233,17 @@ async function renderAgentDayReport() {
       const key = classifyAgent(d);
       if (who !== 'ALL' && key !== who) return;
       const cust = byId.get(d.customerId);
+      const place = (cust?.place || d.place || '').toString().trim().toUpperCase();
+      if (areaFilter !== 'ALL') {
+        const af = areaFilter.toUpperCase();
+        if (place !== af && !place.includes(af.replace('AREA ', ''))) {
+          // also accept "AREA1" without space
+          if (place.replace(/\s+/g, '') !== af.replace(/\s+/g, '')) return;
+        }
+      }
       const mso = (d.mso || cust?.mso || '').toString().trim();
       if (msoFilter !== 'ALL' && mso !== msoFilter) return;
-      rows.push({ ...d, _agent: key, _mso: mso || '-' });
+      rows.push({ ...d, _agent: key, _mso: mso || '-', _area: place || '-' });
     });
     rows.sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(a.customerName||'').localeCompare(String(b.customerName||'')));
     const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
@@ -3269,11 +3278,16 @@ async function renderAgentDayReport() {
     }
     const groups = {};
     rows.forEach(r => {
-      const gk = groupBy === 'mso' ? (r._mso || '-') : (r.date || '-');
+      let gk = r.date || '-';
+      if (groupBy === 'mso') gk = r._mso || '-';
+      else if (groupBy === 'area') gk = r._area || '-';
       if (!groups[gk]) groups[gk] = [];
       groups[gk].push(r);
     });
-    const keys = Object.keys(groups).sort((a, b) => groupBy === 'mso' ? a.localeCompare(b) : b.localeCompare(a));
+    const keys = Object.keys(groups).sort((a, b) => {
+      if (groupBy === 'date') return b.localeCompare(a);
+      return a.localeCompare(b);
+    });
     let html = '';
     keys.forEach(gk => {
       const list = groups[gk];
