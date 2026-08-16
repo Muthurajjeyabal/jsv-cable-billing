@@ -4604,23 +4604,48 @@ function closeReportPanels() {
   const menu = document.getElementById('reportMenu');
   if (menu) menu.classList.remove('hidden');
 }
+function matchAreaPlace(place, area) {
+  if (!area) return true;
+  const p = String(place || '').toUpperCase().replace(/\s+/g, ' ').trim();
+  const a = String(area || '').toUpperCase().replace(/\s+/g, ' ').trim();
+  if (!p) return false;
+  if (p === a) return true;
+  if (p.includes(a) || a.includes(p)) return true;
+  if (a === 'AREA 1' && (p === '1' || p === 'AREA1' || p.endsWith(' 1') || p.includes('AREA1'))) return true;
+  if (a === 'AREA 2' && (p === '2' || p === 'AREA2' || p.endsWith(' 2') || p.includes('AREA2'))) return true;
+  return false;
+}
+
 function onCustRepAreaChange() {
   const area = (document.getElementById('custRepArea') || {}).value || '';
   const streetSel = document.getElementById('custRepStreet');
   if (!streetSel) { renderCustomerReport(); return; }
   const streets = new Set();
-  (allCustomers || []).forEach(c => {
-    const p = String(c.place || '').toUpperCase().replace(/\s+/g, ' ');
-    let ok = !area;
-    if (area) {
-      const a = area.toUpperCase();
-      ok = p === a || p.includes(a) || (a === 'AREA 1' && (p === '1' || p === 'AREA1')) || (a === 'AREA 2' && (p === '2' || p === 'AREA2'));
+  // 1) STREET_MASTER by area
+  if (typeof STREET_MASTER !== 'undefined') {
+    STREET_MASTER.forEach(function (s) {
+      if (matchAreaPlace(s.place, area || s.place) && (!area || matchAreaPlace(s.place, area))) {
+        if (s.street) streets.add(String(s.street).trim());
+      }
+    });
+  }
+  // 2) Firestore streets if loaded
+  if (typeof allStreets !== 'undefined' && allStreets && allStreets.length) {
+    allStreets.forEach(function (s) {
+      const pl = s.place || s.area || '';
+      const nm = s.name || s.street || '';
+      if ((!area || matchAreaPlace(pl, area)) && nm) streets.add(String(nm).trim());
+    });
+  }
+  // 3) Customer streets in that area
+  (allCustomers || []).forEach(function (c) {
+    if ((!area || matchAreaPlace(c.place, area)) && c.street) {
+      streets.add(String(c.street).trim());
     }
-    if (ok && c.street) streets.add(String(c.street).trim());
   });
+  const arr = Array.from(streets).filter(Boolean).sort(function (a, b) { return a.localeCompare(b, 'ta'); });
   streetSel.innerHTML = '<option value="">All Streets</option>' +
-    Array.from(streets).sort((a, b) => a.localeCompare(b, 'ta'))
-      .map(s => '<option value="' + s.replace(/"/g, '&quot;') + '">' + s + '</option>').join('');
+    arr.map(function (s) { return '<option value="' + s.replace(/"/g, '&quot;') + '">' + s + '</option>'; }).join('');
   renderCustomerReport();
 }
 
@@ -4663,11 +4688,7 @@ function renderCustomerReport() {
   else if (st === 'ACT') list = list.filter(c => String(c.status || 'ACT').toUpperCase() !== 'DC');
   else if (st === 'DUE') list = list.filter(c => Number(c.dueAmt || c.due || 0) > 0);
   if (area) {
-    const a = area.toUpperCase();
-    list = list.filter(c => {
-      const p = String(c.place || '').toUpperCase().replace(/\s+/g, ' ');
-      return p === a || p.includes(a) || (a === 'AREA 1' && (p === '1' || p === 'AREA1')) || (a === 'AREA 2' && (p === '2' || p === 'AREA2'));
-    });
+    list = list.filter(c => matchAreaPlace(c.place, area));
   }
   const streetF = (document.getElementById('custRepStreet') || {}).value || '';
   if (streetF) list = list.filter(c => String(c.street || '').trim() === streetF);
