@@ -220,7 +220,7 @@ function showPage(pageId, isBack) {
     const bd = document.getElementById('billDate');
     if (bd) { bd.value = new Date().toISOString().slice(0, 10); bd.readOnly = true; }
   }
-  if (pageId === 'settings') { loadWaTemplate(); applyAppTheme(); applyAppLang(); if (typeof applyAppTextSize === 'function') applyAppTextSize(); if (typeof loadBillingSettings === 'function') loadBillingSettings(); if (typeof applyDashLayout === 'function') applyDashLayout(); }
+  if (pageId === 'settings') { loadWaTemplate(); if (typeof loadWaPromoToForm === 'function') loadWaPromoToForm(); applyAppTheme(); applyAppLang(); if (typeof applyAppTextSize === 'function') applyAppTextSize(); if (typeof loadBillingSettings === 'function') loadBillingSettings(); if (typeof applyDashLayout === 'function') applyDashLayout(); }
   if (pageId === 'monthBill') { refreshMonthBillLockUI(); }
   if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d){ d.value=new Date().toISOString().slice(0,10); d.readOnly=true; } loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
@@ -1957,9 +1957,9 @@ let waDefaultTplId = 'due';
 let waActiveTplId = 'due';
 
 const DEFAULT_WA_TEMPLATES = {
-  "welcome": "வணக்கம் {name},\n\nJSV Cable TV-ல் இணைந்ததற்கு நன்றி!\n\nஉங்கள் இணைப்பு செயல்படுத்தப்பட்டது.\nPackage: ₹{package}\n\nபுகார் / உதவி:\nOffice: {office}\nGPay (பணம் மட்டும்): {gpay}\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
-  "payment": "வணக்கம் {name},\n\nஉங்கள் பணம் ₹{amount} பெற்றுக்கொள்ளப்பட்டது.\nதேதி: {date}\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
-  "due": "வணக்கம் {name},\n\nJSV Cable TV - {month} மாதத்திற்கு இன்னும் நீங்கள் பணம் கட்டவில்லை.\nநிலுவை: ₹{due}\n\nதயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.\n\nGPay: {gpay} (பணம் மட்டும் — புகார் வேண்டாம்)\nOffice / புகார்: {office}\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
+  "welcome": "வணக்கம் {name},\n\nJSV Cable TV-ல் இணைந்ததற்கு நன்றி!\n\nஉங்கள் இணைப்பு செயல்படுத்தப்பட்டது.\nPackage: ₹{package}\n\n{promo}\n\nபுகார் / உதவி:\nOffice: {office}\nGPay (பணம் மட்டும்): {gpay}\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
+  "payment": "வணக்கம் {name},\n\nஉங்கள் பணம் ₹{amount} பெற்றுக்கொள்ளப்பட்டது.\nதேதி: {date}\n\n{promo}\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
+  "due": "வணக்கம் {name},\n\nJSV Cable TV - {month} மாதத்திற்கு இன்னும் நீங்கள் பணம் கட்டவில்லை.\nநிலுவை: ₹{due}\n\nதயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.\n\n{promo}\n\nGPay: {gpay} (பணம் மட்டும் — புகார் வேண்டாம்)\nOffice / புகார்: {office}\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
   "diwali": "வணக்கம் {name},\n\n✨ இனிய தீபாவளி நல்வாழ்த்துக்கள்! ✨\n\nJSV Cable TV குடும்பம் உங்களுக்கும் உங்கள் குடும்பத்தினருக்கும் இனிய தீபாவளி வாழ்த்துக்களை தெரிவித்துக் கொள்கிறது.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
   "christmas": "வணக்கம் {name},\n\n🎄 இனிய கிறிஸ்துமஸ் நல்வாழ்த்துக்கள்! 🎄\n\nJSV Cable TV உங்களுக்கும் குடும்பத்தினருக்கும் மகிழ்ச்சியான கிறிஸ்துமஸ் வாழ்த்துக்களைத் தெரிவிக்கிறது.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
   "newyear": "வணக்கம் {name},\n\n🎉 இனிய புத்தாண்டு நல்வாழ்த்துக்கள்! 🎉\n\nபுதிய ஆண்டு உங்களுக்கு ஆரோக்கியமும் செழிப்பும் தரட்டும்.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
@@ -2117,8 +2117,30 @@ function buildDueMessage(name, due, tplId, extra) {
     .replace(/\{office\}/g, office)
     .replace(/\{package\}/g, x.package != null ? String(x.package) : '')
     .replace(/\{amount\}/g, x.amount != null ? Number(x.amount).toLocaleString('en-IN') : dueStr)
-    .replace(/\{date\}/g, x.date || new Date().toLocaleDateString('en-IN'));
+    .replace(/\{date\}/g, x.date || new Date().toLocaleDateString('en-IN'))
+    .replace(/\{promo\}/g, getWaPromoText());
 }
+
+function getWaPromoText() {
+  try {
+    const p = localStorage.getItem('jsv_wa_promo');
+    if (p != null && String(p).trim() !== '') return String(p).trim();
+  } catch (e) {}
+  return '📡 Broadband Internet  |  📺 OTT  |  📡 IPTV\nவிவரம் / புகார்: Office எண்ணில் அழைக்கவும்';
+}
+function setWaPromoText(t) {
+  try { localStorage.setItem('jsv_wa_promo', t == null ? '' : String(t)); } catch (e) {}
+}
+function loadWaPromoToForm() {
+  const el = document.getElementById('waPromoText');
+  if (el) el.value = getWaPromoText();
+}
+function saveWaPromoFromForm() {
+  const el = document.getElementById('waPromoText');
+  setWaPromoText(el ? el.value : '');
+  if (typeof showToast === 'function') showToast('Promo text saved');
+}
+
 
 function openWhatsApp(mobile, name, due, tplId) {
   if (!mobile || mobile === '-' || mobile === '0') {
