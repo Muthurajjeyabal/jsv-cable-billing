@@ -3988,8 +3988,35 @@ async function renderAgentDayReport() {
       const dayTot = list.reduce((s, r) => s + Number(r.amount || 0), 0);
       html += `<div class="bg-slate-800 text-white px-3 py-1.5 text-xs font-semibold flex justify-between">
         <span>${gk}</span><span>${list.length} bills · ₹${dayTot.toLocaleString('en-IN')}</span></div>`;
-      html += `<div class="overflow-x-auto"><table class="w-full text-xs" style="border-collapse:separate;border-spacing:0;">
-        <thead class="bg-slate-50"><tr>
+      // Mobile cards + Desktop table
+      let cards = '<div class="space-y-2 md:hidden">';
+      list.forEach((r, i) => {
+        const agent = String(displayAgentName(r) || '-');
+        const mso = String(r._mso || '-');
+        const cid = String(r.importCustId || r.custId || '-');
+        const street = String(r._street || '-');
+        const mode = String(r._mode || 'Cash');
+        const amt = Number(r.amount || 0).toLocaleString('en-IN');
+        const area = String(r._area || '');
+        cards += `<div class="soft-card p-3">
+          <div class="flex justify-between gap-2 items-start">
+            <div class="min-w-0">
+              <div class="font-semibold text-sm text-slate-800 truncate">${r.customerName || '-'}</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">ID: ${cid} · <span class="text-emerald-600 font-medium">${mode}</span></div>
+              <div class="text-[11px] text-slate-500 mt-0.5">📍 ${street}${area && area !== '-' ? ' · ' + area : ''}</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">${agent} · ${mso}</div>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-[10px] text-slate-400">#${i+1}</div>
+              <div class="text-base font-bold text-emerald-600">₹${amt}</div>
+            </div>
+          </div>
+        </div>`;
+      });
+      cards += '</div>';
+
+      let table = '<div class="hidden md:block overflow-x-auto"><table class="w-full text-xs" style="border-collapse:separate;border-spacing:0;">';
+      table += `<thead class="bg-slate-50"><tr>
           <th class="text-left px-2 py-2 w-8">#</th>
           <th class="text-left px-2 py-2" style="min-width:120px">Customer</th>
           <th class="text-left px-2 py-2" style="min-width:100px">Street</th>
@@ -4004,7 +4031,7 @@ async function renderAgentDayReport() {
         const cid = String(r.importCustId || r.custId || '-');
         const street = String(r._street || '-');
         const mode = String(r._mode || 'Cash');
-        html += `<tr class="border-t border-slate-100">
+        table += `<tr class="border-t border-slate-100">
           <td class="px-2 py-2 text-slate-400 align-top">${i+1}</td>
           <td class="px-2 py-2 align-top">
             <div class="font-medium leading-snug text-slate-800">${r.customerName || '-'}</div>
@@ -4017,7 +4044,8 @@ async function renderAgentDayReport() {
           <td class="px-2 py-2 text-right font-semibold align-top whitespace-nowrap text-emerald-700">₹${Number(r.amount||0).toLocaleString('en-IN')}</td>
         </tr>`;
       });
-      html += '</tbody></table></div>';
+      table += '</tbody></table></div>';
+      html += cards + table;
     });
     body.innerHTML = html;
   } catch (e) {
