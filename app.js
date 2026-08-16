@@ -478,6 +478,15 @@ async function handleSaveCustomer(e) {
       const ref = await db.collection('customers').add(data);
       savedId = ref.id;
       showToast('Customer added!');
+      // Laptop: auto open WhatsApp Welcome if mobile present
+      try {
+        const mob = String(data.mobile || '').replace(/\D/g, '');
+        if (mob.length >= 10) {
+          setTimeout(function () {
+            openWhatsAppWelcome(mob, data.name, data.packageAmt || data.packageBase || 0);
+          }, 400);
+        }
+      } catch (wae) {}
     }
     // Scheme A: Box No → auto stock as Assigned (if Active)
     const boxNo = (data.boxNo || '').trim();
@@ -1948,6 +1957,8 @@ let waDefaultTplId = 'due';
 let waActiveTplId = 'due';
 
 const DEFAULT_WA_TEMPLATES = {
+  "welcome": "வணக்கம் {name},\n\nJSV Cable TV-ல் இணைந்ததற்கு நன்றி!\n\nஉங்கள் இணைப்பு செயல்படுத்தப்பட்டது.\nPackage: ₹{package}\n\nபுகார் / உதவி:\nOffice: {office}\nGPay (பணம் மட்டும்): {gpay}\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
+  "payment": "வணக்கம் {name},\n\nஉங்கள் பணம் ₹{amount} பெற்றுக்கொள்ளப்பட்டது.\nதேதி: {date}\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
   "due": "வணக்கம் {name},\n\nJSV Cable TV - {month} மாதத்திற்கு இன்னும் நீங்கள் பணம் கட்டவில்லை.\nநிலுவை: ₹{due}\n\nதயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.\n\nGPay: {gpay} (பணம் மட்டும் — புகார் வேண்டாம்)\nOffice / புகார்: {office}\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
   "diwali": "வணக்கம் {name},\n\n✨ இனிய தீபாவளி நல்வாழ்த்துக்கள்! ✨\n\nJSV Cable TV குடும்பம் உங்களுக்கும் உங்கள் குடும்பத்தினருக்கும் இனிய தீபாவளி வாழ்த்துக்களை தெரிவித்துக் கொள்கிறது.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
   "christmas": "வணக்கம் {name},\n\n🎄 இனிய கிறிஸ்துமஸ் நல்வாழ்த்துக்கள்! 🎄\n\nJSV Cable TV உங்களுக்கும் குடும்பத்தினருக்கும் மகிழ்ச்சியான கிறிஸ்துமஸ் வாழ்த்துக்களைத் தெரிவிக்கிறது.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
@@ -1956,7 +1967,7 @@ const DEFAULT_WA_TEMPLATES = {
   "pongal": "வணக்கம் {name},\n\n🌾 இனிய பொங்கல் நல்வாழ்த்துக்கள்! 🌾\n\nJSV Cable TV குடும்பம் உங்களுக்கு இனிய தைப்பொங்கல் வாழ்த்துக்களைத் தெரிவிக்கிறது.\n\nநன்றி.\nJSV Cable TV · S. Alangulam",
 };
 
-const DEFAULT_WA_NAMES = {"due": "Due Reminder", "diwali": "தீபாவளி வாழ்த்து", "christmas": "கிறிஸ்துமஸ் வாழ்த்து", "newyear": "புத்தாண்டு வாழ்த்து", "ramadan": "ரம்ஜான் வாழ்த்து", "pongal": "பொங்கல் வாழ்த்து"};
+const DEFAULT_WA_NAMES = {"welcome": "Welcome / New Connection", "payment": "Payment Receipt", "due": "Due Reminder", "diwali": "தீபாவளி வாழ்த்து", "christmas": "கிறிஸ்துமஸ் வாழ்த்து", "newyear": "புத்தாண்டு வாழ்த்து", "ramadan": "ரம்ஜான் வாழ்த்து", "pongal": "பொங்கல் வாழ்த்து"};
 
 function ensureWaTemplates() {
   if (waTemplates && Object.keys(waTemplates).length) return;
@@ -2090,19 +2101,23 @@ function getWaTemplateText(tplId) {
   return (waTemplates[id] && waTemplates[id].text) || DEFAULT_WA_TEMPLATES.due;
 }
 
-function buildDueMessage(name, due, tplId) {
+function buildDueMessage(name, due, tplId, extra) {
   const month = getMonthNameTa();
   const dueStr = Number(due || 0).toLocaleString('en-IN');
   const co = companyInfo || {};
   const office = [co.phone, co.phone2].filter(Boolean).join(' / ') || '0452-2527545 / 8678953333';
   const gpay = co.gpay || '9442527545';
+  const x = extra || {};
   let tpl = getWaTemplateText(tplId);
   return tpl
     .replace(/\{name\}/g, name || 'Customer')
     .replace(/\{month\}/g, month)
     .replace(/\{due\}/g, dueStr)
     .replace(/\{gpay\}/g, gpay)
-    .replace(/\{office\}/g, office);
+    .replace(/\{office\}/g, office)
+    .replace(/\{package\}/g, x.package != null ? String(x.package) : '')
+    .replace(/\{amount\}/g, x.amount != null ? Number(x.amount).toLocaleString('en-IN') : dueStr)
+    .replace(/\{date\}/g, x.date || new Date().toLocaleDateString('en-IN'));
 }
 
 function openWhatsApp(mobile, name, due, tplId) {
@@ -2117,9 +2132,91 @@ function openWhatsApp(mobile, name, due, tplId) {
     return;
   }
   const useTpl = tplId || document.getElementById('waQueueTpl')?.value || waDefaultTplId || 'due';
-  const text = encodeURIComponent(buildDueMessage(name || 'Customer', due, useTpl));
-  window.open(`https://wa.me/${num}?text=${text}`, '_blank');
+  const extra = arguments[4] || {};
+  const text = encodeURIComponent(buildDueMessage(name || 'Customer', due, useTpl, extra));
+  window.open('https://wa.me/' + num + '?text=' + text, '_blank');
 }
+
+function openWhatsAppWelcome(mobile, name, packageAmt) {
+  openWhatsApp(mobile, name, 0, 'welcome', { package: packageAmt || 0 });
+}
+
+function openWhatsAppPayment(mobile, name, amount, date) {
+  openWhatsApp(mobile, name, amount, 'payment', { amount: amount, date: date || '' });
+}
+
+/** Admin laptop: open payment WhatsApp for today's collections one-by-one */
+async function whatsappTodayCollections() {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    showToast('Loading today collections...');
+    const snap = await db.collection('collections').where('date', '==', today).get();
+    const list = [];
+    snap.forEach(function (d) {
+      const r = d.data();
+      if (r.status === 'cancelled') return;
+      const mob = String(r.mobile || '').replace(/\D/g, '');
+      // try customer lookup
+      let mobile = mob;
+      let name = r.customerName || '';
+      if ((!mobile || mobile.length < 10) && r.customerId) {
+        const c = (allCustomers || []).find(function (x) { return x.id === r.customerId; });
+        if (c) {
+          mobile = String(c.mobile || '').replace(/\D/g, '');
+          name = name || c.name || '';
+        }
+      }
+      if ((!mobile || mobile.length < 10) && (r.importCustId || r.custId)) {
+        const cid = String(r.importCustId || r.custId).toUpperCase();
+        const c = (allCustomers || []).find(function (x) { return String(x.custId || '').toUpperCase() === cid; });
+        if (c) {
+          mobile = String(c.mobile || '').replace(/\D/g, '');
+          name = name || c.name || '';
+        }
+      }
+      if (mobile && mobile.length >= 10) {
+        list.push({ mobile: mobile.slice(-10), name: name, amount: Number(r.amount || 0), date: r.date || today });
+      }
+    });
+    // unique by mobile (last payment wins message amount sum optional - keep each? user night batch - unique mobile last)
+    const byMob = new Map();
+    list.forEach(function (x) { byMob.set(x.mobile, x); });
+    const unique = Array.from(byMob.values());
+    if (!unique.length) {
+      showToast('இன்று mobile உள்ள collection இல்லை', true);
+      return;
+    }
+    if (!confirm('இன்று ' + unique.length + ' பேருக்கு Payment WhatsApp திறக்கும் (ஒவ்வொன்றாக). Laptop WhatsApp Web login இருந்தால் Send அழுத்தவும். தொடரவா?')) return;
+    window._waTodayQueue = unique;
+    window._waTodayIdx = 0;
+    sendNextTodayWa();
+  } catch (e) {
+    showToast('Error: ' + e.message, true);
+  }
+}
+
+function sendNextTodayWa() {
+  const q = window._waTodayQueue || [];
+  let i = window._waTodayIdx || 0;
+  if (i >= q.length) {
+    showToast('முடிந்தது · ' + q.length + ' messages');
+    window._waTodayQueue = null;
+    return;
+  }
+  const r = q[i];
+  openWhatsAppPayment(r.mobile, r.name, r.amount, r.date);
+  window._waTodayIdx = i + 1;
+  const left = q.length - window._waTodayIdx;
+  if (left > 0) {
+    setTimeout(function () {
+      if (confirm('Next customer? (' + left + ' left)\nCancel = stop')) sendNextTodayWa();
+      else showToast('Stopped · sent ' + window._waTodayIdx + '/' + q.length);
+    }, 600);
+  } else {
+    showToast('முடிந்தது · ' + q.length + ' messages');
+  }
+}
+
 
 
 // WhatsApp queue for pending
