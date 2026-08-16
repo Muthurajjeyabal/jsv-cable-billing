@@ -3280,21 +3280,22 @@ async function renderAgentDayReport() {
       const dayTot = list.reduce((s, r) => s + Number(r.amount || 0), 0);
       html += `<div class="bg-slate-800 text-white px-3 py-1.5 text-xs font-semibold flex justify-between">
         <span>${gk}</span><span>${list.length} bills · ₹${dayTot.toLocaleString('en-IN')}</span></div>`;
-      html += `<table class="w-full text-xs"><thead class="bg-slate-50"><tr>
-        <th class="text-left p-2">#</th><th class="text-left p-2">Customer</th><th class="text-left p-2">ID</th>
-        <th class="text-left p-2">MSO</th><th class="text-left p-2">Agent</th>
-        <th class="text-right p-2">Amt</th><th class="text-left p-2">Mode</th><th class="text-left p-2">Date</th>
-      </tr></thead><tbody>`;
+      html += `<table class="w-full text-xs table-fixed">
+        <thead class="bg-slate-50"><tr>
+          <th class="text-left p-1.5 w-6">#</th>
+          <th class="text-left p-1.5">Customer</th>
+          <th class="text-left p-1.5 w-16">Agent</th>
+          <th class="text-right p-1.5 w-14">Amt</th>
+        </tr></thead><tbody>`;
       list.forEach((r, i) => {
         html += `<tr class="border-t">
-          <td class="p-2">${i+1}</td>
-          <td class="p-2">${r.customerName || '-'}</td>
-          <td class="p-2 text-slate-500">${r.importCustId || r.custId || '-'}</td>
-          <td class="p-2 text-slate-600">${r._mso || '-'}</td>
-          <td class="p-2">${displayAgentName(r)}</td>
-          <td class="p-2 text-right font-semibold">₹${Number(r.amount||0).toLocaleString('en-IN')}</td>
-          <td class="p-2">${r.mode || '-'}</td>
-          <td class="p-2">${r.date || '-'}</td>
+          <td class="p-1.5 text-slate-400 align-top">${i+1}</td>
+          <td class="p-1.5">
+            <div class="font-medium leading-tight break-words">${r.customerName || '-'}</div>
+            <div class="text-[10px] text-slate-400 leading-tight">${r.importCustId || r.custId || '-'} · ${r._mso || '-'}</div>
+          </td>
+          <td class="p-1.5 text-[11px] align-top">${displayAgentName(r)}</td>
+          <td class="p-1.5 text-right font-semibold align-top whitespace-nowrap">₹${Number(r.amount||0).toLocaleString('en-IN')}</td>
         </tr>`;
       });
       html += '</tbody></table>';
