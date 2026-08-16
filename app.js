@@ -1157,7 +1157,7 @@ async function viewLedger(id) {
         }).join('');
       }
       const pt = document.getElementById('ledgerPayTotal');
-      if (pt) pt.textContent = 'Total collected (active): ₹' + total.toLocaleString('en-IN');
+      if (pt) pt.textContent = '';
       if (tbody) tbody.innerHTML = rows.map(r => `<tr><td>${r.billNo||''}</td></tr>`).join('');
     }
   } catch (err) {
@@ -3619,7 +3619,7 @@ function renderCollectionReport() {
   }
   let html = `
     <div class="col-rep-head">
-      <h2>JSV CABLE TV — Collection Report</h2>
+      <h2>JSV CABLE TV — Collectors Print Out</h2>
       <p>${area} · ${month} · Pending Due · ${list.length} customers</p>
       <p>Total Due: ₹${totalDue.toLocaleString('en-IN')}</p>
     </div>`;
@@ -3841,7 +3841,7 @@ function printCollectionReport() {
     if (!src) { showToast('Report empty', true); return; }
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width">
-<title>JSV Collection Report</title>
+<title>JSV Collectors Print Out</title>
 <style>
   @page { size: A4; margin: 5mm; }
   * { box-sizing: border-box; }
@@ -4062,6 +4062,11 @@ async function runFullBackup() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '⬇ Backup Now'; }
   }
+}
+
+function openCollectorsPrintOut() {
+  showPage('reports');
+  setTimeout(() => openReport('collection'), 50);
 }
 
 function openReport(kind) {
