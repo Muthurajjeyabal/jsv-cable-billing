@@ -238,6 +238,9 @@ function showPage(pageId, isBack) {
   if (pageId === 'pending') {
     renderPendingReport();
   }
+  if (pageId === 'cancelled') {
+    loadCancelledBills();
+  }
 
   if (window.innerWidth < 1024) {
     document.getElementById('sidebar').classList.add('-translate-x-full');
@@ -1176,6 +1179,7 @@ async function viewLedger(id) {
             const dt = new Date(d + 'T12:00:00');
             if (!isNaN(dt)) dLabel = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
           } catch (e) {}
+          const cancelBtn = cancelled ? '' : `<button type="button" onclick="event.stopPropagation();cancelCollection('${r.id}','${r.customerId || id}',${Number(r.amount||0)})" class="text-[10px] text-red-500 border border-red-200 px-1.5 py-0.5 rounded shrink-0">Cancel</button>`;
           return `<div class="px-4 py-3 flex gap-3 ${cancelled ? 'opacity-40' : ''}">
             <div class="flex flex-col items-center pt-1">
               <div class="w-2.5 h-2.5 rounded-full ${cancelled ? 'bg-slate-300' : 'bg-emerald-500'}"></div>
@@ -1188,6 +1192,7 @@ async function viewLedger(id) {
                   <div class="font-semibold text-slate-800">₹${Number(r.amount || 0).toLocaleString('en-IN')} ${cancelled ? '<span class="text-red-500 text-[10px]">Cancelled</span>' : 'Paid'}</div>
                   <div class="text-[11px] text-slate-500 mt-0.5">${r.mode || '-'} · ${agent}${r.billNo ? ' · #' + r.billNo : ''}</div>
                 </div>
+                ${cancelBtn}
               </div>
             </div>
           </div>`;
@@ -1666,12 +1671,22 @@ function printReceiptNow() {
 }
 
 async function cancelCollection(colId, customerId, amount) {
-  if (!confirm('இந்த bill cancel செய்யவா?\nDue amount customer-க்கு திரும்ப சேரும்.')) return;
+  const reasons = ['Wrong amount', 'Wrong customer', 'Duplicate bill', 'Payment entered by mistake', 'Other'];
+  let reason = prompt('Cancel Bill?\\nAmount will restore to customer due.\\n\\nReason:\\n1. Wrong amount\\n2. Wrong customer\\n3. Duplicate bill\\n4. Payment entered by mistake\\n5. Other\\n\\nType number or text:', '1');
+  if (reason === null) return;
+  if (reason === '1') reason = 'Wrong amount';
+  else if (reason === '2') reason = 'Wrong customer';
+  else if (reason === '3') reason = 'Duplicate bill';
+  else if (reason === '4') reason = 'Payment entered by mistake';
+  else if (reason === '5') reason = 'Other';
+  reason = (reason || 'Other').trim();
+  if (!confirm('Confirm cancel ₹' + Number(amount || 0) + '?\\nReason: ' + reason)) return;
   try {
     await db.collection('collections').doc(colId).update({
       status: 'cancelled',
+      cancelReason: reason,
       cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
-      cancelledBy: currentUser.email
+      cancelledBy: (currentUser && currentUser.email) || ''
     });
     const cRef = db.collection('customers').doc(customerId);
     const cSnap = await cRef.get();
@@ -1682,7 +1697,10 @@ async function cancelCollection(colId, customerId, amount) {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
-    showToast('Bill cancelled');
+    if (typeof logActivity === 'function') {
+      await logActivity(customerId, 'Bill Cancelled', '₹' + Number(amount || 0) + ' · ' + reason, { category: 'payment', amount: Number(amount || 0) });
+    }
+    showToast('Bill cancelled · Due restored');
     if (currentLedgerCustomerId) await viewLedger(currentLedgerCustomerId);
     await loadCustomers();
     if (typeof loadCancelledBills === 'function') loadCancelledBills();
@@ -1694,27 +1712,45 @@ async function cancelCollection(colId, customerId, amount) {
 async function loadCancelledBills() {
   const tbody = document.getElementById('cancelledBillsBody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-slate-400">Loading...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-slate-400">Loading...</td></tr>';
   try {
-    const snap = await db.collection('collections').where('status', '==', 'cancelled').get();
-    const rows = [];
-    snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
-    rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    let rows = [];
+    try {
+      const snap = await db.collection('collections').where('status', '==', 'cancelled').get();
+      snap.forEach(function (doc) { rows.push({ id: doc.id, ...doc.data() }); });
+    } catch (e1) {
+      // fallback: scan recent collections
+      const snap = await db.collection('collections').limit(500).get();
+      snap.forEach(function (doc) {
+        const d = doc.data();
+        if (String(d.status || '') === 'cancelled') rows.push({ id: doc.id, ...d });
+      });
+    }
+    rows.sort(function (a, b) {
+      const ta = (a.cancelledAt && a.cancelledAt.toMillis) ? a.cancelledAt.toMillis() : 0;
+      const tb = (b.cancelledAt && b.cancelledAt.toMillis) ? b.cancelledAt.toMillis() : 0;
+      if (tb !== ta) return tb - ta;
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-400">No cancelled bills</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">No cancelled bills yet<br><span class="text-[11px]">Ledger → payment → Cancel</span></td></tr>';
       return;
     }
-    tbody.innerHTML = rows.map(r => `
-      <tr class="border-t">
-        <td class="px-3 py-2 font-mono text-xs">${r.billNo || '-'}</td>
-        <td class="px-3 py-2 text-sm">${r.date || '-'}</td>
-        <td class="px-3 py-2 text-sm">${r.customerName || r.customerId || '-'}</td>
-        <td class="px-3 py-2 font-semibold">₹${Number(r.amount||0)}</td>
-        <td class="px-3 py-2 text-xs">${displayAgentName(r)}</td>
-        <td class="px-3 py-2 text-xs text-slate-500">${(r.cancelledBy||'').split('@')[0]||'-'}</td>
-      </tr>`).join('');
+    tbody.innerHTML = rows.map(function (r) {
+      const agent = (typeof displayAgentName === 'function') ? displayAgentName(r) : (r.collectedBy || '-');
+      const by = String(r.cancelledBy || '').split('@')[0] || '-';
+      const reason = r.cancelReason || r.reason || '—';
+      return '<tr class="border-t">' +
+        '<td class="px-3 py-2 font-mono text-xs">' + (r.billNo || '-') + '</td>' +
+        '<td class="px-3 py-2 text-sm">' + (r.date || '-') + '</td>' +
+        '<td class="px-3 py-2 text-sm">' + (r.customerName || r.customerId || '-') + '</td>' +
+        '<td class="px-3 py-2 font-semibold">₹' + Number(r.amount || 0).toLocaleString('en-IN') + '</td>' +
+        '<td class="px-3 py-2 text-xs">' + agent + '</td>' +
+        '<td class="px-3 py-2 text-xs text-slate-500">' + by + '</td>' +
+        '<td class="px-3 py-2 text-xs text-slate-500">' + reason + '</td></tr>';
+    }).join('');
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 py-4">${e.message}</td></tr>`;
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-red-500 py-4">' + (e.message || e) + '</td></tr>';
   }
 }
 
