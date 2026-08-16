@@ -1160,6 +1160,22 @@
                   <span class="min-w-0"><span class="block font-semibold text-sm">Customer List</span>
                   <span class="block text-[11px] text-slate-500">All · Active · DC · filters</span></span>
                 </button>
+                <button type="button" onclick="showPage('pending')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
+                  <span class="text-lg">⚠️</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm">Pending / Due</span>
+                  <span class="block text-[11px] text-slate-500">Outstanding · filters · WhatsApp</span></span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">🔌 Service</div>
+              <div class="space-y-2">
+                <button type="button" onclick="openReport('dc')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
+                  <span class="text-lg">🔌</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm">DC List</span>
+                  <span class="block text-[11px] text-slate-500">Disconnected customers</span></span>
+                </button>
                 <button type="button" onclick="openReport('newConn')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">🆕</span>
                   <span class="min-w-0"><span class="block font-semibold text-sm">New Connection</span>
@@ -1190,44 +1206,28 @@
             </div>
 
             <div>
-              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">⚠️ Due & Service</div>
-              <div class="space-y-2">
-                <button type="button" onclick="showPage('pending')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
-                  <span class="text-lg">⚠️</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Pending / Due</span>
-                  <span class="block text-[11px] text-slate-500">Outstanding · filters · WhatsApp</span></span>
-                </button>
-                <button type="button" onclick="openReport('dc')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
-                  <span class="text-lg">🔌</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">DC List</span>
-                  <span class="block text-[11px] text-slate-500">Disconnected customers</span></span>
-                </button>
-              </div>
-            </div>
-
-            <div>
               <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">🔐 Audit</div>
               <div class="space-y-2">
-                <button type="button" onclick="openReport('activity')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
-                  <span class="text-lg">📜</span>
-                  <span class="min-w-0"><span class="block font-semibold text-sm">Activity Log</span>
-                  <span class="block text-[11px] text-slate-500">Who changed what</span></span>
-                </button>
                 <button type="button" onclick="openReport('colAudit')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">🧾</span>
                   <span class="min-w-0"><span class="block font-semibold text-sm">Collection Audit</span>
                   <span class="block text-[11px] text-slate-500">Collector totals · mode split</span></span>
                 </button>
+                <button type="button" onclick="openReport('activity')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
+                  <span class="text-lg">📜</span>
+                  <span class="min-w-0"><span class="block font-semibold text-sm">Activity Log</span>
+                  <span class="block text-[11px] text-slate-500">Who changed what</span></span>
+                </button>
               </div>
             </div>
 
             <div>
-              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">📊 Analytics</div>
+              <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">📈 Analytics</div>
               <div class="space-y-2">
                 <button type="button" onclick="openReport('trend')" class="w-full soft-card px-3 py-3 text-left card-hover flex gap-3 items-center">
                   <span class="text-lg">📈</span>
                   <span class="min-w-0"><span class="block font-semibold text-sm">Collection Trend</span>
-                  <span class="block text-[11px] text-slate-500">Day-wise this month</span></span>
+                  <span class="block text-[11px] text-slate-500">Day-wise trend · comparison</span></span>
                 </button>
               </div>
             </div>
