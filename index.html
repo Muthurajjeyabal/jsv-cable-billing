@@ -1709,10 +1709,39 @@
           </div>
           <div id="reportPanel-payMode" class="report-panel hidden">
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
-            <div class="soft-card p-4 mb-3 no-print">
+            <div class="soft-card p-4 mb-3 no-print space-y-2">
               <h3 class="font-semibold text-sm">Payment Mode Report</h3>
-              <p class="text-xs text-slate-500" id="payModeSummary">—</p>
-              <button type="button" onclick="renderPayModeReport()" class="mt-2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm">Refresh</button>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-[10px] text-slate-500">From</label>
+                  <input type="date" id="payModeFrom" class="w-full px-2 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">To</label>
+                  <input type="date" id="payModeTo" class="w-full px-2 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">Area</label>
+                  <select id="payModeArea" onchange="onPayModeAreaChange()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                    <option value="ALL">All Areas</option>
+                    <option value="AREA 1">AREA 1</option>
+                    <option value="AREA 2">AREA 2</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">Street</label>
+                  <select id="payModeStreet" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                    <option value="ALL">All Streets</option>
+                  </select>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-2 items-center">
+                <button type="button" onclick="setPayModePreset('this')" class="px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">This Month</button>
+                <button type="button" onclick="setPayModePreset('last')" class="px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">Last Month</button>
+                <button type="button" onclick="renderPayModeReport()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm">Show</button>
+                <button type="button" onclick="printDiv('payModeBody')" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-sm">🖨</button>
+                <span class="text-xs text-slate-500" id="payModeSummary"></span>
+              </div>
             </div>
             <div id="payModeBody" class="space-y-2"></div>
           </div>

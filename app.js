@@ -4330,38 +4330,140 @@ function renderNewConnReport() {
     '<div class="hidden md:block bg-white rounded-xl border overflow-hidden">' + table + '</div>';
 }
 
+function setPayModePreset(which) {
+  const t = new Date();
+  const iso = (d) => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  const fromEl = document.getElementById('payModeFrom');
+  const toEl = document.getElementById('payModeTo');
+  if (!fromEl || !toEl) return;
+  if (which === 'last') {
+    const firstThis = new Date(t.getFullYear(), t.getMonth(), 1);
+    const lastPrev = new Date(firstThis.getTime() - 86400000);
+    const firstPrev = new Date(lastPrev.getFullYear(), lastPrev.getMonth(), 1);
+    fromEl.value = iso(firstPrev);
+    toEl.value = iso(lastPrev);
+  } else {
+    fromEl.value = iso(t).slice(0, 8) + '01';
+    toEl.value = iso(t);
+  }
+  renderPayModeReport();
+}
+
+function onPayModeAreaChange() {
+  const area = (document.getElementById('payModeArea') || {}).value || 'ALL';
+  const streetSel = document.getElementById('payModeStreet');
+  if (!streetSel) return;
+  const streets = new Set();
+  if (typeof STREET_MASTER !== 'undefined') {
+    STREET_MASTER.forEach(s => {
+      if (area === 'ALL' || (typeof matchAreaPlace === 'function' ? matchAreaPlace(s.place, area) : String(s.place||'').toUpperCase() === area)) {
+        if (s.street) streets.add(String(s.street).trim());
+      }
+    });
+  }
+  (allCustomers || []).forEach(c => {
+    if (area === 'ALL' || (typeof matchAreaPlace === 'function' ? matchAreaPlace(c.place, area) : String(c.place||'').toUpperCase() === area)) {
+      if (c.street) streets.add(String(c.street).trim());
+    }
+  });
+  streetSel.innerHTML = '<option value="ALL">All Streets</option>' +
+    Array.from(streets).filter(Boolean).sort((a,b) => a.localeCompare(b, 'ta'))
+      .map(s => '<option value="' + s.replace(/"/g,'&quot;') + '">' + s + '</option>').join('');
+}
+
 async function renderPayModeReport() {
   const body = document.getElementById('payModeBody');
   const sum = document.getElementById('payModeSummary');
   if (!body) return;
-  const { from, to } = getReportDateRange();
+  const t = new Date();
+  const iso = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+  const fromEl = document.getElementById('payModeFrom');
+  const toEl = document.getElementById('payModeTo');
+  if (fromEl && !fromEl.value) fromEl.value = iso.slice(0, 8) + '01';
+  if (toEl && !toEl.value) toEl.value = iso;
+  const from = (fromEl && fromEl.value) || iso.slice(0, 8) + '01';
+  const to = (toEl && toEl.value) || iso;
+  const areaF = (document.getElementById('payModeArea') || {}).value || 'ALL';
+  const streetF = (document.getElementById('payModeStreet') || {}).value || 'ALL';
   if (sum) sum.textContent = from + ' → ' + to;
   body.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
   try {
-    const rows = await fetchCollectionsInRange(from, to);
+    let rows = await fetchCollectionsInRange(from, to);
+
+    // Area / Street via customer lookup
+    if (areaF !== 'ALL' || streetF !== 'ALL') {
+      const byId = {};
+      const byCustId = {};
+      const byBox = {};
+      (allCustomers || []).forEach(c => {
+        byId[c.id] = c;
+        if (c.custId) byCustId[String(c.custId).toUpperCase()] = c;
+        if (c.boxNo) byBox[String(c.boxNo).trim()] = c;
+      });
+      rows = rows.filter(r => {
+        let c = null;
+        if (r.customerId && byId[r.customerId]) c = byId[r.customerId];
+        else if (r.importCustId && byCustId[String(r.importCustId).toUpperCase()]) c = byCustId[String(r.importCustId).toUpperCase()];
+        else if (r.custId && byCustId[String(r.custId).toUpperCase()]) c = byCustId[String(r.custId).toUpperCase()];
+        else if (r.boxNo && byBox[String(r.boxNo).trim()]) c = byBox[String(r.boxNo).trim()];
+        if (!c) return areaF === 'ALL' && streetF === 'ALL';
+        if (areaF !== 'ALL') {
+          const ok = (typeof matchAreaPlace === 'function') ? matchAreaPlace(c.place, areaF) : String(c.place||'').toUpperCase() === areaF;
+          if (!ok) return false;
+        }
+        if (streetF !== 'ALL' && String(c.street || '').trim() !== streetF) return false;
+        return true;
+      });
+    }
+
+    // Mode: Cash / UPI / Online / Office — agent Online/Office count as mode too
     const byMode = {};
+    const byAgent = {};
     rows.forEach(r => {
-      let m = (r.mode || 'Other').toString();
-      // normalize
+      const agent = (typeof displayAgentName === 'function') ? displayAgentName(r) : (r._agent || '-');
+      byAgent[agent] = byAgent[agent] || { amt: 0, n: 0 };
+      byAgent[agent].amt += Number(r.amount || 0);
+      byAgent[agent].n++;
+
+      let m = (r.mode || '').toString();
       const u = m.toUpperCase();
-      if (u.includes('CASH')) m = 'Cash';
-      else if (u.includes('UPI') || u.includes('GPAY') || u.includes('G-PAY')) m = 'UPI';
-      else if (u.includes('ONLINE')) m = 'Online';
-      else if (u.includes('OFFICE') || u.includes('LOCAL')) m = 'Office';
+      const ag = agent.toUpperCase();
+      if (ag === 'ONLINE' || u.includes('ONLINE') || u.includes('GPAY') || u.includes('G-PAY') || u.includes('UPI')) m = 'Online / UPI';
+      else if (ag === 'OFFICE' || u.includes('OFFICE') || u.includes('LOCAL')) m = 'Office';
+      else if (u.includes('CASH') || !u) m = 'Cash';
+      else m = m || 'Other';
       byMode[m] = byMode[m] || { amt: 0, n: 0 };
-      byMode[m].amt += Number(r.amount || 0); byMode[m].n++;
+      byMode[m].amt += Number(r.amount || 0);
+      byMode[m].n++;
     });
     const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
-    body.innerHTML = Object.entries(byMode).sort((a,b)=>b[1].amt-a[1].amt).map(([k,v]) => {
+    const n = rows.length;
+
+    let html = '<div class="grid grid-cols-2 gap-2 mb-3">' +
+      '<div class="bg-white rounded-xl border p-3 text-center"><div class="text-[10px] text-slate-400">Bills</div><div class="text-xl font-bold">' + n + '</div></div>' +
+      '<div class="bg-white rounded-xl border p-3 text-center"><div class="text-[10px] text-slate-400">Total</div><div class="text-xl font-bold text-emerald-600">₹' + total.toLocaleString('en-IN') + '</div></div></div>';
+
+    html += '<div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 px-1">By Mode</div>';
+    html += Object.entries(byMode).sort((a,b)=>b[1].amt-a[1].amt).map(([k,v]) => {
       const pct = total ? Math.round(v.amt / total * 100) : 0;
-      return `<div class="bg-white rounded-xl border p-3">
-        <div class="flex justify-between text-sm font-medium"><span>${k}</span><span>₹${v.amt.toLocaleString('en-IN')}</span></div>
-        <div class="text-[11px] text-slate-400 mt-0.5">${v.n} bills · ${pct}%</div>
-        <div class="mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500 rounded-full" style="width:${pct}%"></div></div>
-      </div>`;
-    }).join('') || '<div class="p-6 text-center text-slate-400">No data</div>';
+      return '<div class="bg-white rounded-xl border p-3">' +
+        '<div class="flex justify-between text-sm font-medium"><span>' + k + '</span><span>₹' + v.amt.toLocaleString('en-IN') + '</span></div>' +
+        '<div class="text-[11px] text-slate-400 mt-0.5">' + v.n + ' bills · ' + pct + '%</div>' +
+        '<div class="mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500 rounded-full" style="width:' + pct + '%"></div></div></div>';
+    }).join('') || '<div class="p-4 text-center text-slate-400 text-sm">No data</div>';
+
+    html += '<div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 mt-4 px-1">By Collector</div>';
+    html += Object.entries(byAgent).sort((a,b)=>b[1].amt-a[1].amt).map(([k,v]) => {
+      const pct = total ? Math.round(v.amt / total * 100) : 0;
+      return '<div class="bg-white rounded-xl border p-3">' +
+        '<div class="flex justify-between text-sm font-medium"><span>' + k + '</span><span>₹' + v.amt.toLocaleString('en-IN') + '</span></div>' +
+        '<div class="text-[11px] text-slate-400 mt-0.5">' + v.n + ' bills · ' + pct + '%</div>' +
+        '<div class="mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:' + pct + '%"></div></div></div>';
+    }).join('');
+
+    body.innerHTML = html;
   } catch (e) {
-    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message + '</div>';
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + (e.message || e) + '</div>';
   }
 }
 
