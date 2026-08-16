@@ -895,10 +895,13 @@
                 <span id="ledgerStatus" class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">ACT</span>
               </div>
             </div>
-            <div class="flex flex-wrap gap-3 mt-3">
-              <button onclick="showPage('customers')" class="text-sm text-blue-600 hover:underline">← Back</button>
-              <button type="button" onclick="editCustomer(currentLedgerCustomerId)" class="text-sm text-slate-600 hover:underline">Edit Customer</button>
-              <button type="button" onclick="startBillForLedger()" class="text-sm text-green-700 hover:underline">Collect</button>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button onclick="showPage('customers')" class="text-xs text-blue-600 hover:underline px-2 py-1">← Back</button>
+              <button type="button" onclick="editCustomer(currentLedgerCustomerId)" class="text-xs bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-lg">Edit</button>
+              <button type="button" onclick="startBillForLedger()" class="text-xs bg-green-100 text-green-800 px-2.5 py-1.5 rounded-lg font-medium">Collect</button>
+              <button type="button" onclick="ledgerToggleDC()" id="ledgerDcBtn" class="text-xs bg-red-100 text-red-700 px-2.5 py-1.5 rounded-lg font-medium">DC</button>
+              <button type="button" onclick="ledgerQuickTransfer()" class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1.5 rounded-lg">Transfer</button>
+              <button type="button" onclick="ledgerQuickPackage()" class="text-xs bg-indigo-100 text-indigo-800 px-2.5 py-1.5 rounded-lg">Package</button>
             </div>
           </div>
           <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
@@ -911,7 +914,6 @@
                     <th class="text-left px-2 py-3 font-medium">Amount</th>
                     <th class="text-left px-2 py-3 font-medium">Mode</th>
                     <th class="text-left px-2 py-3 font-medium">By</th>
-                    <th class="text-left px-2 py-3 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody id="ledgerTableBody">
