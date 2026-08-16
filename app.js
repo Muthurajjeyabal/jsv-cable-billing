@@ -3709,17 +3709,32 @@ async function renderAgentDayReport() {
     }
     const snap = await db.collection('collections').where('date', '>=', from).where('date', '<=', to).get();
     const rows = [];
+    // boxNo → customer for fallback MSO
+    const byBox = new Map();
+    (allCustomers || []).forEach(c => {
+      const b = String(c.boxNo || '').trim();
+      if (b) byBox.set(b, c);
+    });
+    const msoNorm = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    const msoWant = msoNorm(msoFilter);
+
     snap.forEach(doc => {
       const d = { id: doc.id, ...doc.data() };
+      if (d.status === 'cancelled') return;
       const key = classifyAgent(d);
       if (who !== 'ALL' && key !== who) return;
       let cust = byId.get(d.customerId);
       if (!cust && d.importCustId) cust = byCustId.get(String(d.importCustId).toUpperCase());
       if (!cust && d.custId) cust = byCustId.get(String(d.custId).toUpperCase());
+      if (!cust && d.boxNo) cust = byBox.get(String(d.boxNo).trim());
       const area = normArea(cust?.place || d.place, cust?.street || d.street);
       if (areaFilter !== 'ALL' && area !== areaFilter) return;
       const mso = (d.mso || cust?.mso || '').toString().trim();
-      if (msoFilter !== 'ALL' && mso !== msoFilter) return;
+      // MSO filter: case-insensitive exact, or startsWith for short codes
+      if (msoFilter !== 'ALL') {
+        const mn = msoNorm(mso);
+        if (!mn || (mn !== msoWant && !mn.startsWith(msoWant) && !msoWant.startsWith(mn))) return;
+      }
       rows.push({
         ...d,
         customerName: d.customerName || cust?.name || '',
@@ -3783,6 +3798,7 @@ async function renderAgentDayReport() {
           <th class="text-left p-1.5 w-6">#</th>
           <th class="text-left p-1.5">Customer</th>
           <th class="text-left p-1.5 w-16">Agent</th>
+          <th class="text-left p-1.5 w-20">MSO</th>
           <th class="text-right p-1.5 w-14">Amt</th>
         </tr></thead><tbody>`;
       list.forEach((r, i) => {
@@ -3793,6 +3809,7 @@ async function renderAgentDayReport() {
             <div class="text-[10px] text-slate-400 leading-tight">${r.importCustId || r.custId || '-'} · ${r._mso || '-'}</div>
           </td>
           <td class="p-1.5 text-[11px] align-top">${displayAgentName(r)}</td>
+          <td class="p-1.5 text-[10px] align-top text-slate-600 break-words">${r._mso || '-'}</td>
           <td class="p-1.5 text-right font-semibold align-top whitespace-nowrap">₹${Number(r.amount||0).toLocaleString('en-IN')}</td>
         </tr>`;
       });
@@ -4169,38 +4186,73 @@ async function renderColSummaryReport() {
   }
 }
 
+function parseConnDateISO(c) {
+  let raw = (c.conDate || c.connectionDate || c.regDate || '').toString().trim();
+  if (!raw && c.createdAt) {
+    try {
+      if (c.createdAt.toDate) raw = c.createdAt.toDate().toISOString().slice(0, 10);
+      else if (typeof c.createdAt === 'string') raw = c.createdAt.slice(0, 10);
+      else if (c.createdAt.seconds) raw = new Date(c.createdAt.seconds * 1000).toISOString().slice(0, 10);
+    } catch (e) {}
+  }
+  if (!raw) return '';
+  // DD/MM/YYYY or DD-MM-YYYY
+  let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+  // DD-MM-YY
+  m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
+  if (m) return '20' + m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+  // YYYY-MM-DD
+  m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  // try Date parse
+  const t = Date.parse(raw);
+  if (!isNaN(t)) {
+    const d = new Date(t);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  return '';
+}
+
 function renderNewConnReport() {
-  const { from, to } = getReportDateRange();
   const body = document.getElementById('newConnBody');
   const sum = document.getElementById('newConnSummary');
   if (!body) return;
-  const list = (allCustomers || []).filter(c => {
-    const d = (c.conDate || c.connectionDate || c.regDate || '').toString().slice(0, 10);
-    if (!d) return false;
-    // normalize DD-MM-YY etc
-    let iso = d;
-    if (/^\d{2}-\d{2}-\d{2}$/.test(d)) {
-      const [dd,mm,yy] = d.split('-');
-      iso = '20' + yy + '-' + mm + '-' + dd;
-    } else if (/^\d{2}-\d{2}-\d{4}$/.test(d)) {
-      const [dd,mm,yyyy] = d.split('-');
-      iso = yyyy + '-' + mm + '-' + dd;
-    }
-    return iso >= from && iso <= to;
-  }).sort((a,b) => String(b.conDate||'').localeCompare(String(a.conDate||'')));
+  const t = new Date();
+  const iso = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+  const monthStart = iso.slice(0, 8) + '01';
+  const fromEl = document.getElementById('newConnFrom');
+  const toEl = document.getElementById('newConnTo');
+  if (fromEl && !fromEl.value) fromEl.value = monthStart;
+  if (toEl && !toEl.value) toEl.value = iso;
+  const from = (fromEl && fromEl.value) || monthStart;
+  const to = (toEl && toEl.value) || iso;
+
+  const list = (allCustomers || []).map(c => {
+    const isoD = parseConnDateISO(c);
+    return { c, isoD };
+  }).filter(x => x.isoD && x.isoD >= from && x.isoD <= to)
+    .sort((a, b) => b.isoD.localeCompare(a.isoD));
+
   if (sum) sum.textContent = list.length + ' new · ' + from + ' → ' + to;
-  body.innerHTML = list.length ? `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">
+  if (!list.length) {
+    body.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">No new connections in range</div>';
+    return;
+  }
+  body.innerHTML = `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">
     <thead class="bg-slate-50 sticky top-0"><tr>
       <th class="text-left px-2 py-2">Date</th><th class="text-left px-2 py-2">ID</th>
-      <th class="text-left px-2 py-2">Name</th><th class="text-left px-2 py-2">Area</th>
-      <th class="text-left px-2 py-2">Pkg</th></tr></thead><tbody>` +
-    list.map(c => `<tr class="border-t">
-      <td class="px-2 py-1.5 text-xs">${c.conDate||c.connectionDate||''}</td>
+      <th class="text-left px-2 py-2">Name</th><th class="text-left px-2 py-2">Street</th>
+      <th class="text-left px-2 py-2">Area</th><th class="text-left px-2 py-2">Pkg</th>
+    </tr></thead><tbody>` +
+    list.map(({ c, isoD }) => `<tr class="border-t hover:bg-slate-50 cursor-pointer" onclick="viewLedger('${c.id}')">
+      <td class="px-2 py-1.5 text-xs whitespace-nowrap">${isoD}</td>
       <td class="px-2 py-1.5 font-mono text-xs">${c.custId||''}</td>
       <td class="px-2 py-1.5">${c.name||''}</td>
+      <td class="px-2 py-1.5 text-xs">${c.street||''}</td>
       <td class="px-2 py-1.5 text-xs">${c.place||''}</td>
-      <td class="px-2 py-1.5 text-xs">${c.package||''} ₹${c.packageAmt||0}</td></tr>`).join('') +
-    '</tbody></table></div>' : '<div class="p-8 text-center text-slate-400 text-sm">No new connections in range</div>';
+      <td class="px-2 py-1.5 text-xs">₹${Number(c.packageAmt||0).toLocaleString('en-IN')}</td>
+    </tr>`).join('') + '</tbody></table></div>';
 }
 
 async function renderPayModeReport() {
