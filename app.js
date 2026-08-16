@@ -4477,25 +4477,97 @@ function closeReportPanels() {
   const menu = document.getElementById('reportMenu');
   if (menu) menu.classList.remove('hidden');
 }
+function setCustRepChip(btn) {
+  const v = btn.getAttribute('data-chip') || '';
+  const hid = document.getElementById('custRepStatus');
+  if (hid) hid.value = v;
+  document.querySelectorAll('.cust-chip').forEach(b => {
+    const on = b === btn;
+    b.className = on
+      ? 'cust-chip px-3 py-1.5 rounded-full text-xs bg-indigo-600 text-white'
+      : 'cust-chip px-3 py-1.5 rounded-full text-xs bg-white border border-slate-200 text-slate-600';
+  });
+  renderCustomerReport();
+}
+
 function renderCustomerReport() {
   const st = (document.getElementById('custRepStatus') || {}).value || '';
-  let list = allCustomers.slice();
-  if (st) list = list.filter(c => String(c.status || 'ACT').toUpperCase() === st.toUpperCase());
-  list.sort((a, b) => String(a.custId || '').localeCompare(String(b.custId || '')));
+  const area = (document.getElementById('custRepArea') || {}).value || '';
+  const sort = (document.getElementById('custRepSort') || {}).value || 'id';
+  const q = ((document.getElementById('custRepSearch') || {}).value || '').trim().toLowerCase();
+  let list = (allCustomers || []).slice();
+
+  // stats from full list
+  const all = allCustomers || [];
+  const nTotal = all.length;
+  const nAct = all.filter(c => String(c.status || 'ACT').toUpperCase() !== 'DC').length;
+  const nDc = all.filter(c => String(c.status || '').toUpperCase() === 'DC').length;
+  const totalDue = all.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
+  const stats = document.getElementById('custRepStats');
+  if (stats) {
+    stats.innerHTML = `
+      <div class="bg-white border rounded-xl p-2.5 text-center"><div class="text-lg font-bold text-slate-800">${nTotal.toLocaleString('en-IN')}</div><div class="text-[10px] text-slate-400">Total</div></div>
+      <div class="bg-white border rounded-xl p-2.5 text-center"><div class="text-lg font-bold text-emerald-600">${nAct.toLocaleString('en-IN')}</div><div class="text-[10px] text-slate-400">Active</div></div>
+      <div class="bg-white border rounded-xl p-2.5 text-center"><div class="text-lg font-bold text-red-500">${nDc}</div><div class="text-[10px] text-slate-400">DC</div></div>
+      <div class="bg-white border rounded-xl p-2.5 text-center"><div class="text-lg font-bold text-amber-600">₹${totalDue.toLocaleString('en-IN')}</div><div class="text-[10px] text-slate-400">Total Due</div></div>`;
+  }
+
+  if (st === 'DC') list = list.filter(c => String(c.status || '').toUpperCase() === 'DC');
+  else if (st === 'ACT') list = list.filter(c => String(c.status || 'ACT').toUpperCase() !== 'DC');
+  else if (st === 'DUE') list = list.filter(c => Number(c.dueAmt || c.due || 0) > 0);
+  if (area) list = list.filter(c => String(c.place || '').toUpperCase() === area.toUpperCase());
+  if (q) {
+    list = list.filter(c => {
+      const blob = [c.name, c.mobile, c.boxNo, c.custId, c.street].join(' ').toLowerCase();
+      return blob.includes(q);
+    });
+  }
+  if (sort === 'name') list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ta'));
+  else if (sort === 'dueHigh') list.sort((a, b) => Number(b.dueAmt || b.due || 0) - Number(a.dueAmt || a.due || 0));
+  else if (sort === 'dueLow') list.sort((a, b) => Number(a.dueAmt || a.due || 0) - Number(b.dueAmt || b.due || 0));
+  else list.sort((a, b) => String(a.custId || '').localeCompare(String(b.custId || '')));
+
   const sum = document.getElementById('custRepSummary');
-  if (sum) sum.textContent = list.length + ' customers';
+  if (sum) sum.textContent = list.length + ' showing';
   const body = document.getElementById('custRepBody');
   if (!body) return;
-  body.innerHTML = `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">
-    <thead class="bg-slate-50 sticky top-0"><tr>
-      <th class="text-left px-2 py-2">ID</th><th class="text-left px-2 py-2">Name</th>
-      <th class="text-left px-2 py-2">Mobile</th><th class="text-left px-2 py-2">Street</th>
-      <th class="text-right px-2 py-2">Due</th><th class="text-left px-2 py-2">Status</th>
-    </tr></thead><tbody>` + list.map(c => `<tr class="border-t">
-      <td class="px-2 py-1.5">${c.custId||''}</td><td class="px-2 py-1.5">${c.name||''}</td>
-      <td class="px-2 py-1.5">${c.mobile||''}</td><td class="px-2 py-1.5 text-xs">${c.street||''}</td>
-      <td class="px-2 py-1.5 text-right">₹${Number(c.dueAmt||c.due||0).toLocaleString('en-IN')}</td>
-      <td class="px-2 py-1.5">${c.status||'ACT'}</td></tr>`).join('') + '</tbody></table></div>';
+  if (!list.length) {
+    body.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">No customers</div>';
+    return;
+  }
+  body.innerHTML = list.map(c => {
+    const due = Number(c.dueAmt || c.due || 0);
+    const isDc = String(c.status || '').toUpperCase() === 'DC';
+    const badge = isDc
+      ? '<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">DC</span>'
+      : '<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">ACTIVE</span>';
+    const mobile = (c.mobile || '').toString().trim();
+    const mobLine = mobile
+      ? ('📞 ' + mobile)
+      : '<span class="text-slate-400">📞 No mobile</span>';
+    const dueLine = due > 0
+      ? ('<span class="text-red-600 font-semibold">Due ₹' + due.toLocaleString('en-IN') + ' 🔴</span>')
+      : '<span class="text-emerald-600 font-medium">Due ₹0 🟢</span>';
+    const id = c.id;
+    return `<div class="bg-white rounded-xl border border-slate-100 p-3 shadow-sm">
+      <div class="flex justify-between items-start gap-2">
+        <div class="min-w-0">
+          <div class="font-semibold text-slate-900 truncate">${c.name || '—'}</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">ID: ${c.custId || '—'} · ${badge}</div>
+        </div>
+        <div class="flex gap-1 shrink-0">
+          ${mobile ? `<a href="tel:${mobile.replace(/\D/g,'')}" class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm">📞</a>` : ''}
+          ${mobile ? `<a href="https://wa.me/91${mobile.replace(/\D/g,'').slice(-10)}" target="_blank" class="w-8 h-8 rounded-full bg-green-50 text-green-700 flex items-center justify-center text-sm">💬</a>` : ''}
+        </div>
+      </div>
+      <div class="text-sm text-slate-600 mt-1.5">${mobLine}</div>
+      <div class="text-xs text-slate-500 mt-0.5">📍 ${c.street || '—'}${c.place ? ' · ' + c.place : ''}</div>
+      <div class="flex justify-between items-center mt-2 pt-2 border-t border-slate-50">
+        <div class="text-sm">${dueLine}</div>
+        <button type="button" onclick="viewLedger('${id}')" class="text-xs text-indigo-600 font-medium">View →</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 function renderDcReport() {
   const list = allCustomers.filter(c => String(c.status||'').toUpperCase() === 'DC')
