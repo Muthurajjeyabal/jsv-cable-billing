@@ -418,42 +418,42 @@
           <!-- Summary -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div class="soft-card p-5">
-              <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase mb-2">Today Collection</div>
+              <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase mb-2"><span data-i18n="dashToday">Today Collection</span></div>
               <div class="text-2xl sm:text-3xl font-bold text-emerald-600 tracking-tight" id="statTodayCol">₹ 0</div>
-              <div class="text-xs text-slate-400 mt-2" id="statTodaySub">Live · today</div>
+              <div class="text-xs text-slate-400 mt-2" id="statTodaySub"><span data-i18n="dashLive">Live · today</span></div>
             </div>
             <div class="soft-card p-5">
-              <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase mb-2">Month Collection</div>
+              <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase mb-2"><span data-i18n="dashMonth">Month Collection</span></div>
               <div class="text-2xl sm:text-3xl font-bold text-indigo-600 tracking-tight" id="statMonthCol">₹ 0</div>
-              <div class="text-xs text-slate-400 mt-2" id="statMonthSub">This month</div>
+              <div class="text-xs text-slate-400 mt-2" id="statMonthSub"><span data-i18n="dashThisMonth">This month</span></div>
             </div>
             <div class="soft-card p-5">
-              <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase mb-2">Total Due</div>
+              <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase mb-2"><span data-i18n="dashTotalDue">Total Due</span></div>
               <div class="text-2xl sm:text-3xl font-bold text-rose-600 tracking-tight" id="statDue">₹ 0</div>
-              <div class="text-xs text-slate-400 mt-2"><span id="statDueCnt">0</span> customers pending</div>
+              <div class="text-xs text-slate-400 mt-2"><span id="statDueCnt">0</span> <span data-i18n="dashPendingCust">customers pending</span></div>
             </div>
           </div>
 
           <!-- Network + Agents -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             <div class="soft-card p-5">
-              <h3 class="text-sm font-semibold text-slate-800 mb-4">Network Overview</h3>
+              <h3 class="text-sm font-semibold text-slate-800 mb-4"><span data-i18n="dashNetwork">Network Overview</span></h3>
               <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="rounded-xl bg-slate-50 p-3">
-                  <div class="text-[10px] text-slate-400 font-medium uppercase">Customers</div>
+                  <div class="text-[10px] text-slate-400 font-medium uppercase" data-i18n="dashCustomers">Customers</div>
                   <div class="text-xl font-bold text-slate-800 mt-0.5" id="statCustomers">0</div>
                   <div class="text-[10px] text-slate-400 mt-1" id="statCustSplit">A: 0 · DC: 0</div>
                 </div>
                 <div class="rounded-xl bg-slate-50 p-3">
-                  <div class="text-[10px] text-slate-400 font-medium uppercase">Total Box</div>
+                  <div class="text-[10px] text-slate-400 font-medium uppercase"><span data-i18n="dashTotalBox">Total Box</span></div>
                   <div class="text-xl font-bold text-slate-800 mt-0.5" id="statBoxes">0</div>
                 </div>
                 <div class="rounded-xl bg-slate-50 p-3">
-                  <div class="text-[10px] text-slate-400 font-medium uppercase">With Customers</div>
+                  <div class="text-[10px] text-slate-400 font-medium uppercase"><span data-i18n="dashWithCust">With Customers</span></div>
                   <div class="text-xl font-bold text-slate-800 mt-0.5" id="statBoxAssigned">0</div>
                 </div>
                 <div class="rounded-xl bg-slate-50 p-3">
-                  <div class="text-[10px] text-slate-400 font-medium uppercase">In Store</div>
+                  <div class="text-[10px] text-slate-400 font-medium uppercase"><span data-i18n="dashInStore">In Store</span></div>
                   <div class="text-xl font-bold text-slate-800 mt-0.5" id="statBoxBalance">0</div>
                 </div>
               </div>
@@ -467,14 +467,14 @@
             </div>
 
             <div class="soft-card p-5">
-              <h3 class="text-sm font-semibold text-slate-800 mb-3">Collection by Agent</h3>
+              <h3 class="text-sm font-semibold text-slate-800 mb-3"><span data-i18n="dashByAgent">Collection by Agent</span></h3>
               <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                   <thead>
                     <tr class="text-[10px] uppercase tracking-wide text-slate-400 border-b">
-                      <th class="text-left py-2 font-medium">Agent</th>
-                      <th class="text-right py-2 font-medium">Today</th>
-                      <th class="text-right py-2 font-medium">This Month</th>
+                      <th class="text-left py-2 font-medium" data-i18n="dashAgent">Agent</th>
+                      <th class="text-right py-2 font-medium" data-i18n="dashColToday">Today</th>
+                      <th class="text-right py-2 font-medium" data-i18n="dashColMonth">This Month</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100">
@@ -510,50 +510,50 @@
             </div>
           </div>
 
-          <!-- Quick Actions -->
+          <!-- <span data-i18n="dashQuick">Quick Actions</span> -->
           <div class="soft-card p-5">
             <h3 class="text-sm font-semibold text-slate-800 mb-4">Quick Actions</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <button onclick="showPage('newCustomer')" class="card-hover text-left soft-card p-4 flex gap-3 items-start border border-slate-100 hover:border-indigo-200">
                 <span class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-bold shrink-0">＋</span>
                 <span>
-                  <span class="block font-semibold text-sm text-slate-800">New Customer</span>
-                  <span class="block text-xs text-slate-400 mt-0.5">Add a new subscriber</span>
+                  <span class="block font-semibold text-sm text-slate-800"><span data-i18n="dashNewCust">New Customer</span></span>
+                  <span class="block text-xs text-slate-400 mt-0.5"><span data-i18n="dashAddSub">Add a new subscriber</span></span>
                 </span>
               </button>
               <button onclick="showPage('billing')" class="card-hover text-left soft-card p-4 flex gap-3 items-start border border-slate-100 hover:border-emerald-200">
                 <span class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg font-bold shrink-0">₹</span>
                 <span>
-                  <span class="block font-semibold text-sm text-slate-800">Create Bill</span>
+                  <span class="block font-semibold text-sm text-slate-800"><span data-i18n="dashCreateBill">Create Bill</span></span>
                   <span class="block text-xs text-slate-400 mt-0.5">Record collection</span>
                 </span>
               </button>
               <button onclick="showPage('pending')" class="card-hover text-left soft-card p-4 flex gap-3 items-start border border-slate-100 hover:border-rose-200">
                 <span class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-lg font-bold shrink-0">⚠</span>
                 <span>
-                  <span class="block font-semibold text-sm text-slate-800">Pending / Due</span>
-                  <span class="block text-xs text-slate-400 mt-0.5">Outstanding payments</span>
+                  <span class="block font-semibold text-sm text-slate-800" data-i18n="repPending">Pending / Due</span>
+                  <span class="block text-xs text-slate-400 mt-0.5"><span data-i18n="dashOutPay">Outstanding payments</span></span>
                 </span>
               </button>
               <button onclick="showPage('customers')" class="card-hover text-left soft-card p-4 flex gap-3 items-start border border-slate-100 hover:border-slate-300">
                 <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg font-bold shrink-0">◎</span>
                 <span>
-                  <span class="block font-semibold text-sm text-slate-800">Customers</span>
-                  <span class="block text-xs text-slate-400 mt-0.5">Manage subscribers</span>
+                  <span class="block font-semibold text-sm text-slate-800" data-i18n="customers">Customers</span>
+                  <span class="block text-xs text-slate-400 mt-0.5"><span data-i18n="dashManageSub">Manage subscribers</span></span>
                 </span>
               </button>
               <button onclick="showPage('boxes')" class="card-hover text-left soft-card p-4 flex gap-3 items-start border border-slate-100 hover:border-slate-300">
                 <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg font-bold shrink-0">▣</span>
                 <span>
-                  <span class="block font-semibold text-sm text-slate-800">Box Management</span>
-                  <span class="block text-xs text-slate-400 mt-0.5">Track STB / stock</span>
+                  <span class="block font-semibold text-sm text-slate-800"><span data-i18n="dashBoxMgmt">Box Management</span></span>
+                  <span class="block text-xs text-slate-400 mt-0.5"><span data-i18n="dashTrackStb">Track STB / stock</span></span>
                 </span>
               </button>
               <button onclick="showPage('settings')" class="card-hover text-left soft-card p-4 flex gap-3 items-start border border-slate-100 hover:border-slate-300">
                 <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg font-bold shrink-0">◷</span>
                 <span>
-                  <span class="block font-semibold text-sm text-slate-800">Next Month Bill</span>
-                  <span class="block text-xs text-slate-400 mt-0.5">Generate once per month</span>
+                  <span class="block font-semibold text-sm text-slate-800"><span data-i18n="dashNextBill">Next Month Bill</span></span>
+                  <span class="block text-xs text-slate-400 mt-0.5"><span data-i18n="dashGenOnce">Generate once per month</span></span>
                 </span>
               </button>
             </div>

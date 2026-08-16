@@ -1848,7 +1848,10 @@ function updateDashboardStats() {
   const sc = document.getElementById('statCustomers');
   if (sc) sc.textContent = total;
   const split = document.getElementById('statCustSplit');
-  if (split) split.textContent = 'A: ' + active + ' · DC: ' + dc;
+  if (split) {
+    const L = (typeof getAppLang === 'function' && getAppLang() === 'en') ? {a:'A',dc:'DC'} : {a:'ஆக்டிவ்',dc:'டிசி'};
+    split.textContent = L.a + ': ' + active + ' · ' + L.dc + ': ' + dc;
+  }
   const sa = document.getElementById('statActive');
   if (sa) sa.textContent = active;
   const sp = document.getElementById('statPending');
@@ -1880,13 +1883,23 @@ function updateDashboardStats() {
   const totalN = allCustomers.length || 1;
   const ap = Math.round((activeN / totalN) * 100);
   const apEl = document.getElementById('statActivePct');
-  if (apEl) apEl.textContent = ap + '% active';
+  if (apEl) {
+    const suf = (typeof I18N !== 'undefined' && I18N[getAppLang()] && I18N[getAppLang()].activePct) ? I18N[getAppLang()].activePct : '% active';
+    apEl.textContent = ap + suf;
+  }
   const ab = document.getElementById('statActiveBar');
   if (ab) ab.style.width = ap + '%';
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const now = new Date();
   const ms = document.getElementById('statMonthSub');
-  if (ms) ms.textContent = monthNames[now.getMonth()] + ' ' + now.getFullYear();
+  if (ms) {
+    if (typeof getAppLang === 'function' && getAppLang() === 'ta') {
+      const taM = ['ஜனவரி','பிப்ரவரி','மார்ச்','ஏப்ரல்','மே','ஜூன்','ஜூலை','ஆகஸ்ட்','செப்டம்பர்','அக்டோபர்','நவம்பர்','டிசம்பர்'];
+      ms.textContent = taM[now.getMonth()] + ' ' + now.getFullYear();
+    } else {
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      ms.textContent = monthNames[now.getMonth()] + ' ' + now.getFullYear();
+    }
+  }
   const sd = document.getElementById('statDue');
   if (sd) sd.textContent = '₹ ' + totalDue.toLocaleString('en-IN');
   const boxDisplay = document.getElementById('boxCountDisplay');
@@ -6032,7 +6045,17 @@ const I18N = {
     repPackage: 'Package Wise', repPayMode: 'Payment Mode', repColAudit: 'Collection Audit',
     repActivity: 'Activity Log', repTrend: 'Collection Trend',
     save: 'Save', cancel: 'Cancel', search: 'Search', print: 'Print', show: 'Show',
-    today: 'Today', thisMonth: 'This Month', total: 'Total', active: 'Active', due: 'Due'
+    today: 'Today', thisMonth: 'This Month', total: 'Total', active: 'Active', due: 'Due',
+    dashToday: 'Today Collection', dashLive: 'Live · today', dashMonth: 'Month Collection',
+    dashThisMonth: 'This month', dashTotalDue: 'Total Due', dashPendingCust: 'customers pending',
+    dashNetwork: 'Network Overview', dashCustomers: 'Customers', dashTotalBox: 'Total Box',
+    dashWithCust: 'With Customers', dashInStore: 'In Store', dashByAgent: 'Collection by Agent',
+    dashQuick: 'Quick Actions', dashOutPay: 'Outstanding payments', dashManageSub: 'Manage subscribers',
+    dashBoxMgmt: 'Box Management', dashTrackStb: 'Track STB / stock', dashNextBill: 'Next Month Bill',
+    dashGenOnce: 'Generate once per month', dashNewCust: 'New Customer', dashAddSub: 'Add a new subscriber',
+    dashCreateBill: 'Create Bill', dashGenBill: 'Generate monthly bill',
+    dashColToday: 'Today', dashColMonth: 'This Month', dashAgent: 'Agent',
+    activePct: '% active'
   },
   ta: {
     dashboard: 'டாஷ்போர்டு', customers: 'கஸ்டமர்கள்', newCustomer: 'புதிய கஸ்டமர்',
@@ -6052,7 +6075,17 @@ const I18N = {
     repPackage: 'பேக்கேஜ் வாரியாக', repPayMode: 'பேமெண்ட் முறை', repColAudit: 'கலெக்ஷன் ஆடிட்',
     repActivity: 'ஆக்டிவிட்டி லாக்', repTrend: 'கலெக்ஷன் ட்ரெண்ட்',
     save: 'சேமி', cancel: 'ரத்து', search: 'தேடு', print: 'பிரிண்ட்', show: 'காட்டு',
-    today: 'இன்று', thisMonth: 'இந்த மாதம்', total: 'மொத்தம்', active: 'ஆக்டிவ்', due: 'நிலுவை'
+    today: 'இன்று', thisMonth: 'இந்த மாதம்', total: 'மொத்தம்', active: 'ஆக்டிவ்', due: 'நிலுவை',
+    dashToday: 'இன்றைய வசூல்', dashLive: 'நேரலை · இன்று', dashMonth: 'இந்த மாத வசூல்',
+    dashThisMonth: 'இந்த மாதம்', dashTotalDue: 'மொத்த நிலுவை', dashPendingCust: 'கஸ்டமர் நிலுவை',
+    dashNetwork: 'நெட்வொர்க் கண்ணோட்டம்', dashCustomers: 'கஸ்டமர்கள்', dashTotalBox: 'மொத்த பாக்ஸ்',
+    dashWithCust: 'கஸ்டமருடன்', dashInStore: 'ஸ்டோரில்', dashByAgent: 'கலெக்டர் வசூல்',
+    dashQuick: 'விரைவு செயல்கள்', dashOutPay: 'நிலுவை பேமெண்ட்', dashManageSub: 'சப்ஸ்கிரைபர் மேலாண்மை',
+    dashBoxMgmt: 'பாக்ஸ் மேனேஜ்மென்ட்', dashTrackStb: 'STB / ஸ்டாக்', dashNextBill: 'அடுத்த மாத பில்',
+    dashGenOnce: 'மாதத்திற்கு ஒரு முறை', dashNewCust: 'புதிய கஸ்டமர்', dashAddSub: 'புதிய சப்ஸ்கிரைபர்',
+    dashCreateBill: 'பில் உருவாக்கு', dashGenBill: 'மாத பில் ஜெனரேட்',
+    dashColToday: 'இன்று', dashColMonth: 'இந்த மாதம்', dashAgent: 'கலெக்டர்',
+    activePct: '% ஆக்டிவ்'
   }
 };
 
@@ -6070,10 +6103,12 @@ function setAppLang(v) {
   localStorage.setItem('jsv_lang', v);
   applyAppLang();
   if (typeof currentPageId !== 'undefined' && currentPageId) {
-    // refresh title
     const titles = (I18N[getAppLang()] || I18N.ta);
     const pt = document.getElementById('pageTitle');
     if (pt && titles[currentPageId]) pt.textContent = titles[currentPageId];
+  }
+  if (typeof updateDashboardStats === 'function') {
+    try { updateDashboardStats(); } catch (e) {}
   }
 }
 function applyAppTheme() {
