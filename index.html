@@ -1777,11 +1777,22 @@
           </div>
           <div id="reportPanel-activity" class="report-panel hidden">
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
-            <div class="soft-card p-4 mb-3 no-print">
-              <h3 class="font-semibold text-sm">Activity Log</h3>
-              <button type="button" onclick="renderActivityReport()" class="mt-2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm">Refresh</button>
+            <div class="soft-card p-3 mb-3 no-print space-y-2">
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-sm">Activity Log</h3>
+                <button type="button" onclick="renderActivityReport()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs">Refresh</button>
+              </div>
+              <input type="search" id="actSearch" oninput="renderActivityReport()" placeholder="Search name / action / user" class="w-full px-3 py-2 border rounded-xl text-sm">
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="setActFilter('ALL', this)" class="act-chip px-2.5 py-1 rounded-full text-xs bg-indigo-600 text-white">All</button>
+                <button type="button" onclick="setActFilter('payment', this)" class="act-chip px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">Payments</button>
+                <button type="button" onclick="setActFilter('customer', this)" class="act-chip px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">Customer</button>
+                <button type="button" onclick="setActFilter('package', this)" class="act-chip px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">Package</button>
+                <button type="button" onclick="setActFilter('service', this)" class="act-chip px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">Service</button>
+              </div>
+              <input type="hidden" id="actFilter" value="ALL">
             </div>
-            <div id="activityRepBody" class="bg-white rounded-xl border divide-y max-h-[70vh] overflow-y-auto"></div>
+            <div id="activityRepBody" class="max-h-[70vh] overflow-y-auto pb-6"></div>
           </div>
           <div id="reportPanel-colAudit" class="report-panel hidden">
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>

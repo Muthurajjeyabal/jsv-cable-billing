@@ -989,18 +989,40 @@ function startBillForLedger() {
 
 async function logActivity(customerId, action, detail, extra) {
   try {
-    if (!customerId) return;
+    let customerName = (extra && extra.customerName) || '';
+    let custId = (extra && extra.custId) || '';
+    if (customerId && allCustomers) {
+      const c = allCustomers.find(x => x.id === customerId);
+      if (c) {
+        if (!customerName) customerName = c.name || '';
+        if (!custId) custId = c.custId || '';
+      }
+    }
+    const cat = (extra && extra.category) || classifyActivityAction(action);
     await db.collection('activityLogs').add({
-      customerId,
+      customerId: customerId || '',
+      customerName: customerName || '',
+      custId: custId || '',
       action: action || '',
       detail: detail || '',
+      category: cat,
       ...(extra || {}),
       date: new Date().toISOString().slice(0, 10),
       time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      createdBy: (currentUser && currentUser.email) || '',
+      createdBy: (currentUser && currentUser.email) || (window.currentUserEmail) || '',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch (e) { console.warn('activity log', e); }
+}
+
+function classifyActivityAction(action) {
+  const a = String(action || '').toLowerCase();
+  if (a.includes('payment') || a.includes('collect') || a.includes('bill') || a.includes('cancel')) return 'payment';
+  if (a.includes('package') || a.includes('addon') || a.includes('add-on')) return 'package';
+  if (a.includes('dc') || a.includes('disconnect') || a.includes('reconnect') || a.includes('rc ') || a.includes('transfer') || a.includes('connection')) return 'service';
+  if (a.includes('customer') || a.includes('edit') || a.includes('mobile') || a.includes('created') || a.includes('delete')) return 'customer';
+  if (a.includes('whatsapp') || a.includes('sms') || a.includes('warning')) return 'comm';
+  return 'other';
 }
 
 async function viewLedger(id) {
@@ -4467,42 +4489,202 @@ async function renderPayModeReport() {
   }
 }
 
+function setActFilter(v, btn) {
+  const hid = document.getElementById('actFilter');
+  if (hid) hid.value = v;
+  document.querySelectorAll('.act-chip').forEach(b => {
+    const on = b === btn;
+    b.className = on
+      ? 'act-chip px-2.5 py-1 rounded-full text-xs bg-indigo-600 text-white'
+      : 'act-chip px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200';
+  });
+  renderActivityReport();
+}
+
 async function renderActivityReport() {
   const body = document.getElementById('activityRepBody');
   if (!body) return;
   body.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
+  const filter = (document.getElementById('actFilter') || {}).value || 'ALL';
+  const q = ((document.getElementById('actSearch') || {}).value || '').trim().toLowerCase();
   const events = [];
+
+  function pushEv(e) {
+    if (!e.date) e.date = '';
+    if (!e.category) e.category = classifyActivityAction(e.action || e.text || '');
+    events.push(e);
+  }
+
   try {
+    // 1) activityLogs
     try {
-      const a = await db.collection('activityLogs').orderBy('createdAt', 'desc').limit(100).get();
-      a.forEach(doc => {
+      let snap;
+      try {
+        snap = await db.collection('activityLogs').orderBy('createdAt', 'desc').limit(200).get();
+      } catch (e1) {
+        snap = await db.collection('activityLogs').limit(200).get();
+      }
+      snap.forEach(doc => {
         const d = doc.data();
-        events.push({ date: d.date || '', time: d.time || '', text: (d.action||'') + (d.detail ? ' — ' + d.detail : ''), by: d.createdBy || '', name: d.customerName || '' });
+        pushEv({
+          id: doc.id,
+          date: d.date || (d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString().slice(0,10) : ''),
+          time: d.time || '',
+          action: d.action || '',
+          detail: d.detail || '',
+          by: d.createdBy || '',
+          name: d.customerName || '',
+          custId: d.custId || '',
+          customerId: d.customerId || '',
+          category: d.category || classifyActivityAction(d.action),
+          amount: d.amount,
+          ts: d.createdAt && d.createdAt.toMillis ? d.createdAt.toMillis() : 0
+        });
       });
-    } catch (e) {
-      const a = await db.collection('activityLogs').limit(100).get();
-      a.forEach(doc => {
-        const d = doc.data();
-        events.push({ date: d.date || '', time: d.time || '', text: (d.action||'') + (d.detail ? ' — ' + d.detail : ''), by: d.createdBy || '' });
-      });
-      events.sort((x,y) => String(y.date).localeCompare(String(x.date)));
-    }
+    } catch (e) { console.warn(e); }
+
+    // 2) Recent collections as payment activity (backfill if logs empty)
     try {
-      const t = await db.collection('transfers').orderBy('date', 'desc').limit(50).get();
+      const t = new Date();
+      const from = new Date(t); from.setDate(t.getDate() - 45);
+      const fromS = from.toISOString().slice(0, 10);
+      const toS = t.toISOString().slice(0, 10);
+      const cols = await fetchCollectionsInRange(fromS, toS);
+      const byId = {};
+      (allCustomers || []).forEach(c => { byId[c.id] = c; });
+      cols.forEach(r => {
+        const c = r.customerId ? byId[r.customerId] : null;
+        const name = (c && c.name) || r.customerName || r.name || '';
+        const agent = (typeof displayAgentName === 'function') ? displayAgentName(r) : (r.collectedBy || '');
+        pushEv({
+          date: r.date || '',
+          time: r.time || '',
+          action: 'Payment Collected',
+          detail: '₹' + Number(r.amount || 0).toLocaleString('en-IN') + ' · ' + (r.mode || 'Cash') + (r.billNo ? ' · Bill #' + r.billNo : ''),
+          by: agent,
+          name: name,
+          custId: (c && c.custId) || r.custId || '',
+          customerId: r.customerId || '',
+          category: 'payment',
+          amount: Number(r.amount || 0),
+          ts: r.date ? Date.parse(r.date) : 0,
+          synthetic: true
+        });
+      });
+    } catch (e) { console.warn(e); }
+
+    // 3) Transfers collection
+    try {
+      const t = await db.collection('transfers').limit(50).get();
       t.forEach(doc => {
         const d = doc.data();
-        events.push({ date: d.date || '', text: 'Transfer: ' + (d.fromStreet||'') + ' → ' + (d.toStreet||''), by: d.createdBy || '', name: d.customerName || '' });
+        pushEv({
+          date: d.date || '',
+          time: d.time || '',
+          action: 'Transfer',
+          detail: (d.fromStreet || '') + ' → ' + (d.toStreet || '') + (d.newCustId ? ' · ID ' + d.newCustId : ''),
+          by: d.createdBy || '',
+          name: d.customerName || '',
+          category: 'service',
+          ts: d.date ? Date.parse(d.date) : 0
+        });
       });
     } catch (e) {}
-    events.sort((a, b) => String(b.date).localeCompare(String(a.date)));
-    body.innerHTML = events.slice(0, 80).map(e => `<div class="px-3 py-2.5">
-      <div class="text-[10px] text-slate-400">${e.date||''}${e.time?' · '+e.time:''}${e.by?' · '+String(e.by).split('@')[0]:''}</div>
-      <div class="text-sm">${e.name ? '<span class="font-medium">'+e.name+'</span> · ' : ''}${e.text}</div>
-    </div>`).join('') || '<div class="p-6 text-center text-slate-400 text-sm">No activity yet</div>';
+
+    // Dedupe synthetic payments if real log exists
+    const seen = new Set();
+    const deduped = [];
+    events.sort((a, b) => (b.ts || 0) - (a.ts || 0) || String(b.date).localeCompare(String(a.date)) || String(b.time).localeCompare(String(a.time)));
+    events.forEach(e => {
+      const key = (e.synthetic ? 'syn|' : 'log|') + e.date + '|' + e.action + '|' + e.name + '|' + (e.detail || '');
+      if (e.synthetic) {
+        const realKey = 'log|' + e.date + '|Payment' + '|' + e.name;
+        // keep synthetic for history visibility
+      }
+      if (seen.has(key)) return;
+      seen.add(key);
+      deduped.push(e);
+    });
+
+    let list = deduped;
+    if (filter !== 'ALL') list = list.filter(e => e.category === filter);
+    if (q) {
+      list = list.filter(e =>
+        String(e.name || '').toLowerCase().includes(q) ||
+        String(e.action || '').toLowerCase().includes(q) ||
+        String(e.detail || '').toLowerCase().includes(q) ||
+        String(e.by || '').toLowerCase().includes(q) ||
+        String(e.custId || '').toLowerCase().includes(q)
+      );
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const nToday = list.filter(e => e.date === today).length;
+    const nPay = list.filter(e => e.category === 'payment').length;
+    const nCust = list.filter(e => e.category === 'customer').length;
+    const nSvc = list.filter(e => e.category === 'service').length;
+
+    const icon = (cat, action) => {
+      const a = String(action || '').toLowerCase();
+      if (cat === 'payment' || a.includes('payment') || a.includes('collect')) return { bg: 'bg-emerald-100', t: 'text-emerald-700', s: '₹' };
+      if (a.includes('disconnect') || a.includes('dc')) return { bg: 'bg-red-100', t: 'text-red-700', s: '⏻' };
+      if (a.includes('package')) return { bg: 'bg-blue-100', t: 'text-blue-700', s: '📦' };
+      if (a.includes('transfer')) return { bg: 'bg-amber-100', t: 'text-amber-700', s: '↔' };
+      if (a.includes('whatsapp') || a.includes('sms')) return { bg: 'bg-green-100', t: 'text-green-700', s: '💬' };
+      return { bg: 'bg-slate-100', t: 'text-slate-600', s: '•' };
+    };
+
+    // Group by date
+    const groups = {};
+    list.forEach(e => {
+      const d = e.date || 'Unknown';
+      if (!groups[d]) groups[d] = [];
+      groups[d].push(e);
+    });
+    const dates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+    let html = '<div class="grid grid-cols-4 gap-1.5 mb-3">';
+    html += '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-base font-bold">' + nToday + '</div><div class="text-[9px] text-slate-400">Today</div></div>';
+    html += '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-base font-bold text-emerald-600">' + nPay + '</div><div class="text-[9px] text-slate-400">Payments</div></div>';
+    html += '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-base font-bold text-blue-600">' + nCust + '</div><div class="text-[9px] text-slate-400">Customer</div></div>';
+    html += '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-base font-bold text-amber-600">' + nSvc + '</div><div class="text-[9px] text-slate-400">Service</div></div></div>';
+
+    if (!list.length) {
+      html += '<div class="p-8 text-center text-slate-400 text-sm bg-white rounded-xl border">No activity yet<br><span class="text-[11px]">Payments / edits / DC இனிமேல் இங்கே வரும்</span></div>';
+      body.innerHTML = html;
+      return;
+    }
+
+    dates.forEach(d => {
+      let label = d;
+      if (d === today) label = 'Today · ' + d;
+      else {
+        const y = new Date(); y.setDate(y.getDate() - 1);
+        if (d === y.toISOString().slice(0, 10)) label = 'Yesterday · ' + d;
+      }
+      html += '<div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mt-3 mb-1.5 px-1">' + label + '</div>';
+      html += '<div class="bg-white rounded-xl border divide-y overflow-hidden">';
+      groups[d].forEach(e => {
+        const ic = icon(e.category, e.action);
+        const by = e.by ? String(e.by).split('@')[0].toUpperCase() : '';
+        html += '<div class="px-3 py-2.5 flex gap-2.5 items-start">';
+        html += '<div class="w-8 h-8 rounded-full ' + ic.bg + ' ' + ic.t + ' flex items-center justify-center text-xs shrink-0">' + ic.s + '</div>';
+        html += '<div class="min-w-0 flex-1">';
+        html += '<div class="text-sm font-medium text-slate-800">' + (e.action || 'Activity') + '</div>';
+        if (e.name) html += '<div class="text-xs text-slate-700 mt-0.5">' + e.name + (e.custId ? ' · ' + e.custId : '') + '</div>';
+        if (e.detail) html += '<div class="text-[11px] text-slate-500 mt-0.5">' + e.detail + '</div>';
+        html += '<div class="text-[10px] text-slate-400 mt-1">' + (e.time || '') + (by ? ' · ' + by : '') + '</div>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+    });
+
+    body.innerHTML = html;
   } catch (e) {
-    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message + '</div>';
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + (e.message || e) + '</div>';
   }
 }
+
 
 async function renderColAuditReport() {
   const body = document.getElementById('colAuditBody');
