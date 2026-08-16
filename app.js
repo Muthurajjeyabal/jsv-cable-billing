@@ -4064,6 +4064,281 @@ async function runFullBackup() {
   }
 }
 
+
+function getReportDateRange() {
+  const preset = window._repDatePreset || 'month';
+  const iso = (d) => {
+    const x = new Date(d);
+    return x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0') + '-' + String(x.getDate()).padStart(2,'0');
+  };
+  const t = new Date();
+  if (preset === 'today') return { from: iso(t), to: iso(t) };
+  if (preset === 'week') {
+    const f = new Date(t); f.setDate(t.getDate() - 6);
+    return { from: iso(f), to: iso(t) };
+  }
+  if (preset === 'custom') {
+    const from = document.getElementById('repFrom')?.value;
+    const to = document.getElementById('repTo')?.value;
+    if (from && to) return { from, to };
+  }
+  // month default
+  return { from: iso(t).slice(0, 8) + '01', to: iso(t) };
+}
+
+function setReportDatePreset(preset) {
+  window._repDatePreset = preset;
+  document.querySelectorAll('.rep-date-btn').forEach(b => {
+    const on = b.dataset.preset === preset;
+    b.className = on
+      ? 'rep-date-btn px-3 py-1.5 rounded-full text-xs bg-indigo-600 text-white border border-indigo-600'
+      : 'rep-date-btn px-3 py-1.5 rounded-full text-xs bg-white border border-slate-200 text-slate-600';
+  });
+  const custom = document.getElementById('repCustomDates');
+  if (custom) custom.classList.toggle('hidden', preset !== 'custom');
+  if (preset === 'custom') {
+    const r = getReportDateRange();
+    // if switching to custom with empty, fill month
+    const f = document.getElementById('repFrom');
+    const to = document.getElementById('repTo');
+    const t = new Date();
+    const iso = t.toISOString().slice(0, 10);
+    if (f && !f.value) f.value = iso.slice(0, 8) + '01';
+    if (to && !to.value) to.value = iso;
+  }
+}
+
+async function fetchCollectionsInRange(from, to) {
+  const snap = await db.collection('collections').where('date', '>=', from).where('date', '<=', to).get();
+  const rows = [];
+  snap.forEach(doc => {
+    const d = doc.data();
+    if (d.status === 'cancelled') return;
+    rows.push({ id: doc.id, ...d, _agent: (typeof classifyAgent === 'function') ? classifyAgent(d) : 'other' });
+  });
+  return rows;
+}
+
+async function renderColSummaryReport() {
+  const body = document.getElementById('colSumBody');
+  if (!body) return;
+  const { from, to } = getReportDateRange();
+  const rangeEl = document.getElementById('colSumRange');
+  if (rangeEl) rangeEl.textContent = from + ' → ' + to;
+  body.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
+  try {
+    const rows = await fetchCollectionsInRange(from, to);
+    const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
+    const byAgent = {};
+    const byMode = {};
+    const byDate = {};
+    rows.forEach(r => {
+      const a = (typeof displayAgentName === 'function') ? displayAgentName(r) : (r._agent || '-');
+      byAgent[a] = byAgent[a] || { amt: 0, n: 0 };
+      byAgent[a].amt += Number(r.amount || 0); byAgent[a].n++;
+      const m = (r.mode || 'Other').toString();
+      byMode[m] = byMode[m] || { amt: 0, n: 0 };
+      byMode[m].amt += Number(r.amount || 0); byMode[m].n++;
+      const d = r.date || '-';
+      byDate[d] = byDate[d] || { amt: 0, n: 0 };
+      byDate[d].amt += Number(r.amount || 0); byDate[d].n++;
+    });
+    const card = (title, items) => `<div class="bg-white rounded-xl border p-3">
+      <div class="text-xs font-semibold text-slate-500 uppercase mb-2">${title}</div>
+      ${items.map(([k,v]) => `<div class="flex justify-between text-sm py-1 border-t border-slate-50">
+        <span>${k} <span class="text-[10px] text-slate-400">${v.n} bills</span></span>
+        <span class="font-semibold">₹${v.amt.toLocaleString('en-IN')}</span></div>`).join('') || '<div class="text-slate-400 text-sm">—</div>'}
+    </div>`;
+    body.innerHTML = `
+      <div class="grid grid-cols-2 gap-2">
+        <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-center">
+          <div class="text-[10px] text-emerald-700 uppercase">Total Collection</div>
+          <div class="text-xl font-bold text-emerald-800">₹${total.toLocaleString('en-IN')}</div>
+        </div>
+        <div class="bg-slate-50 border rounded-xl p-3 text-center">
+          <div class="text-[10px] text-slate-500 uppercase">Bills</div>
+          <div class="text-xl font-bold text-slate-800">${rows.length}</div>
+        </div>
+      </div>
+      ${card('Collector-wise', Object.entries(byAgent).sort((a,b)=>b[1].amt-a[1].amt))}
+      ${card('Payment Mode', Object.entries(byMode).sort((a,b)=>b[1].amt-a[1].amt))}
+      ${card('Date-wise', Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,31))}
+    `;
+  } catch (e) {
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message + '</div>';
+  }
+}
+
+function renderNewConnReport() {
+  const { from, to } = getReportDateRange();
+  const body = document.getElementById('newConnBody');
+  const sum = document.getElementById('newConnSummary');
+  if (!body) return;
+  const list = (allCustomers || []).filter(c => {
+    const d = (c.conDate || c.connectionDate || c.regDate || '').toString().slice(0, 10);
+    if (!d) return false;
+    // normalize DD-MM-YY etc
+    let iso = d;
+    if (/^\d{2}-\d{2}-\d{2}$/.test(d)) {
+      const [dd,mm,yy] = d.split('-');
+      iso = '20' + yy + '-' + mm + '-' + dd;
+    } else if (/^\d{2}-\d{2}-\d{4}$/.test(d)) {
+      const [dd,mm,yyyy] = d.split('-');
+      iso = yyyy + '-' + mm + '-' + dd;
+    }
+    return iso >= from && iso <= to;
+  }).sort((a,b) => String(b.conDate||'').localeCompare(String(a.conDate||'')));
+  if (sum) sum.textContent = list.length + ' new · ' + from + ' → ' + to;
+  body.innerHTML = list.length ? `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">
+    <thead class="bg-slate-50 sticky top-0"><tr>
+      <th class="text-left px-2 py-2">Date</th><th class="text-left px-2 py-2">ID</th>
+      <th class="text-left px-2 py-2">Name</th><th class="text-left px-2 py-2">Area</th>
+      <th class="text-left px-2 py-2">Pkg</th></tr></thead><tbody>` +
+    list.map(c => `<tr class="border-t">
+      <td class="px-2 py-1.5 text-xs">${c.conDate||c.connectionDate||''}</td>
+      <td class="px-2 py-1.5 font-mono text-xs">${c.custId||''}</td>
+      <td class="px-2 py-1.5">${c.name||''}</td>
+      <td class="px-2 py-1.5 text-xs">${c.place||''}</td>
+      <td class="px-2 py-1.5 text-xs">${c.package||''} ₹${c.packageAmt||0}</td></tr>`).join('') +
+    '</tbody></table></div>' : '<div class="p-8 text-center text-slate-400 text-sm">No new connections in range</div>';
+}
+
+async function renderPayModeReport() {
+  const body = document.getElementById('payModeBody');
+  const sum = document.getElementById('payModeSummary');
+  if (!body) return;
+  const { from, to } = getReportDateRange();
+  if (sum) sum.textContent = from + ' → ' + to;
+  body.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
+  try {
+    const rows = await fetchCollectionsInRange(from, to);
+    const byMode = {};
+    rows.forEach(r => {
+      let m = (r.mode || 'Other').toString();
+      // normalize
+      const u = m.toUpperCase();
+      if (u.includes('CASH')) m = 'Cash';
+      else if (u.includes('UPI') || u.includes('GPAY') || u.includes('G-PAY')) m = 'UPI';
+      else if (u.includes('ONLINE')) m = 'Online';
+      else if (u.includes('OFFICE') || u.includes('LOCAL')) m = 'Office';
+      byMode[m] = byMode[m] || { amt: 0, n: 0 };
+      byMode[m].amt += Number(r.amount || 0); byMode[m].n++;
+    });
+    const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
+    body.innerHTML = Object.entries(byMode).sort((a,b)=>b[1].amt-a[1].amt).map(([k,v]) => {
+      const pct = total ? Math.round(v.amt / total * 100) : 0;
+      return `<div class="bg-white rounded-xl border p-3">
+        <div class="flex justify-between text-sm font-medium"><span>${k}</span><span>₹${v.amt.toLocaleString('en-IN')}</span></div>
+        <div class="text-[11px] text-slate-400 mt-0.5">${v.n} bills · ${pct}%</div>
+        <div class="mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500 rounded-full" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('') || '<div class="p-6 text-center text-slate-400">No data</div>';
+  } catch (e) {
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message + '</div>';
+  }
+}
+
+async function renderActivityReport() {
+  const body = document.getElementById('activityRepBody');
+  if (!body) return;
+  body.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
+  const events = [];
+  try {
+    try {
+      const a = await db.collection('activityLogs').orderBy('createdAt', 'desc').limit(100).get();
+      a.forEach(doc => {
+        const d = doc.data();
+        events.push({ date: d.date || '', time: d.time || '', text: (d.action||'') + (d.detail ? ' — ' + d.detail : ''), by: d.createdBy || '', name: d.customerName || '' });
+      });
+    } catch (e) {
+      const a = await db.collection('activityLogs').limit(100).get();
+      a.forEach(doc => {
+        const d = doc.data();
+        events.push({ date: d.date || '', time: d.time || '', text: (d.action||'') + (d.detail ? ' — ' + d.detail : ''), by: d.createdBy || '' });
+      });
+      events.sort((x,y) => String(y.date).localeCompare(String(x.date)));
+    }
+    try {
+      const t = await db.collection('transfers').orderBy('date', 'desc').limit(50).get();
+      t.forEach(doc => {
+        const d = doc.data();
+        events.push({ date: d.date || '', text: 'Transfer: ' + (d.fromStreet||'') + ' → ' + (d.toStreet||''), by: d.createdBy || '', name: d.customerName || '' });
+      });
+    } catch (e) {}
+    events.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    body.innerHTML = events.slice(0, 80).map(e => `<div class="px-3 py-2.5">
+      <div class="text-[10px] text-slate-400">${e.date||''}${e.time?' · '+e.time:''}${e.by?' · '+String(e.by).split('@')[0]:''}</div>
+      <div class="text-sm">${e.name ? '<span class="font-medium">'+e.name+'</span> · ' : ''}${e.text}</div>
+    </div>`).join('') || '<div class="p-6 text-center text-slate-400 text-sm">No activity yet</div>';
+  } catch (e) {
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message + '</div>';
+  }
+}
+
+async function renderColAuditReport() {
+  const body = document.getElementById('colAuditBody');
+  const sum = document.getElementById('colAuditSummary');
+  if (!body) return;
+  const { from, to } = getReportDateRange();
+  if (sum) sum.textContent = from + ' → ' + to;
+  body.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
+  try {
+    const rows = await fetchCollectionsInRange(from, to);
+    const byAgent = {};
+    rows.forEach(r => {
+      const a = (typeof displayAgentName === 'function') ? displayAgentName(r) : (r._agent || '-');
+      byAgent[a] = byAgent[a] || { amt: 0, n: 0, cash: 0, upi: 0, other: 0 };
+      const amt = Number(r.amount || 0);
+      byAgent[a].amt += amt; byAgent[a].n++;
+      const m = String(r.mode || '').toUpperCase();
+      if (m.includes('CASH')) byAgent[a].cash += amt;
+      else if (m.includes('UPI') || m.includes('GPAY')) byAgent[a].upi += amt;
+      else byAgent[a].other += amt;
+    });
+    body.innerHTML = Object.entries(byAgent).sort((a,b)=>b[1].amt-a[1].amt).map(([k,v]) =>
+      `<div class="bg-white rounded-xl border p-3">
+        <div class="flex justify-between font-semibold text-sm"><span>${k}</span><span>₹${v.amt.toLocaleString('en-IN')}</span></div>
+        <div class="text-[11px] text-slate-500 mt-1">${v.n} customers/bills</div>
+        <div class="grid grid-cols-3 gap-1 mt-2 text-[11px] text-center">
+          <div class="bg-slate-50 rounded p-1">Cash<br><b>₹${v.cash.toLocaleString('en-IN')}</b></div>
+          <div class="bg-slate-50 rounded p-1">UPI<br><b>₹${v.upi.toLocaleString('en-IN')}</b></div>
+          <div class="bg-slate-50 rounded p-1">Other<br><b>₹${v.other.toLocaleString('en-IN')}</b></div>
+        </div>
+      </div>`
+    ).join('') || '<div class="p-6 text-center text-slate-400">No data</div>';
+  } catch (e) {
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message + '</div>';
+  }
+}
+
+async function renderTrendReport() {
+  const body = document.getElementById('trendBody');
+  if (!body) return;
+  const { from, to } = getReportDateRange();
+  body.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
+  try {
+    const rows = await fetchCollectionsInRange(from, to);
+    const byDate = {};
+    rows.forEach(r => {
+      const d = r.date || '-';
+      byDate[d] = (byDate[d] || 0) + Number(r.amount || 0);
+    });
+    const entries = Object.entries(byDate).sort((a,b) => a[0].localeCompare(b[0]));
+    const max = Math.max(1, ...entries.map(e => e[1]));
+    body.innerHTML = `<div class="text-xs text-slate-500 mb-2">${from} → ${to}</div>` +
+      entries.map(([d, amt]) => {
+        const pct = Math.round(amt / max * 100);
+        return `<div class="mb-1.5">
+          <div class="flex justify-between text-[11px] mb-0.5"><span>${d}</span><span class="font-medium">₹${amt.toLocaleString('en-IN')}</span></div>
+          <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('') || '<div class="text-slate-400 text-sm text-center py-6">No data</div>';
+  } catch (e) {
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message + '</div>';
+  }
+}
+
+
 function openCollectorsPrintOut() {
   // Direct open — avoid showPage('reports') closing panels again
   document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
@@ -4133,9 +4408,15 @@ function openReport(kind) {
   const panel = document.getElementById('reportPanel-' + kind);
   if (panel) panel.classList.remove('hidden');
   if (kind === 'collection') renderCollectionReport();
+  if (kind === 'colSummary') renderColSummaryReport();
   if (kind === 'customers') renderCustomerReport();
   if (kind === 'dc') renderDcReport();
   if (kind === 'package') renderPackageReport();
+  if (kind === 'newConn') renderNewConnReport();
+  if (kind === 'payMode') renderPayModeReport();
+  if (kind === 'activity') renderActivityReport();
+  if (kind === 'colAudit') renderColAuditReport();
+  if (kind === 'trend') renderTrendReport();
 }
 
 async function renderTransferReport() {
@@ -4245,8 +4526,11 @@ function renderPackageReport() {
   const rows = Array.from(map.values()).sort((a,b) => a.amt - b.amt);
   const body = document.getElementById('pkgRepBody');
   if (!body) return;
-  body.innerHTML = '<h3 class="font-semibold mb-3">Package Amount Wise (Active)</h3><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Package ₹</th><th class="text-right py-2">Customers</th></tr></thead><tbody>' +
-    rows.map(r => `<tr class="border-t"><td class="py-2">₹${r.amt.toLocaleString('en-IN')}</td><td class="py-2 text-right font-medium">${r.count}</td></tr>`).join('') +
+  let expected = 0;
+  rows.forEach(r => { expected += r.amt * r.count; });
+  body.innerHTML = '<div class="mb-3 p-3 bg-indigo-50 rounded-xl text-sm"><span class="text-slate-600">Expected Monthly Billing</span><div class="text-xl font-bold text-indigo-800">₹' + expected.toLocaleString('en-IN') + '</div></div>' +
+    '<h3 class="font-semibold mb-2 text-sm">Package Amount Wise (Active)</h3><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Package ₹</th><th class="text-right py-2">Customers</th><th class="text-right py-2">Subtotal</th></tr></thead><tbody>' +
+    rows.map(r => `<tr class="border-t"><td class="py-2">₹${r.amt.toLocaleString('en-IN')}</td><td class="py-2 text-right font-medium">${r.count}</td><td class="py-2 text-right">₹${(r.amt*r.count).toLocaleString('en-IN')}</td></tr>`).join('') +
     '</tbody></table>';
 }
 
