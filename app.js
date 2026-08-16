@@ -1855,6 +1855,8 @@ async function loadDashboard() {
     setTxt('agentOfficeCnt', agentsToday.office.cnt + ' today · ' + agentsMonth.office.cnt + ' month');
     setTxt('agentOnlineCnt', agentsToday.online.cnt + ' today · ' + agentsMonth.online.cnt + ' month');
     setTxt('agentOther', '₹' + agentsMonth.other.amt.toLocaleString('en-IN') + ' (' + agentsMonth.other.cnt + ')');
+    const oWrap = document.getElementById('agentOtherWrap');
+    if (oWrap) oWrap.classList.toggle('hidden', !(agentsMonth.other.amt > 0 || agentsMonth.other.cnt > 0));
   } catch (e) {
     console.log('Collection stats error', e);
   }
