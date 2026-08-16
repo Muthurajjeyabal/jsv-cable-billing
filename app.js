@@ -568,45 +568,139 @@ async function ledgerQuickTransfer() {
   if (!id) return;
   const c = allCustomers.find(x => x.id === id);
   if (!c) return;
-  const streets = (typeof allStreets !== 'undefined' && allStreets && allStreets.length)
-    ? allStreets.map(s => s.name || s.street).filter(Boolean)
-    : [...new Set((allCustomers || []).map(x => x.street).filter(Boolean))];
-  const cur = c.street || '';
-  const next = prompt('புதிய Street / Transfer:\n(தற்போது: ' + cur + ')', cur);
-  if (next === null) return;
-  const street = next.trim();
-  if (!street || street === cur) { showToast('Street மாறவில்லை'); return; }
-  const place = prompt('Area (AREA 1 / AREA 2):', c.place || 'AREA 1');
-  if (place === null) return;
+  window._transferCustId = id;
+  document.getElementById('transferCustLabel').textContent =
+    (c.name || '') + ' · ID: ' + (c.custId || '-') + ' · Due ₹' + Number(c.dueAmt || c.due || 0);
+  document.getElementById('transferFromStreet').textContent =
+    (c.place || '-') + ' · ' + (c.street || '-');
+  const place = (c.place === 'AREA 2') ? 'AREA 2' : 'AREA 1';
+  document.getElementById('transferPlace').value = place;
+  document.getElementById('transferDoor').value = c.doorNo || '';
+  document.getElementById('transferMso').value = c.mso || '';
+  document.getElementById('transferBox').value = c.boxNo || '';
+  document.getElementById('transferSc').value = c.scNo || c.smartCard || '';
+  // MSO datalist
+  const dl = document.getElementById('transferMsoList');
+  if (dl) {
+    const msos = [...new Set((allCustomers || []).map(x => x.mso).filter(Boolean))].sort();
+    dl.innerHTML = msos.map(m => `<option value="${m}">`).join('');
+  }
+  onTransferPlaceChange(c.street || '');
+  document.getElementById('transferModal').classList.remove('hidden');
+}
+
+function onTransferPlaceChange(keepStreet) {
+  const place = document.getElementById('transferPlace')?.value || 'AREA 1';
+  const sel = document.getElementById('transferStreet');
+  if (!sel) return;
+  const list = (typeof getStreetsForPlace === 'function')
+    ? getStreetsForPlace(place)
+    : [];
+  sel.innerHTML = '<option value="">- Select Street -</option>' +
+    list.map(s => `<option value="${String(s.street).replace(/"/g, '&quot;')}" data-sid="${s.streetId || ''}">${s.street} (${s.streetId || ''})</option>`).join('');
+  if (keepStreet) {
+    const found = list.find(s => s.street === keepStreet);
+    if (found) sel.value = keepStreet;
+  }
+  onTransferStreetChange();
+}
+
+function onTransferStreetChange() {
+  const place = document.getElementById('transferPlace')?.value || '';
+  const street = document.getElementById('transferStreet')?.value || '';
+  const idEl = document.getElementById('transferCustId');
+  if (!idEl) return;
+  if (!place || !street) { idEl.value = ''; return; }
+  const streetId = (typeof getStreetId === 'function')
+    ? getStreetId(place, street)
+    : street.replace(/\s+/g, '').slice(0, 3).toUpperCase();
+  let nextNum = 1;
+  if (typeof getNextNumberForStreet === 'function') {
+    nextNum = getNextNumberForStreet(streetId, street);
+  }
+  idEl.value = streetId + nextNum;
+}
+
+function fillTransferStreets(selectName) {
+  onTransferPlaceChange(selectName);
+}
+
+function closeTransferModal() {
+  document.getElementById('transferModal')?.classList.add('hidden');
+  window._transferCustId = null;
+}
+
+async function saveTransferModal() {
+  const id = window._transferCustId;
+  if (!id) return;
+  const c = allCustomers.find(x => x.id === id);
+  if (!c) return;
+  const street = (document.getElementById('transferStreet')?.value || '').trim();
+  const place = (document.getElementById('transferPlace')?.value || '').trim();
+  const newCustId = (document.getElementById('transferCustId')?.value || '').trim();
+  const doorNo = (document.getElementById('transferDoor')?.value || '').trim();
+  const mso = (document.getElementById('transferMso')?.value || '').trim();
+  const boxNo = (document.getElementById('transferBox')?.value || '').trim();
+  const scNo = (document.getElementById('transferSc')?.value || '').trim();
+  if (!street) { showToast('Street தேர்வு செய்யுங்கள்', true); return; }
+  if (!newCustId) { showToast('Customer ID தேவை', true); return; }
+  // duplicate ID check (other customers)
+  const dup = (allCustomers || []).find(x =>
+    x.id !== id && String(x.custId || '').toUpperCase() === newCustId.toUpperCase()
+  );
+  if (dup) {
+    if (!confirm('ID ' + newCustId + ' already used by ' + (dup.name || '') + '.\nContinue anyway?')) return;
+  }
   try {
     const oldStreet = c.street || '';
     const oldPlace = c.place || '';
-    await db.collection('customers').doc(id).update({
+    const oldCustId = c.custId || '';
+    const updates = {
       street,
-      place: (place || '').trim(),
+      place,
+      custId: newCustId,
+      doorNo: doorNo || (c.doorNo || ''),
+      mso: mso || (c.mso || ''),
+      boxNo: boxNo || '',
+      scNo: scNo || '',
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    // transfer log
+    };
+    await db.collection('customers').doc(id).update(updates);
+    // box stock update if box changed
+    if (boxNo && boxNo !== (c.boxNo || '')) {
+      try {
+        if (typeof upsertBoxStock === 'function') {
+          await upsertBoxStock(boxNo, {
+            status: 'assigned',
+            customerId: id,
+            customerName: c.name || '',
+            mso: mso || c.mso || '',
+            scNo: scNo
+          });
+        }
+      } catch (_) {}
+    }
     try {
       await db.collection('transfers').add({
         customerId: id,
         customerName: c.name || '',
-        custId: c.custId || '',
+        fromCustId: oldCustId,
+        toCustId: newCustId,
         fromStreet: oldStreet,
         toStreet: street,
         fromPlace: oldPlace,
-        toPlace: (place || '').trim(),
+        toPlace: place,
+        mso: mso || c.mso || '',
+        boxNo: boxNo || c.boxNo || '',
         date: new Date().toISOString().slice(0, 10),
         createdBy: currentUser?.email || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     } catch (_) {}
     const idx = allCustomers.findIndex(x => x.id === id);
-    if (idx >= 0) {
-      allCustomers[idx].street = street;
-      allCustomers[idx].place = (place || '').trim();
-    }
-    showToast('Transfer saved: ' + street);
+    if (idx >= 0) Object.assign(allCustomers[idx], updates);
+    closeTransferModal();
+    showToast('Transfer OK · ' + place + ' · ' + street + ' · ' + newCustId);
     await viewLedger(id);
   } catch (e) {
     showToast('Transfer error: ' + e.message, true);

@@ -1682,6 +1682,60 @@
   </div>
 
   <!-- Toast Notification -->
+  
+  
+  <div id="transferModal" class="hidden fixed inset-0 z-[60] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-w-md w-full p-4 space-y-3 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="font-semibold text-lg">Customer Transfer</h3>
+        <button type="button" onclick="closeTransferModal()" class="text-slate-400 text-xl px-2">×</button>
+      </div>
+      <p class="text-xs text-slate-500" id="transferCustLabel">-</p>
+      <div class="text-xs bg-slate-50 rounded-lg p-2 text-slate-600">
+        <span class="text-slate-400">From:</span> <span id="transferFromStreet">-</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="col-span-2">
+          <label class="text-[10px] text-slate-500">Area *</label>
+          <select id="transferPlace" onchange="onTransferPlaceChange()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+            <option value="AREA 1">AREA 1</option>
+            <option value="AREA 2">AREA 2</option>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label class="text-[10px] text-slate-500">New Street *</label>
+          <select id="transferStreet" onchange="onTransferStreetChange()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white"></select>
+        </div>
+        <div class="col-span-2">
+          <label class="text-[10px] text-slate-500">New Customer ID * (edit ok)</label>
+          <input type="text" id="transferCustId" class="w-full px-3 py-2 border rounded-lg text-sm font-mono">
+          <p class="text-[10px] text-slate-400 mt-0.5">Street-ல் last ID-க்கு அடுத்த எண் auto · மாற்றலாம்</p>
+        </div>
+        <div>
+          <label class="text-[10px] text-slate-500">Door No</label>
+          <input type="text" id="transferDoor" class="w-full px-3 py-2 border rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="text-[10px] text-slate-500">MSO</label>
+          <input type="text" id="transferMso" list="transferMsoList" class="w-full px-3 py-2 border rounded-lg text-sm">
+          <datalist id="transferMsoList"></datalist>
+        </div>
+        <div>
+          <label class="text-[10px] text-slate-500">Box No</label>
+          <input type="text" id="transferBox" class="w-full px-3 py-2 border rounded-lg text-sm font-mono">
+        </div>
+        <div>
+          <label class="text-[10px] text-slate-500">VC / SC</label>
+          <input type="text" id="transferSc" class="w-full px-3 py-2 border rounded-lg text-sm font-mono">
+        </div>
+      </div>
+      <div class="flex gap-2 pt-1 sticky bottom-0 bg-white">
+        <button type="button" onclick="closeTransferModal()" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-sm">Cancel</button>
+        <button type="button" onclick="saveTransferModal()" class="flex-1 bg-amber-600 text-white py-2.5 rounded-xl text-sm font-medium">Save Transfer</button>
+      </div>
+    </div>
+  </div>
+
   <div id="receiptModal" class="hidden fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-4">
       <div id="receiptContent" class="receipt-sheet receipt-only"></div>
