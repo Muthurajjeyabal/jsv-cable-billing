@@ -12,9 +12,14 @@
       try {
         var lang = localStorage.getItem('jsv_lang') || 'en';
         var theme = localStorage.getItem('jsv_theme') || 'light';
+        var ts = localStorage.getItem('jsv_text_size') || 'normal';
         document.documentElement.lang = lang;
         if (theme === 'dark') document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
+        document.documentElement.classList.remove('text-lg-mode','text-xl-mode','text-xxl-mode');
+        if (ts === 'large') document.documentElement.classList.add('text-lg-mode');
+        else if (ts === 'xlarge') document.documentElement.classList.add('text-xl-mode');
+        else if (ts === 'xxlarge') document.documentElement.classList.add('text-xxl-mode');
       } catch (e) {}
     })();
   </script>
@@ -65,6 +70,17 @@
       background-color: #0f172a !important; border-color: #1e293b !important;
     }
     html.dark #sidebar { background-color: #020617 !important; }
+
+    /* Senior / large text modes — scale whole UI without breaking layout */
+    html.text-lg-mode { font-size: 112.5%; }
+    html.text-xl-mode { font-size: 125%; }
+    html.text-xxl-mode { font-size: 137.5%; }
+    html.text-lg-mode .text-xs, html.text-xl-mode .text-xs, html.text-xxl-mode .text-xs { font-size: 0.8rem !important; }
+    html.text-lg-mode .text-\[10px\], html.text-xl-mode .text-\[10px\], html.text-xxl-mode .text-\[10px\],
+    html.text-lg-mode .text-\[11px\], html.text-xl-mode .text-\[11px\], html.text-xxl-mode .text-\[11px\] {
+      font-size: 0.75rem !important;
+    }
+
     .settings-acc-btn { background: transparent; }
     .settings-acc.open .settings-acc-chev { transform: rotate(180deg); }
     .settings-acc-chev { transition: transform .15s; display:inline-block; }
@@ -2061,6 +2077,16 @@
                       <option value="en">English</option>
                     </select>
                   </div>
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">Text size (A / A+)</label>
+                  <select id="settingTextSize" onchange="setAppTextSize(this.value)" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="normal">A · Normal</option>
+                    <option value="large">A+ · Large</option>
+                    <option value="xlarge">A++ · Extra large</option>
+                    <option value="xxlarge">A+++ · Senior</option>
+                  </select>
+                  <p class="text-[11px] text-slate-400 mt-1">வயதானவர்களுக்கு பெரிய எழுத்து — layout உடையாது</p>
                 </div>
                 <p class="text-[11px] text-slate-400" data-i18n="themeHint">Theme & language save on this device</p>
               </div>

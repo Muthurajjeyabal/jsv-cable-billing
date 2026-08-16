@@ -220,7 +220,7 @@ function showPage(pageId, isBack) {
     const bd = document.getElementById('billDate');
     if (bd) { bd.value = new Date().toISOString().slice(0, 10); bd.readOnly = true; }
   }
-  if (pageId === 'settings') { loadWaTemplate(); applyAppTheme(); applyAppLang(); if (typeof loadBillingSettings === 'function') loadBillingSettings(); if (typeof applyDashLayout === 'function') applyDashLayout(); }
+  if (pageId === 'settings') { loadWaTemplate(); applyAppTheme(); applyAppLang(); if (typeof applyAppTextSize === 'function') applyAppTextSize(); if (typeof loadBillingSettings === 'function') loadBillingSettings(); if (typeof applyDashLayout === 'function') applyDashLayout(); }
   if (pageId === 'monthBill') { refreshMonthBillLockUI(); }
   if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d){ d.value=new Date().toISOString().slice(0,10); d.readOnly=true; } loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
@@ -6334,6 +6334,7 @@ function applyAppLang() {
 function initThemeLang() {
   applyAppTheme();
   applyAppLang();
+  try { if (typeof applyAppTextSize === 'function') applyAppTextSize(); } catch (e) {}
   try { if (typeof applyDashLayout === 'function') applyDashLayout(); } catch (e) {}
 }
 // run early
@@ -6452,4 +6453,25 @@ function applyDashLayout() {
   setChk('dashShowNetwork', o.network);
   setChk('dashShowAgents', o.agents);
   setChk('dashShowQuick', o.quick);
+}
+
+
+function getAppTextSize() {
+  try { return localStorage.getItem('jsv_text_size') || 'normal'; } catch (e) { return 'normal'; }
+}
+function setAppTextSize(v) {
+  v = v || 'normal';
+  try { localStorage.setItem('jsv_text_size', v); } catch (e) {}
+  applyAppTextSize();
+  if (typeof showToast === 'function') showToast('Text size: ' + v);
+}
+function applyAppTextSize() {
+  const v = getAppTextSize();
+  const root = document.documentElement;
+  root.classList.remove('text-lg-mode', 'text-xl-mode', 'text-xxl-mode');
+  if (v === 'large') root.classList.add('text-lg-mode');
+  else if (v === 'xlarge') root.classList.add('text-xl-mode');
+  else if (v === 'xxlarge') root.classList.add('text-xxl-mode');
+  const sel = document.getElementById('settingTextSize');
+  if (sel) sel.value = v;
 }
