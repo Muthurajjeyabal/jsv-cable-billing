@@ -4231,14 +4231,8 @@ async function renderColSummaryReport() {
 }
 
 function parseConnDateISO(c) {
+  // Only real connection fields — NOT createdAt (import day pollutes "new" list)
   let raw = (c.conDate || c.connectionDate || c.regDate || '').toString().trim();
-  if (!raw && c.createdAt) {
-    try {
-      if (c.createdAt.toDate) raw = c.createdAt.toDate().toISOString().slice(0, 10);
-      else if (typeof c.createdAt === 'string') raw = c.createdAt.slice(0, 10);
-      else if (c.createdAt.seconds) raw = new Date(c.createdAt.seconds * 1000).toISOString().slice(0, 10);
-    } catch (e) {}
-  }
   if (!raw) return '';
   // DD/MM/YYYY or DD-MM-YYYY
   let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
@@ -4285,13 +4279,14 @@ function renderNewConnReport() {
     return { c, isoD };
   }).filter(x => {
     if (!x.isoD || x.isoD < from || x.isoD > to) return false;
+    if (String(x.c.status || 'ACT').toUpperCase() === 'DC') return false;
     if (areaF !== 'ALL' && normPlace(x.c.place) !== areaF) return false;
     return true;
   }).sort((a, b) => b.isoD.localeCompare(a.isoD));
 
   if (sum) sum.textContent = list.length + ' new · ' + from + ' → ' + to + (areaF !== 'ALL' ? ' · ' + areaF : '');
   if (!list.length) {
-    body.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">No new connections in range</div>';
+    body.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">No new connections in range<br><span class="text-[11px]">conDate உள்ள Active customers மட்டும்</span></div>';
     return;
   }
   body.innerHTML = `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">
