@@ -5138,53 +5138,105 @@ async function renderTransferReport() {
   const from = document.getElementById('trRepFrom')?.value;
   const to = document.getElementById('trRepTo')?.value;
   const place = document.getElementById('trRepPlace')?.value || '';
+  const typeF = (document.getElementById('trRepType') || {}).value || 'ALL';
   const body = document.getElementById('trRepBody');
   const sum = document.getElementById('trRepSummary');
   if (!body) return;
   body.innerHTML = '<div class="p-6 text-center text-slate-400">Loading...</div>';
   try {
     let snap;
-    if (from && to) {
-      snap = await db.collection('transfers').where('date', '>=', from).where('date', '<=', to).get();
-    } else {
-      snap = await db.collection('transfers').orderBy('date', 'desc').limit(500).get();
+    try {
+      if (from && to) {
+        snap = await db.collection('transfers').where('date', '>=', from).where('date', '<=', to).get();
+      } else {
+        snap = await db.collection('transfers').orderBy('date', 'desc').limit(500).get();
+      }
+    } catch (e1) {
+      snap = await db.collection('transfers').limit(500).get();
     }
     let rows = [];
-    snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
-    if (place) {
-      rows = rows.filter(r =>
-        String(r.fromPlace || '') === place || String(r.toPlace || '') === place
-      );
+    snap.forEach(function (doc) { rows.push({ id: doc.id, ...doc.data() }); });
+    if (from && to) {
+      rows = rows.filter(function (r) {
+        const d = String(r.date || '');
+        return d >= from && d <= to;
+      });
     }
-    rows.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    if (place) {
+      rows = rows.filter(function (r) {
+        return String(r.fromPlace || '') === place || String(r.toPlace || '') === place;
+      });
+    }
+    rows = rows.map(function (r) {
+      const areaCh = String(r.fromPlace || '').trim() !== String(r.toPlace || '').trim();
+      const streetCh = String(r.fromStreet || '').trim() !== String(r.toStreet || '').trim();
+      return Object.assign({}, r, { _areaCh: areaCh, _streetCh: streetCh });
+    });
+    if (typeF === 'AREA') rows = rows.filter(function (r) { return r._areaCh; });
+    if (typeF === 'STREET') rows = rows.filter(function (r) { return r._streetCh && !r._areaCh; });
+    rows.sort(function (a, b) { return String(b.date || '').localeCompare(String(a.date || '')); });
+
+    const nArea = rows.filter(function (r) { return r._areaCh; }).length;
+    const nStreet = rows.filter(function (r) { return r._streetCh && !r._areaCh; }).length;
+    const latest = rows[0] ? (rows[0].date || '—') : '—';
+
     if (sum) sum.textContent = rows.length + ' transfers';
+
+    let html = '';
+    html += '<div class="grid grid-cols-4 gap-1.5 mb-3">';
+    html += '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-lg font-bold text-indigo-700">' + rows.length + '</div><div class="text-[9px] text-slate-400">Total</div></div>';
+    html += '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-lg font-bold text-amber-600">' + nArea + '</div><div class="text-[9px] text-slate-400">Area</div></div>';
+    html += '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-lg font-bold text-blue-600">' + nStreet + '</div><div class="text-[9px] text-slate-400">Street</div></div>';
+    html += '<div class="bg-white rounded-xl border p-2 text-center"><div class="text-[11px] font-semibold text-slate-700 truncate">' + latest + '</div><div class="text-[9px] text-slate-400">Latest</div></div></div>';
+
     if (!rows.length) {
-      body.innerHTML = '<div class="p-8 text-center text-slate-400">No transfers in this range</div>';
+      html += '<div class="p-8 text-center text-slate-400 bg-white rounded-xl border">No customer transfers in selected period</div>';
+      body.innerHTML = html;
       return;
     }
-    body.innerHTML = `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-xs">
-      <thead class="bg-slate-50 sticky top-0"><tr>
-        <th class="text-left p-2">Date</th>
-        <th class="text-left p-2">ID</th>
-        <th class="text-left p-2">Name</th>
-        <th class="text-left p-2">From</th>
-        <th class="text-left p-2">To</th>
-        <th class="text-left p-2">By</th>
-      </tr></thead><tbody>` +
-      rows.map(r => `<tr class="border-t">
-        <td class="p-2">${r.date || '-'}</td>
-        <td class="p-2">${r.custId || '-'}</td>
-        <td class="p-2 font-medium">${r.customerName || '-'}</td>
-        <td class="p-2 text-slate-500">${r.fromPlace || ''} / ${r.fromStreet || ''}</td>
-        <td class="p-2 text-emerald-700">${r.toPlace || ''} / ${r.toStreet || ''}</td>
-        <td class="p-2 text-slate-400">${(r.changedBy || '').split('@')[0]}</td>
-      </tr>`).join('') + '</tbody></table></div>';
+
+    const cards = rows.map(function (r) {
+      const by = String(r.changedBy || r.createdBy || '').split('@')[0] || '—';
+      const fromL = [r.fromPlace, r.fromStreet].filter(Boolean).join(' · ') || '—';
+      const toL = [r.toPlace, r.toStreet].filter(Boolean).join(' · ') || '—';
+      const idShow = r.toCustId || r.fromCustId || r.custId || '—';
+      const cid = r.customerId || '';
+      return '<div class="bg-white rounded-xl border p-3 shadow-sm">' +
+        '<div class="font-semibold text-sm text-slate-900">' + (r.customerName || '—') + '</div>' +
+        '<div class="text-[11px] text-slate-500">ID: ' + idShow + (r.fromCustId && r.toCustId && r.fromCustId !== r.toCustId ? ' · was ' + r.fromCustId : '') + '</div>' +
+        '<div class="mt-2 text-xs text-slate-500">' + fromL + '</div>' +
+        '<div class="text-center text-slate-300 text-xs my-0.5">↓</div>' +
+        '<div class="text-xs font-medium text-emerald-700">' + toL + '</div>' +
+        '<div class="flex justify-between items-center mt-2 pt-2 border-t border-slate-50">' +
+        '<span class="text-[10px] text-slate-400">' + (r.date || '') + ' · ' + by + '</span>' +
+        (cid ? '<button type="button" onclick="viewLedger(\'' + cid + '\')" class="text-xs text-indigo-600 font-medium">View →</button>' : '') +
+        '</div></div>';
+    }).join('');
+
+    const table = '<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-xs">' +
+      '<thead class="bg-slate-50 sticky top-0"><tr>' +
+      '<th class="text-left p-2">Date</th><th class="text-left p-2">Name</th>' +
+      '<th class="text-left p-2">From</th><th class="text-left p-2">To</th><th class="text-left p-2">By</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        const by = String(r.changedBy || r.createdBy || '').split('@')[0] || '—';
+        return '<tr class="border-t">' +
+          '<td class="p-2 whitespace-nowrap">' + (r.date || '-') + '</td>' +
+          '<td class="p-2 font-medium">' + (r.customerName || '-') + '<div class="text-[10px] text-slate-400">' + (r.toCustId || r.custId || '') + '</div></td>' +
+          '<td class="p-2 text-slate-500">' + (r.fromPlace || '') + ' / ' + (r.fromStreet || '') + '</td>' +
+          '<td class="p-2 text-emerald-700">' + (r.toPlace || '') + ' / ' + (r.toStreet || '') + '</td>' +
+          '<td class="p-2 text-slate-400">' + by + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+
+    html += '<div class="md:hidden space-y-2">' + cards + '</div>';
+    html += '<div class="hidden md:block bg-white rounded-xl border overflow-hidden">' + table + '</div>';
+    body.innerHTML = html;
   } catch (e) {
     console.error(e);
-    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message +
-      (String(e.message).includes('index') ? '<br>Firebase index create link console-ல் open செய்யுங்கள்' : '') + '</div>';
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + (e.message || e) +
+      (String(e.message || '').includes('index') ? '<br>Firebase index create link console-ல் open செய்யுங்கள்' : '') + '</div>';
   }
 }
+
 
 
 function closeReportPanels() {
