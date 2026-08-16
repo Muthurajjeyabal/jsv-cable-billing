@@ -4289,20 +4289,45 @@ function renderNewConnReport() {
     body.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">No new connections in range<br><span class="text-[11px]">conDate உள்ள Active customers மட்டும்</span></div>';
     return;
   }
-  body.innerHTML = `<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">
-    <thead class="bg-slate-50 sticky top-0"><tr>
-      <th class="text-left px-2 py-2">Date</th><th class="text-left px-2 py-2">ID</th>
-      <th class="text-left px-2 py-2">Name</th><th class="text-left px-2 py-2">Street</th>
-      <th class="text-left px-2 py-2">Area</th><th class="text-left px-2 py-2">Pkg</th>
-    </tr></thead><tbody>` +
-    list.map(({ c, isoD }) => `<tr class="border-t hover:bg-slate-50 cursor-pointer" onclick="viewLedger('${c.id}')">
-      <td class="px-2 py-1.5 text-xs whitespace-nowrap">${isoD}</td>
-      <td class="px-2 py-1.5 font-mono text-xs">${c.custId||''}</td>
-      <td class="px-2 py-1.5">${c.name||''}</td>
-      <td class="px-2 py-1.5 text-xs">${c.street||''}</td>
-      <td class="px-2 py-1.5 text-xs">${c.place||''}</td>
-      <td class="px-2 py-1.5 text-xs">₹${Number(c.packageAmt||0).toLocaleString('en-IN')}</td>
-    </tr>`).join('') + '</tbody></table></div>';
+
+  // Mobile cards
+  var cards = list.map(function (item) {
+    var c = item.c, isoD = item.isoD;
+    var due = Number(c.packageAmt || 0);
+    var nm = String(c.name || '—');
+    var id = c.id || '';
+    return '<div class="bg-white rounded-xl border border-slate-100 p-3 shadow-sm">' +
+      '<div class="flex justify-between items-start gap-2">' +
+      '<div class="min-w-0"><div class="font-semibold text-slate-900 truncate">' + nm + '</div>' +
+      '<div class="text-[11px] text-slate-500 mt-0.5">ID: ' + (c.custId || '—') + ' · ' + isoD + '</div></div>' +
+      '<div class="text-sm font-bold text-indigo-700 shrink-0">₹' + due.toLocaleString('en-IN') + '</div></div>' +
+      '<div class="text-xs text-slate-600 mt-1.5">📍 ' + (c.street || '—') + (c.place ? ' · ' + c.place : '') + '</div>' +
+      '<div class="text-[11px] text-slate-500 mt-0.5">📦 ' + (c.boxNo || '—') + ' · ' + (c.mso || '—') + '</div>' +
+      '<div class="mt-2 pt-2 border-t border-slate-50">' +
+      '<button type="button" onclick="viewLedger(\'' + id + '\')" class="w-full py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium">View Ledger →</button>' +
+      '</div></div>';
+  }).join('');
+
+  // Desktop table
+  var table = '<div class="overflow-x-auto max-h-[70vh]"><table class="w-full text-sm">' +
+    '<thead class="bg-slate-50 sticky top-0"><tr>' +
+    '<th class="text-left px-2 py-2">Date</th><th class="text-left px-2 py-2">ID</th>' +
+    '<th class="text-left px-2 py-2">Name</th><th class="text-left px-2 py-2">Street</th>' +
+    '<th class="text-left px-2 py-2">Area</th><th class="text-left px-2 py-2">Pkg</th>' +
+    '</tr></thead><tbody>' +
+    list.map(function (item) {
+      var c = item.c, isoD = item.isoD;
+      return '<tr class="border-t hover:bg-slate-50 cursor-pointer" onclick="viewLedger(\'' + (c.id || '') + '\')">' +
+        '<td class="px-2 py-1.5 text-xs whitespace-nowrap">' + isoD + '</td>' +
+        '<td class="px-2 py-1.5 font-mono text-xs">' + (c.custId || '') + '</td>' +
+        '<td class="px-2 py-1.5">' + (c.name || '') + '</td>' +
+        '<td class="px-2 py-1.5 text-xs">' + (c.street || '') + '</td>' +
+        '<td class="px-2 py-1.5 text-xs">' + (c.place || '') + '</td>' +
+        '<td class="px-2 py-1.5 text-xs">₹' + Number(c.packageAmt || 0).toLocaleString('en-IN') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+
+  body.innerHTML = '<div class="md:hidden space-y-2">' + cards + '</div>' +
+    '<div class="hidden md:block bg-white rounded-xl border overflow-hidden">' + table + '</div>';
 }
 
 async function renderPayModeReport() {
