@@ -276,9 +276,6 @@
         </button>
       </form>
 
-      <p class="text-center text-xs text-slate-400 mt-6">
-        Collectors → use Collector App only
-      </p>
       <p class="text-center mt-2">
         <a href="collector.html" class="text-xs text-emerald-600 hover:underline">Open Collector App →</a>
       </p>
@@ -1080,8 +1077,7 @@
 
           <div class="bg-white rounded-xl shadow-sm border p-4 mb-4">
             <h3 class="font-semibold mb-2 text-sm">Import MSO Box List</h3>
-            <p class="text-xs text-slate-500 mb-3">MSO site-ல இருந்து download செய்த list paste செய்யுங்கள். Customer box match → With Customers · match ஆகாதது → Store.</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-2">
               <div>
                 <label class="text-xs text-slate-500">MSO *</label>
                 <select id="importBoxMso" class="w-full px-3 py-2 border rounded-lg bg-white">
@@ -1140,18 +1136,6 @@
           <!-- Report menu -->
           
           <div id="reportMenu" class="no-print space-y-4 mb-4">
-            <!-- Date preset -->
-            <div class="flex flex-wrap gap-1.5">
-              <button type="button" onclick="setReportDatePreset('today')" class="rep-date-btn px-3 py-1.5 rounded-full text-xs bg-white border border-slate-200 text-slate-600" data-preset="today">Today</button>
-              <button type="button" onclick="setReportDatePreset('week')" class="rep-date-btn px-3 py-1.5 rounded-full text-xs bg-white border border-slate-200 text-slate-600" data-preset="week">This Week</button>
-              <button type="button" onclick="setReportDatePreset('month')" class="rep-date-btn px-3 py-1.5 rounded-full text-xs bg-indigo-600 text-white border border-indigo-600" data-preset="month">This Month</button>
-              <button type="button" onclick="setReportDatePreset('custom')" class="rep-date-btn px-3 py-1.5 rounded-full text-xs bg-white border border-slate-200 text-slate-600" data-preset="custom">Custom</button>
-            </div>
-            <div id="repCustomDates" class="hidden grid grid-cols-2 gap-2">
-              <input type="date" id="repFrom" class="px-2 py-1.5 border rounded-lg text-sm">
-              <input type="date" id="repTo" class="px-2 py-1.5 border rounded-lg text-sm">
-            </div>
-
             <div>
               <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase mb-1.5 px-0.5">💰 Collection</div>
               <div class="space-y-2">
@@ -1249,8 +1233,7 @@
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
             <div class="soft-card p-4 mb-4 no-print">
               <h3 class="font-semibold text-sm text-slate-800 mb-1">Collectors Print Out</h3>
-              <p class="text-xs text-slate-500 mb-3">Pending full · Street-wise · A4 · Area 1 / 2</p>
-              <div class="flex flex-wrap gap-2 items-end">
+                            <div class="flex flex-wrap gap-2 items-end">
                 <div>
                   <label class="text-[10px] text-slate-500">Area</label>
                   <select id="colRepArea" onchange="renderCollectionReport()" class="block px-3 py-2 border rounded-lg text-sm bg-white">
@@ -1273,8 +1256,7 @@
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
             <div class="soft-card p-4 mb-4 no-print">
               <h3 class="font-semibold text-sm text-slate-800 mb-1">Transfer Report</h3>
-              <p class="text-xs text-slate-500 mb-3">Customer Area / Street மாற்றிய history</p>
-              <div class="flex flex-wrap gap-2 items-end">
+                            <div class="flex flex-wrap gap-2 items-end">
                 <div>
                   <label class="text-[10px] text-slate-500">From</label>
                   <input type="date" id="trRepFrom" class="block px-3 py-2 border rounded-lg text-sm">
@@ -1305,8 +1287,7 @@
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
             <div class="soft-card p-4 mb-4 no-print">
               <h3 class="font-semibold text-sm text-slate-800 mb-1">Collection Report</h3>
-              <p class="text-xs text-slate-500 mb-3">எந்த தேதி · யார் collect — amount + bill list</p>
-              <div class="grid grid-cols-2 gap-2 items-end">
+                            <div class="grid grid-cols-2 gap-2 items-end">
                 <div>
                   <label class="text-[10px] text-slate-500">From</label>
                   <input type="date" id="agentRepFrom" class="w-full px-2 py-2 border rounded-lg text-sm">
@@ -1317,7 +1298,7 @@
                 </div>
                 <div>
                   <label class="text-[10px] text-slate-500">Agent</label>
-                  <select id="agentRepWho" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                  <select id="agentRepWho" onchange="renderAgentDayReport()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
                     <option value="ALL">All</option>
                     <option value="uma">UMA</option>
                     <option value="muthumari">MUTHUMARI</option>
@@ -1327,7 +1308,7 @@
                 </div>
                 <div>
                   <label class="text-[10px] text-slate-500">Area</label>
-                  <select id="agentRepArea" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                  <select id="agentRepArea" onchange="renderAgentDayReport()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
                     <option value="ALL">All Areas</option>
                     <option value="AREA 1">AREA 1</option>
                     <option value="AREA 2">AREA 2</option>
@@ -1335,13 +1316,13 @@
                 </div>
                 <div>
                   <label class="text-[10px] text-slate-500">MSO</label>
-                  <select id="agentRepMso" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                  <select id="agentRepMso" onchange="renderAgentDayReport()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
                     <option value="ALL">All MSO</option>
                   </select>
                 </div>
                 <div>
                   <label class="text-[10px] text-slate-500">Group</label>
-                  <select id="agentRepGroup" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                  <select id="agentRepGroup" onchange="renderAgentDayReport()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
                     <option value="date">By Date</option>
                     <option value="area">By Area</option>
                     <option value="mso">By MSO</option>
@@ -1363,8 +1344,7 @@
                 </div>
               </div>
               <div class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5" id="agentRepSplit"></div>
-              <p class="text-[10px] text-slate-400 mt-2">MSO தேர்ந்தால் Agent = All → Uma + Muthumari + Office + Online எல்லாம் வரும்</p>
-            </div>
+                          </div>
             <div id="agentRepPrintArea">
             <div class="px-3 py-2 text-center hidden print:block" id="agentRepPrintHead"></div>
             <div id="agentRepBody" class="bg-white rounded-xl border overflow-hidden text-sm"></div>
@@ -1552,8 +1532,7 @@
             <button type="button" onclick="showMasterPanel(null)" class="text-sm text-blue-600 mb-2">← Back</button>
             <div class="bg-white rounded-xl border p-4">
               <h3 class="font-semibold mb-2 text-sm">Place / Area</h3>
-              <p class="text-xs text-slate-500 mb-3">இப்போது AREA 1, AREA 2 fixed. கூட்ட AREA 3 வேண்டுமானால் Settings-ல் சொல்லுங்கள்.</p>
-              <ul class="text-sm space-y-1">
+                            <ul class="text-sm space-y-1">
                 <li class="px-3 py-2 bg-slate-50 rounded-lg">AREA 1</li>
                 <li class="px-3 py-2 bg-slate-50 rounded-lg">AREA 2</li>
               </ul>
@@ -1624,8 +1603,7 @@
                 <button type="button" onclick="saveEmployee()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Save</button>
                 <button type="button" onclick="clearEmpForm()" class="bg-slate-200 px-4 py-2 rounded-lg text-sm">Clear</button>
               </div>
-              <p class="text-[10px] text-slate-400 mt-2">Save = Login user + Area ஒன்றாக create. Firebase Console போக வேண்டாம். Edit-ல் password காலி = password மாறாது.</p>
-            </div>
+                          </div>
             <div class="bg-white rounded-xl border overflow-hidden">
               <div class="px-3 py-2 bg-slate-50 text-xs font-medium text-slate-600 border-b">Collectors list</div>
               <div id="empList" class="divide-y text-sm">
@@ -1742,17 +1720,15 @@
 
             <div class="border rounded-xl p-4 border-amber-200 bg-amber-50">
               <div class="font-medium mb-1 text-amber-900">Next Month Bill Generation</div>
-              <p class="text-xs text-amber-800 mb-3">Active customers-க்கு மட்டும் Package Amount-ஐ Due-வோடு சேர்க்கும். DC skip.</p>
-              <button type="button" onclick="generateMonthDue()" id="genDueBtn"
+                            <button type="button" onclick="generateMonthDue()" id="genDueBtn"
                 class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">Generate Next Month Bill</button>
-              <p class="text-xs text-amber-800/80 mt-2" id="genDueHint">மாதத்திற்கு <b>ஒரு முறை</b> மட்டும்.</p>
-              <div id="genDueStatus" class="text-xs text-slate-600 mt-2"></div>
+              <p class="text-xs text-amber-800/80 mt-2 hidden" id="genDueHint"></p>
+                            <div id="genDueStatus" class="text-xs text-slate-600 mt-2"></div>
             </div>
 
             <div class="border rounded-xl p-4 border-emerald-200 bg-emerald-50">
               <div class="font-medium mb-1 text-emerald-900">Monthly Backup</div>
-              <p class="text-xs text-emerald-800 mb-3">Customers · Boxes · Collections · DC · Masters — one click · 3 files</p>
-              <button type="button" onclick="runFullBackup()" id="backupBtn"
+                            <button type="button" onclick="runFullBackup()" id="backupBtn"
                 class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">
                 ⬇ Backup Now
               </button>
@@ -1761,8 +1737,7 @@
 
             <div class="border rounded-xl p-4 border-indigo-200 bg-indigo-50">
               <div class="font-medium mb-1 text-indigo-900">Collectors Print Out</div>
-              <p class="text-xs text-indigo-800 mb-3">Pending full list · Street-wise · A4 print · Area 1 / Area 2 · collector-க்கு கொடுக்க</p>
-              <button type="button" onclick="openCollectorsPrintOut()"
+                            <button type="button" onclick="openCollectorsPrintOut()"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">
                 🖨 Open Print Out
               </button>
@@ -1777,8 +1752,7 @@
 
             <div class="border rounded-xl p-4 border-green-200 bg-green-50">
               <div class="font-medium mb-1 text-green-900">WhatsApp Templates</div>
-              <p class="text-xs text-green-800 mb-2">Due / பண்டிகை — edit → Save. Placeholders: {name} {month} {due} {gpay} {office}</p>
-              <select id="waTplSelect" onchange="onWaTplSelect()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white mb-2"></select>
+                            <select id="waTplSelect" onchange="onWaTplSelect()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white mb-2"></select>
               <input type="text" id="waTplName" placeholder="Template name" class="w-full px-3 py-2 border rounded-lg text-sm mb-2">
               <textarea id="waTemplate" rows="9" class="w-full px-3 py-2 border rounded-lg text-sm font-mono"></textarea>
               <div class="flex flex-wrap gap-2 mt-2">
@@ -1786,22 +1760,19 @@
                 <button type="button" onclick="addWaTemplate()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">+ New</button>
                 <button type="button" onclick="deleteWaTemplate()" class="bg-red-100 text-red-700 px-3 py-2 rounded-lg text-sm">Delete</button>
               </div>
-              <p class="text-xs text-slate-500 mt-2">Default send template:</p>
-              <select id="waDefaultTpl" onchange="saveWaDefaultTpl()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white mt-1"></select>
+                            <select id="waDefaultTpl" onchange="saveWaDefaultTpl()" class="w-full px-3 py-2 border rounded-lg text-sm bg-white mt-1"></select>
               <p id="waTemplateStatus" class="text-xs text-slate-500 mt-2"></p>
             </div>
 
             <div class="border rounded-xl p-4 border-blue-200 bg-blue-50">
               <div class="font-medium mb-1 text-blue-900">Import CableSoft Collections</div>
-              <p class="text-xs text-blue-800 mb-2">16 Aug list · 1205 bills · Duplicate skip · GPAY→Online · LOCAL→Office · UMA/MUTHUMARI</p>
-              <button type="button" onclick="importAugustCollections()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium">
+                            <button type="button" onclick="importAugustCollections()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium">
                 Import Collections (to 16 Aug)
               </button>
               <button type="button" onclick="fixGpayLocalAgents()" class="mt-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">
                 Fix GPAY→Online · LOCAL→Office
               </button>
-              <p class="text-[10px] text-slate-500 mt-1">Already imported? Use Fix button — re-add வேண்டாம்</p>
-            </div>
+                          </div>
 
             <div class="border rounded-xl p-4">
               <div class="font-medium mb-1">App Info</div>
@@ -1885,8 +1856,7 @@
         <div class="col-span-2">
           <label class="text-[10px] text-slate-500">New Customer ID * (edit ok)</label>
           <input type="text" id="transferCustId" class="w-full px-3 py-2 border rounded-lg text-sm font-mono">
-          <p class="text-[10px] text-slate-400 mt-0.5">Street-ல் last ID-க்கு அடுத்த எண் auto · மாற்றலாம்</p>
-        </div>
+                  </div>
         <div>
           <label class="text-[10px] text-slate-500">Door No</label>
           <input type="text" id="transferDoor" class="w-full px-3 py-2 border rounded-lg text-sm">
