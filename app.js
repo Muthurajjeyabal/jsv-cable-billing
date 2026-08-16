@@ -4866,32 +4866,137 @@ function showColAuditDetails(agent) {
 }
 
 
+function setTrendPreset(which) {
+  const t = new Date();
+  const iso = function (d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
+  const fromEl = document.getElementById('trendFrom');
+  const toEl = document.getElementById('trendTo');
+  if (!fromEl || !toEl) return;
+  toEl.value = iso(t);
+  if (which === 'month') {
+    fromEl.value = iso(t).slice(0, 8) + '01';
+  } else {
+    const f = new Date(t);
+    f.setDate(t.getDate() - (Number(which) - 1));
+    fromEl.value = iso(f);
+  }
+  renderTrendReport();
+}
+
+function eachDateInclusive(from, to) {
+  const out = [];
+  const a = new Date(from + 'T00:00:00');
+  const b = new Date(to + 'T00:00:00');
+  if (isNaN(a) || isNaN(b)) return out;
+  for (let d = new Date(a); d <= b; d.setDate(d.getDate() + 1)) {
+    out.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
+  }
+  return out;
+}
+
 async function renderTrendReport() {
   const body = document.getElementById('trendBody');
   if (!body) return;
-  const { from, to } = getReportDateRange();
+  const t = new Date();
+  const iso = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+  const fromEl = document.getElementById('trendFrom');
+  const toEl = document.getElementById('trendTo');
+  if (fromEl && !fromEl.value) fromEl.value = iso.slice(0, 8) + '01';
+  if (toEl && !toEl.value) toEl.value = iso;
+  const from = (fromEl && fromEl.value) || iso.slice(0, 8) + '01';
+  const to = (toEl && toEl.value) || iso;
   body.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
   try {
     const rows = await fetchCollectionsInRange(from, to);
     const byDate = {};
-    rows.forEach(r => {
-      const d = r.date || '-';
+    rows.forEach(function (r) {
+      const d = r.date || '';
+      if (!d) return;
       byDate[d] = (byDate[d] || 0) + Number(r.amount || 0);
     });
-    const entries = Object.entries(byDate).sort((a,b) => a[0].localeCompare(b[0]));
-    const max = Math.max(1, ...entries.map(e => e[1]));
-    body.innerHTML = `<div class="text-xs text-slate-500 mb-2">${from} → ${to}</div>` +
-      entries.map(([d, amt]) => {
-        const pct = Math.round(amt / max * 100);
-        return `<div class="mb-1.5">
-          <div class="flex justify-between text-[11px] mb-0.5"><span>${d}</span><span class="font-medium">₹${amt.toLocaleString('en-IN')}</span></div>
-          <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:${pct}%"></div></div>
-        </div>`;
-      }).join('') || '<div class="text-slate-400 text-sm text-center py-6">No data</div>';
+    const days = eachDateInclusive(from, to);
+    const entries = days.map(function (d) { return [d, byDate[d] || 0]; });
+    const total = entries.reduce(function (s, e) { return s + e[1]; }, 0);
+    const nDays = Math.max(1, entries.length);
+    const avg = Math.round(total / nDays);
+    let bestD = '', bestA = -1, lowD = '', lowA = Infinity;
+    entries.forEach(function (e) {
+      if (e[1] > bestA) { bestA = e[1]; bestD = e[0]; }
+      if (e[1] < lowA) { lowA = e[1]; lowD = e[0]; }
+    });
+    if (bestA < 0) bestA = 0;
+    if (lowA === Infinity) lowA = 0;
+
+    // Previous equal-length period
+    const fromDt = new Date(from + 'T00:00:00');
+    const toDt = new Date(to + 'T00:00:00');
+    const span = Math.round((toDt - fromDt) / 86400000) + 1;
+    const prevTo = new Date(fromDt); prevTo.setDate(prevTo.getDate() - 1);
+    const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - (span - 1));
+    const pIso = function (d) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    };
+    let prevTotal = 0;
+    try {
+      const prevRows = await fetchCollectionsInRange(pIso(prevFrom), pIso(prevTo));
+      prevTotal = prevRows.reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
+    } catch (e) {}
+    const change = prevTotal ? Math.round(((total - prevTotal) / prevTotal) * 1000) / 10 : 0;
+
+    const max = Math.max(1, bestA);
+
+    // SVG sparkline / bar chart
+    const W = 320, H = 120, pad = 8;
+    const n = entries.length || 1;
+    const barW = Math.max(2, (W - pad * 2) / n - 1);
+    let bars = '';
+    entries.forEach(function (e, i) {
+      const h = Math.round((e[1] / max) * (H - pad * 2));
+      const x = pad + i * ((W - pad * 2) / n);
+      const y = H - pad - h;
+      const isBest = e[0] === bestD && bestA > 0;
+      const isLow = e[0] === lowD && e[1] === lowA;
+      bars += '<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + barW.toFixed(1) + '" height="' + Math.max(h, e[1] > 0 ? 2 : 0) + '" rx="1" fill="' + (isBest ? '#10b981' : isLow && e[1] === 0 ? '#e2e8f0' : '#34d399') + '"/>';
+    });
+    const svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="w-full h-28">' + bars + '</svg>';
+
+    let html = '';
+    html += '<div class="text-xs text-slate-500 px-1">' + from + ' → ' + to + '</div>';
+    html += '<div class="grid grid-cols-3 gap-2">';
+    html += '<div class="bg-white rounded-xl border p-2.5 text-center"><div class="text-sm font-bold text-slate-800">₹' + total.toLocaleString('en-IN') + '</div><div class="text-[9px] text-slate-400">Total</div></div>';
+    html += '<div class="bg-white rounded-xl border p-2.5 text-center"><div class="text-sm font-bold text-slate-800">₹' + avg.toLocaleString('en-IN') + '</div><div class="text-[9px] text-slate-400">Daily Avg</div></div>';
+    html += '<div class="bg-white rounded-xl border p-2.5 text-center"><div class="text-sm font-bold text-emerald-600">₹' + bestA.toLocaleString('en-IN') + '</div><div class="text-[9px] text-slate-400">Best Day</div></div></div>';
+
+    html += '<div class="bg-white rounded-xl border p-3">' + svg + '</div>';
+
+    html += '<div class="grid grid-cols-2 gap-2">';
+    html += '<div class="bg-white rounded-xl border p-3"><div class="text-[10px] text-emerald-600 font-medium">Best</div><div class="text-xs font-semibold mt-0.5">' + bestD + '</div><div class="text-sm font-bold">₹' + bestA.toLocaleString('en-IN') + '</div></div>';
+    html += '<div class="bg-white rounded-xl border p-3"><div class="text-[10px] text-slate-400 font-medium">Lowest</div><div class="text-xs font-semibold mt-0.5">' + lowD + '</div><div class="text-sm font-bold">₹' + lowA.toLocaleString('en-IN') + '</div></div></div>';
+
+    html += '<div class="bg-white rounded-xl border p-3">';
+    html += '<div class="flex justify-between text-xs mb-1"><span class="text-slate-500">Previous ' + span + ' days</span><span>₹' + prevTotal.toLocaleString('en-IN') + '</span></div>';
+    html += '<div class="flex justify-between text-xs mb-1"><span class="text-slate-500">Current period</span><span class="font-semibold">₹' + total.toLocaleString('en-IN') + '</span></div>';
+    html += '<div class="text-sm font-bold ' + (change >= 0 ? 'text-emerald-600' : 'text-red-600') + '">' + (change >= 0 ? '↑' : '↓') + ' ' + Math.abs(change) + '%</div></div>';
+
+    html += '<div class="bg-white rounded-xl border p-3">';
+    html += '<div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Details</div>';
+    entries.forEach(function (e) {
+      const pct = Math.round((e[1] / max) * 100);
+      const zero = e[1] === 0;
+      html += '<div class="mb-1.5">';
+      html += '<div class="flex justify-between text-[11px] mb-0.5"><span class="' + (zero ? 'text-slate-400' : '') + '">' + e[0] + '</span><span class="font-medium ' + (zero ? 'text-slate-400' : '') + '">₹' + e[1].toLocaleString('en-IN') + '</span></div>';
+      html += '<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full ' + (zero ? 'bg-slate-200' : 'bg-emerald-500') + '" style="width:' + pct + '%"></div></div></div>';
+    });
+    html += '</div>';
+
+    body.innerHTML = html;
   } catch (e) {
-    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message + '</div>';
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + (e.message || e) + '</div>';
   }
 }
+
 
 
 function openCollectorsPrintOut() {
