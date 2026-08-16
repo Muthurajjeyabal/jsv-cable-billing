@@ -4227,14 +4227,25 @@ function renderNewConnReport() {
   if (toEl && !toEl.value) toEl.value = iso;
   const from = (fromEl && fromEl.value) || monthStart;
   const to = (toEl && toEl.value) || iso;
+  const areaF = (document.getElementById('newConnArea') || {}).value || 'ALL';
+
+  function normPlace(p) {
+    let s = String(p || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    if (s === 'AREA1' || s === '1' || s.includes('AREA 1')) return 'AREA 1';
+    if (s === 'AREA2' || s === '2' || s.includes('AREA 2')) return 'AREA 2';
+    return s;
+  }
 
   const list = (allCustomers || []).map(c => {
     const isoD = parseConnDateISO(c);
     return { c, isoD };
-  }).filter(x => x.isoD && x.isoD >= from && x.isoD <= to)
-    .sort((a, b) => b.isoD.localeCompare(a.isoD));
+  }).filter(x => {
+    if (!x.isoD || x.isoD < from || x.isoD > to) return false;
+    if (areaF !== 'ALL' && normPlace(x.c.place) !== areaF) return false;
+    return true;
+  }).sort((a, b) => b.isoD.localeCompare(a.isoD));
 
-  if (sum) sum.textContent = list.length + ' new · ' + from + ' → ' + to;
+  if (sum) sum.textContent = list.length + ' new · ' + from + ' → ' + to + (areaF !== 'ALL' ? ' · ' + areaF : '');
   if (!list.length) {
     body.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">No new connections in range</div>';
     return;
