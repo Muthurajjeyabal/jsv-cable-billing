@@ -1401,7 +1401,37 @@
           <!-- Package panel -->
           <div id="reportPanel-package" class="report-panel hidden">
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
-            <div id="pkgRepBody" class="bg-white rounded-xl border p-4 text-sm"></div>
+            <div class="soft-card p-3 mb-3 no-print space-y-2">
+              <div class="flex flex-wrap gap-2 items-center justify-between">
+                <h3 class="font-semibold text-sm">Package Wise</h3>
+                <button type="button" onclick="printDiv('pkgRepBody')" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs">🖨 Print</button>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-[10px] text-slate-500">Status</label>
+                  <select id="pkgRepStatus" onchange="renderPackageReport()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                    <option value="ACT">Active</option>
+                    <option value="DC">DC</option>
+                    <option value="ALL">All</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">Area</label>
+                  <select id="pkgRepArea" onchange="onPkgRepAreaChange()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                    <option value="ALL">All Areas</option>
+                    <option value="AREA 1">AREA 1</option>
+                    <option value="AREA 2">AREA 2</option>
+                  </select>
+                </div>
+                <div class="col-span-2">
+                  <label class="text-[10px] text-slate-500">Street</label>
+                  <select id="pkgRepStreet" onchange="renderPackageReport()" class="w-full px-2 py-2 border rounded-lg text-sm bg-white">
+                    <option value="ALL">All Streets</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div id="pkgRepBody" class="space-y-3 text-sm"></div>
           </div>
         </div>
 

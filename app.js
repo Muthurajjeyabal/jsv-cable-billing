@@ -4900,23 +4900,170 @@ function renderDcReport() {
       <td class="px-2 py-1.5 text-right">₹${Number(c.dueAmt||c.due||0).toLocaleString('en-IN')}</td>
     </tr>`).join('') + '</tbody></table></div>';
 }
-function renderPackageReport() {
-  const map = new Map();
-  allCustomers.filter(c => String(c.status||'ACT').toUpperCase() !== 'DC').forEach(c => {
-    const amt = Number(c.packageAmt || 0);
-    const key = '₹' + amt;
-    if (!map.has(key)) map.set(key, { amt, count: 0 });
-    map.get(key).count++;
+function onPkgRepAreaChange() {
+  const area = (document.getElementById('pkgRepArea') || {}).value || 'ALL';
+  const streetSel = document.getElementById('pkgRepStreet');
+  if (!streetSel) return;
+  const streets = new Set();
+  if (typeof STREET_MASTER !== 'undefined') {
+    STREET_MASTER.forEach(function (s) {
+      if (area === 'ALL' || (typeof matchAreaPlace === 'function' ? matchAreaPlace(s.place, area) : true)) {
+        if (s.street) streets.add(String(s.street).trim());
+      }
+    });
+  }
+  (allCustomers || []).forEach(function (c) {
+    if (area === 'ALL' || (typeof matchAreaPlace === 'function' ? matchAreaPlace(c.place, area) : true)) {
+      if (c.street) streets.add(String(c.street).trim());
+    }
   });
-  const rows = Array.from(map.values()).sort((a,b) => a.amt - b.amt);
+  streetSel.innerHTML = '<option value="ALL">All Streets</option>' +
+    Array.from(streets).filter(Boolean).sort(function (a, b) { return a.localeCompare(b, 'ta'); })
+      .map(function (s) { return '<option value="' + s.replace(/"/g, '&quot;') + '">' + s + '</option>'; }).join('');
+  renderPackageReport();
+}
+
+function getPkgRepCustomers() {
+  const st = (document.getElementById('pkgRepStatus') || {}).value || 'ACT';
+  const area = (document.getElementById('pkgRepArea') || {}).value || 'ALL';
+  const street = (document.getElementById('pkgRepStreet') || {}).value || 'ALL';
+  return (allCustomers || []).filter(function (c) {
+    const status = String(c.status || 'ACT').toUpperCase();
+    if (st === 'ACT' && status === 'DC') return false;
+    if (st === 'DC' && status !== 'DC') return false;
+    if (area !== 'ALL' && typeof matchAreaPlace === 'function' && !matchAreaPlace(c.place, area)) return false;
+    if (area !== 'ALL' && typeof matchAreaPlace !== 'function' && String(c.place || '').toUpperCase() !== area) return false;
+    if (street !== 'ALL' && String(c.street || '').trim() !== street) return false;
+    return true;
+  });
+}
+
+async function renderPackageReport() {
   const body = document.getElementById('pkgRepBody');
   if (!body) return;
+  const list = getPkgRepCustomers();
+  const map = new Map();
+  let totalDue = 0;
+  list.forEach(function (c) {
+    const amt = Number(c.packageAmt || 0);
+    if (!map.has(amt)) map.set(amt, { amt: amt, count: 0, due: 0 });
+    const row = map.get(amt);
+    row.count++;
+    row.due += Number(c.dueAmt || c.due || 0);
+    totalDue += Number(c.dueAmt || c.due || 0);
+  });
+  const rows = Array.from(map.values()).sort(function (a, b) { return b.count - a.count; });
+  const rowsAsc = rows.slice().sort(function (a, b) { return a.amt - b.amt; });
   let expected = 0;
-  rows.forEach(r => { expected += r.amt * r.count; });
-  body.innerHTML = '<div class="mb-3 p-3 bg-indigo-50 rounded-xl text-sm"><span class="text-slate-600">Expected Monthly Billing</span><div class="text-xl font-bold text-indigo-800">₹' + expected.toLocaleString('en-IN') + '</div></div>' +
-    '<h3 class="font-semibold mb-2 text-sm">Package Amount Wise (Active)</h3><table class="w-full text-sm"><thead><tr><th class="text-left py-2">Package ₹</th><th class="text-right py-2">Customers</th><th class="text-right py-2">Subtotal</th></tr></thead><tbody>' +
-    rows.map(r => `<tr class="border-t"><td class="py-2">₹${r.amt.toLocaleString('en-IN')}</td><td class="py-2 text-right font-medium">${r.count}</td><td class="py-2 text-right">₹${(r.amt*r.count).toLocaleString('en-IN')}</td></tr>`).join('') +
-    '</tbody></table>';
+  rows.forEach(function (r) { expected += r.amt * r.count; });
+  const nCust = list.length;
+  const avg = nCust ? Math.round(expected / nCust) : 0;
+  const highest = rows.length ? Math.max.apply(null, rows.map(function (r) { return r.amt; })) : 0;
+  const maxCount = rows.length ? rows[0].count : 1;
+
+  // Month collection (this month) for collection rate
+  let collected = 0;
+  try {
+    const t = new Date();
+    const from = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-01';
+    const to = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    if (typeof fetchCollectionsInRange === 'function') {
+      const colRows = await fetchCollectionsInRange(from, to);
+      collected = colRows.reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
+    }
+  } catch (e) {}
+  const rate = expected ? Math.round((collected / expected) * 1000) / 10 : 0;
+
+  let html = '';
+
+  // KPI
+  html += '<div class="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-4 text-white shadow-sm">';
+  html += '<div class="text-[11px] opacity-80 uppercase tracking-wide">Expected Monthly Billing</div>';
+  html += '<div class="text-2xl font-bold mt-0.5">₹' + expected.toLocaleString('en-IN') + '</div></div>';
+
+  html += '<div class="grid grid-cols-3 gap-2">';
+  html += '<div class="bg-white rounded-xl border p-3 text-center"><div class="text-lg font-bold text-slate-800">' + nCust.toLocaleString('en-IN') + '</div><div class="text-[10px] text-slate-400">Customers</div></div>';
+  html += '<div class="bg-white rounded-xl border p-3 text-center"><div class="text-lg font-bold text-slate-800">₹' + avg.toLocaleString('en-IN') + '</div><div class="text-[10px] text-slate-400">Avg Package</div></div>';
+  html += '<div class="bg-white rounded-xl border p-3 text-center"><div class="text-lg font-bold text-slate-800">₹' + highest.toLocaleString('en-IN') + '</div><div class="text-[10px] text-slate-400">Highest</div></div></div>';
+
+  // Collection performance
+  html += '<div class="bg-white rounded-xl border p-3">';
+  html += '<div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Collection Performance (This Month)</div>';
+  html += '<div class="flex justify-between text-sm mb-1"><span class="text-slate-500">Expected</span><span class="font-medium">₹' + expected.toLocaleString('en-IN') + '</span></div>';
+  html += '<div class="flex justify-between text-sm mb-1"><span class="text-slate-500">Collected</span><span class="font-medium text-emerald-600">₹' + collected.toLocaleString('en-IN') + '</span></div>';
+  html += '<div class="flex justify-between text-sm mb-2"><span class="text-slate-500">Rate</span><span class="font-bold ' + (rate >= 70 ? 'text-emerald-600' : rate >= 50 ? 'text-amber-600' : 'text-red-600') + '">' + rate + '%</span></div>';
+  html += '<div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full ' + (rate >= 70 ? 'bg-emerald-500' : rate >= 50 ? 'bg-amber-500' : 'bg-red-500') + '" style="width:' + Math.min(rate, 100) + '%"></div></div>';
+  html += '<div class="text-[11px] text-slate-400 mt-2">Due outstanding (filtered): <span class="font-medium text-red-600">₹' + totalDue.toLocaleString('en-IN') + '</span></div></div>';
+
+  // Top packages bars
+  const top = rows.slice(0, 5);
+  html += '<div class="bg-white rounded-xl border p-3">';
+  html += '<div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Top Packages</div>';
+  top.forEach(function (r) {
+    const pct = maxCount ? Math.round((r.count / maxCount) * 100) : 0;
+    const sub = r.amt * r.count;
+    html += '<button type="button" onclick="showPkgCustomers(' + r.amt + ')" class="w-full text-left mb-2.5 last:mb-0">';
+    html += '<div class="flex justify-between text-xs mb-0.5"><span class="font-semibold">₹' + r.amt.toLocaleString('en-IN') + '</span>';
+    html += '<span class="text-slate-500">' + r.count + ' · ₹' + sub.toLocaleString('en-IN') + '</span></div>';
+    html += '<div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500 rounded-full" style="width:' + pct + '%"></div></div>';
+    html += '</button>';
+  });
+  html += '</div>';
+
+  // Full table
+  html += '<div class="bg-white rounded-xl border overflow-hidden">';
+  html += '<div class="px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wide border-b">Package Summary</div>';
+  html += '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500"><tr>';
+  html += '<th class="text-left px-3 py-2 font-medium">Package</th>';
+  html += '<th class="text-right px-3 py-2 font-medium">Cust</th>';
+  html += '<th class="text-right px-3 py-2 font-medium">Monthly</th>';
+  html += '<th class="text-right px-3 py-2 font-medium">Due</th>';
+  html += '</tr></thead><tbody>';
+  rowsAsc.forEach(function (r) {
+    html += '<tr class="border-t hover:bg-indigo-50 cursor-pointer" onclick="showPkgCustomers(' + r.amt + ')">';
+    html += '<td class="px-3 py-2 font-medium">₹' + r.amt.toLocaleString('en-IN') + '</td>';
+    html += '<td class="px-3 py-2 text-right">' + r.count + '</td>';
+    html += '<td class="px-3 py-2 text-right">₹' + (r.amt * r.count).toLocaleString('en-IN') + '</td>';
+    html += '<td class="px-3 py-2 text-right text-red-600">₹' + r.due.toLocaleString('en-IN') + '</td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  html += '<div id="pkgCustPanel" class="hidden"></div>';
+
+  body.innerHTML = html;
+}
+
+function showPkgCustomers(amt) {
+  const panel = document.getElementById('pkgCustPanel');
+  const body = document.getElementById('pkgRepBody');
+  if (!panel && !body) return;
+  const list = getPkgRepCustomers().filter(function (c) { return Number(c.packageAmt || 0) === Number(amt); });
+  const expected = list.length * Number(amt);
+  let html = '<div class="bg-white rounded-xl border p-3 mt-3">';
+  html += '<div class="flex items-center justify-between mb-2">';
+  html += '<div><div class="font-semibold text-sm">₹' + Number(amt).toLocaleString('en-IN') + ' Package</div>';
+  html += '<div class="text-[11px] text-slate-500">' + list.length + ' customers · Expected ₹' + expected.toLocaleString('en-IN') + '/mo</div></div>';
+  html += '<button type="button" onclick="document.getElementById(\'pkgCustPanel\').classList.add(\'hidden\')" class="text-xs text-slate-500 px-2 py-1">✕ Close</button></div>';
+  html += '<div class="max-h-[50vh] overflow-y-auto space-y-1.5">';
+  list.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || ''), 'ta'); });
+  list.forEach(function (c) {
+    const due = Number(c.dueAmt || c.due || 0);
+    html += '<button type="button" onclick="viewLedger(\'' + (c.id || '') + '\')" class="w-full text-left bg-slate-50 hover:bg-indigo-50 rounded-lg px-3 py-2">';
+    html += '<div class="flex justify-between gap-2"><span class="font-medium text-sm truncate">' + (c.name || '—') + '</span>';
+    html += '<span class="text-xs ' + (due > 0 ? 'text-red-600 font-semibold' : 'text-emerald-600') + '">₹' + due.toLocaleString('en-IN') + '</span></div>';
+    html += '<div class="text-[11px] text-slate-500">ID: ' + (c.custId || '—') + ' · ' + (c.street || '—') + '</div></button>';
+  });
+  html += '</div></div>';
+  if (panel) {
+    panel.innerHTML = html;
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else if (body) {
+    const wrap = document.createElement('div');
+    wrap.id = 'pkgCustPanel';
+    wrap.innerHTML = html;
+    body.appendChild(wrap);
+  }
 }
 
 // ==================== OFFLINE QUEUE ====================
