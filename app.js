@@ -707,28 +707,117 @@ async function saveTransferModal() {
   }
 }
 
+let pkgModalAddons = [];
+
 async function ledgerQuickPackage() {
   const id = currentLedgerCustomerId;
   if (!id) return;
   const c = allCustomers.find(x => x.id === id);
   if (!c) return;
-  const pkg = prompt('Package name:', c.package || '');
-  if (pkg === null) return;
-  const amtStr = prompt('Package amount ₹:', String(c.packageAmt || c.packAmt || 0));
-  if (amtStr === null) return;
-  const packageAmt = Number(amtStr) || 0;
+  window._pkgModalCustId = id;
+  if (!packageMasterCache.length && typeof loadPackageMaster === 'function') {
+    try { await loadPackageMaster(); } catch (_) {}
+  }
+  document.getElementById('pkgModalCust').textContent = (c.name || '') + ' · ' + (c.custId || '');
+  const curAmt = Number(c.packageAmt || c.packAmt || 0);
+  const curAddon = Number(c.addonAmt || 0);
+  document.getElementById('pkgModalCurrent').textContent =
+    (c.package || '-') + ' · ₹' + curAmt + (curAddon ? (' + addon ₹' + curAddon) : '');
+  const sel = document.getElementById('pkgModalSelect');
+  const pkgs = packageMasterCache.length ? packageMasterCache : [
+    { name: 'PLAN 250', amount: 250 }, { name: 'PLAN 280', amount: 280 },
+    { name: 'PLAN 290', amount: 290 }, { name: 'PLAN 300', amount: 300 },
+    { name: 'PLAN 350', amount: 350 }, { name: 'PLAN 400', amount: 400 }
+  ];
+  sel.innerHTML = '<option value="">Select package</option>' +
+    pkgs.map(p => `<option value="${p.name}" data-amt="${p.amount}">${p.name} — ₹${p.amount}</option>`).join('');
+  if (c.package) {
+    sel.value = c.package;
+    if (!sel.value) {
+      sel.innerHTML += `<option value="${c.package}" data-amt="${curAmt}" selected>${c.package}</option>`;
+    }
+  }
+  document.getElementById('pkgModalAmt').value = curAmt || (sel.selectedOptions[0]?.dataset?.amt || '');
+  // addons
+  pkgModalAddons = [];
+  try {
+    if (Array.isArray(c.addons)) pkgModalAddons = c.addons.map(a => ({ ...a }));
+    else if (c.addons && typeof c.addons === 'string') pkgModalAddons = JSON.parse(c.addons);
+  } catch (_) {}
+  renderPkgModalAddons();
+  recalcPkgModalTotal();
+  document.getElementById('packageModal').classList.remove('hidden');
+}
+
+function onPkgModalSelect() {
+  const sel = document.getElementById('pkgModalSelect');
+  const opt = sel?.selectedOptions?.[0];
+  if (opt && opt.dataset.amt) document.getElementById('pkgModalAmt').value = opt.dataset.amt;
+  recalcPkgModalTotal();
+}
+
+function renderPkgModalAddons() {
+  const box = document.getElementById('pkgModalAddonChips');
+  if (!box) return;
+  if (!pkgModalAddons.length) {
+    box.innerHTML = '<span class="text-xs text-slate-400">No add-ons</span>';
+  } else {
+    box.innerHTML = pkgModalAddons.map((a, i) =>
+      `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-800 text-xs px-2 py-1 rounded-full border border-blue-200">
+        ${a.name} ₹${a.amount}
+        <button type="button" onclick="pkgModalAddons.splice(${i},1);renderPkgModalAddons();recalcPkgModalTotal();" class="text-red-500 font-bold">&times;</button>
+      </span>`
+    ).join('');
+  }
+}
+
+function addPkgModalAddon() {
+  const name = (document.getElementById('pkgModalAddonName')?.value || '').trim();
+  const amount = Number(document.getElementById('pkgModalAddonAmt')?.value || 0);
+  if (!name) { showToast('Channel name', true); return; }
+  if (!amount) { showToast('Amount', true); return; }
+  pkgModalAddons.push({ name, amount });
+  document.getElementById('pkgModalAddonName').value = '';
+  document.getElementById('pkgModalAddonAmt').value = '';
+  renderPkgModalAddons();
+  recalcPkgModalTotal();
+}
+
+function recalcPkgModalTotal() {
+  const base = Number(document.getElementById('pkgModalAmt')?.value || 0);
+  const add = pkgModalAddons.reduce((s, a) => s + Number(a.amount || 0), 0);
+  const el = document.getElementById('pkgModalTotal');
+  if (el) el.textContent = '₹' + (base + add).toLocaleString('en-IN');
+}
+
+function closePackageModal() {
+  document.getElementById('packageModal')?.classList.add('hidden');
+  window._pkgModalCustId = null;
+}
+
+async function savePackageModal() {
+  const id = window._pkgModalCustId;
+  if (!id) return;
+  const pkg = (document.getElementById('pkgModalSelect')?.value || '').trim();
+  const packageBase = Number(document.getElementById('pkgModalAmt')?.value || 0);
+  const addonAmt = pkgModalAddons.reduce((s, a) => s + Number(a.amount || 0), 0);
+  const packageAmt = packageBase + addonAmt;
+  if (!pkg) { showToast('Package select பண்ணுங்கள்', true); return; }
   try {
     await db.collection('customers').doc(id).update({
-      package: pkg.trim(),
+      package: pkg,
+      packageBase,
       packageAmt,
+      addonAmt,
+      addons: pkgModalAddons,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     const idx = allCustomers.findIndex(x => x.id === id);
     if (idx >= 0) {
-      allCustomers[idx].package = pkg.trim();
-      allCustomers[idx].packageAmt = packageAmt;
+      Object.assign(allCustomers[idx], { package: pkg, packageBase, packageAmt, addonAmt, addons: pkgModalAddons });
     }
-    showToast('Package updated');
+    closePackageModal();
+    showToast('Package updated · ₹' + packageAmt);
     await viewLedger(id);
   } catch (e) {
     showToast('Error: ' + e.message, true);
