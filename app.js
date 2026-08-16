@@ -1466,6 +1466,83 @@ function renderPendingReport() {
   }
 }
 
+
+function fallbackCopy(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '0';
+    ta.style.top = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Copied');
+  } catch (e) {
+    prompt('Copy this:', text);
+  }
+}
+
+function copyPendingMobiles() {
+  const list = getPendingFiltered();
+  const nums = [];
+  const seen = new Set();
+  list.forEach(function (c) {
+    let m = String(c.mobile || '').replace(/\D/g, '');
+    if (m.length >= 10) {
+      m = m.slice(-10);
+      if (!seen.has(m)) {
+        seen.add(m);
+        nums.push(m);
+      }
+    }
+  });
+  if (!nums.length) {
+    showToast('Mobile numbers இல்லை (filter-ல்)', true);
+    return;
+  }
+  // line-separated — easy paste into phone SMS (some phones want comma)
+  const text = nums.join('\n');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () {
+      showToast(nums.length + ' mobiles copied — Phone SMS-ல் paste');
+    }).catch(function () { fallbackCopy(text); });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function copyPendingSmsText() {
+  const co = (typeof companyInfo !== 'undefined' && companyInfo) ? companyInfo : {};
+  const office = [co.phone, co.phone2].filter(Boolean).join(' / ') || '0452-2527545 / 8678953333';
+  const gpay = co.gpay || '9442527545';
+  // Common bulk SMS (no personal {name}/{due} — one text for all)
+  let text = '';
+  try {
+    const saved = localStorage.getItem('jsv_sms_bulk_text');
+    if (saved && saved.trim()) text = saved.trim();
+  } catch (e) {}
+  if (!text) {
+    text =
+      'வணக்கம்,\n\n' +
+      'JSV Cable TV - இந்த மாத கேபிள் பில் நிலுவையில் உள்ளது.\n' +
+      'தயவுசெய்து உடனே செலுத்தி இணைப்பு துண்டிப்பை தவிர்க்கவும்.\n\n' +
+      'GPay: ' + gpay + ' (பணம் மட்டும்)\n' +
+      'Office: ' + office + '\n\n' +
+      'நன்றி.\nJSV Cable TV · S. Alangulam';
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () {
+      showToast('SMS text copied — Phone-ல் paste');
+    }).catch(function () { fallbackCopy(text); });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+
 function exportPendingBoxes() {
   const list = getPendingFiltered().filter(c => (c.boxNo || '').trim());
   if (!list.length) { showToast('Box numbers இல்லை', true); return; }

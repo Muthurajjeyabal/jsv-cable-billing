@@ -1025,9 +1025,11 @@
                   <option value="">All MSO</option>
                 </select>
               </div>
-              <div class="flex items-end gap-1">
-                <button type="button" onclick="exportPendingBoxes()" class="flex-1 bg-indigo-600 text-white px-2 py-2 rounded-lg text-xs font-medium">Copy Box Nos</button>
-                <button type="button" onclick="printPendingReport()" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-medium shrink-0">🖨 Print</button>
+              <div class="flex items-end gap-1 flex-wrap">
+                <button type="button" onclick="exportPendingBoxes()" class="bg-indigo-600 text-white px-2 py-2 rounded-lg text-xs font-medium">Copy Box</button>
+                <button type="button" onclick="copyPendingMobiles()" class="bg-emerald-600 text-white px-2 py-2 rounded-lg text-xs font-medium">Copy Mobiles</button>
+                <button type="button" onclick="copyPendingSmsText()" class="bg-amber-600 text-white px-2 py-2 rounded-lg text-xs font-medium">Copy SMS Text</button>
+                <button type="button" onclick="printPendingReport()" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-medium shrink-0">🖨</button>
               </div>
             </div>
                       </div>
