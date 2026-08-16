@@ -193,7 +193,7 @@ function showPage(pageId, isBack) {
     item.classList.toggle('active', item.dataset.page === pageId);
   });
 
-  const titles = {
+  const titles = (typeof I18N !== 'undefined' && I18N[getAppLang()]) ? I18N[getAppLang()] : {
     dashboard: 'Dashboard',
     customers: 'Customers',
     newCustomer: 'New Customer',
@@ -219,7 +219,7 @@ function showPage(pageId, isBack) {
     const bd = document.getElementById('billDate');
     if (bd) { bd.value = new Date().toISOString().slice(0, 10); bd.readOnly = true; }
   }
-  if (pageId === 'settings') { loadWaTemplate(); }
+  if (pageId === 'settings') { loadWaTemplate(); applyAppTheme(); applyAppLang(); }
   if (pageId === 'monthBill') { refreshMonthBillLockUI(); }
   if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d){ d.value=new Date().toISOString().slice(0,10); d.readOnly=true; } loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
@@ -6010,3 +6010,85 @@ async function deleteExpense(id) {
     showToast('Error: ' + e.message, true);
   }
 }
+
+
+// ==================== THEME & LANGUAGE ====================
+const I18N = {
+  en: {
+    dashboard: 'Dashboard', customers: 'Customers', newCustomer: 'New Customer',
+    billing: 'Billing / Collection', ledger: 'Customer Ledger', pending: 'Pending / Due Report',
+    boxes: 'Box Management', reports: 'Reports', masters: 'Masters', settings: 'Settings',
+    monthBill: 'Month End', expenses: 'Expenses', cancelled: 'Cancelled Bills',
+    appearance: 'Appearance', theme: 'Theme', language: 'Language',
+    themeHint: 'Theme & language save on this device',
+    collection: 'Collection', logout: 'Logout'
+  },
+  ta: {
+    dashboard: 'டாஷ்போர்டு', customers: 'கஸ்டமர்கள்', newCustomer: 'புதிய கஸ்டமர்',
+    billing: 'பில்லிங் / கலெக்ஷன்', ledger: 'கஸ்டமர் லெட்ஜர்', pending: 'நிலுவை / Due',
+    boxes: 'பாக்ஸ் மேனேஜ்மென்ட்', reports: 'ரிப்போர்ட்ஸ்', masters: 'மாஸ்டர்', settings: 'செட்டிங்ஸ்',
+    monthBill: 'மாத இறுதி', expenses: 'செலவுகள்', cancelled: 'ரத்து பில்ஸ்',
+    appearance: 'தோற்றம்', theme: 'தீம்', language: 'மொழி',
+    themeHint: 'தீம் & மொழி இந்த போனில் சேமிக்கப்படும்',
+    collection: 'கலெக்ஷன்', logout: 'லாக் அவுட்'
+  }
+};
+
+function getAppTheme() {
+  return localStorage.getItem('jsv_theme') || 'light';
+}
+function getAppLang() {
+  return localStorage.getItem('jsv_lang') || 'ta';
+}
+function setAppTheme(v) {
+  localStorage.setItem('jsv_theme', v);
+  applyAppTheme();
+}
+function setAppLang(v) {
+  localStorage.setItem('jsv_lang', v);
+  applyAppLang();
+  if (typeof currentPageId !== 'undefined' && currentPageId) {
+    // refresh title
+    const titles = (I18N[getAppLang()] || I18N.ta);
+    const pt = document.getElementById('pageTitle');
+    if (pt && titles[currentPageId]) pt.textContent = titles[currentPageId];
+  }
+}
+function applyAppTheme() {
+  const t = getAppTheme();
+  document.documentElement.classList.toggle('dark', t === 'dark');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', t === 'dark' ? '#0b1220' : '#0f172a');
+  const sel = document.getElementById('settingTheme');
+  if (sel) sel.value = t;
+}
+function applyAppLang() {
+  const lang = getAppLang();
+  document.documentElement.lang = lang;
+  const dict = I18N[lang] || I18N.ta;
+  document.querySelectorAll('[data-i18n]').forEach(function (el) {
+    const k = el.getAttribute('data-i18n');
+    if (dict[k]) el.textContent = dict[k];
+  });
+  // sidebar items
+  document.querySelectorAll('.sidebar-item[data-page]').forEach(function (el) {
+    const p = el.getAttribute('data-page');
+    if (dict[p]) {
+      const label = el.querySelector('.sidebar-label') || el;
+      // keep icon; update text nodes carefully
+      const span = el.querySelector('[data-i18n-page]');
+      if (span) span.textContent = dict[p];
+    }
+  });
+  const sel = document.getElementById('settingLang');
+  if (sel) sel.value = lang;
+}
+function initThemeLang() {
+  applyAppTheme();
+  applyAppLang();
+}
+// run early
+try { initThemeLang(); } catch (e) {}
+document.addEventListener('DOMContentLoaded', function () {
+  try { initThemeLang(); } catch (e) {}
+});

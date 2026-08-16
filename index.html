@@ -15,6 +15,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
@@ -36,6 +37,22 @@
 
   <style>
     * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    html.dark body { background: #0b1220; color: #e2e8f0; }
+    html.dark .bg-white { background-color: #111827 !important; }
+    html.dark .bg-slate-50, html.dark .bg-slate-100 { background-color: #0f172a !important; }
+    html.dark .soft-card { background-color: #111827 !important; border-color: #1e293b !important; }
+    html.dark .text-slate-800, html.dark .text-slate-900 { color: #f1f5f9 !important; }
+    html.dark .text-slate-700 { color: #e2e8f0 !important; }
+    html.dark .text-slate-600 { color: #cbd5e1 !important; }
+    html.dark .text-slate-500, html.dark .text-slate-400 { color: #94a3b8 !important; }
+    html.dark .border, html.dark .border-slate-100, html.dark .border-slate-200 { border-color: #1e293b !important; }
+    html.dark input, html.dark select, html.dark textarea {
+      background-color: #0f172a !important; color: #e2e8f0 !important; border-color: #334155 !important;
+    }
+    html.dark #topBar, html.dark header, html.dark .top-bar {
+      background-color: #0f172a !important; border-color: #1e293b !important;
+    }
+    html.dark #sidebar { background-color: #020617 !important; }
     body {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
       background: #f8fafc;
@@ -1933,7 +1950,28 @@
         <!-- SETTINGS -->
         <div id="page-settings" class="page hidden fade-in">
           <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 max-w-lg space-y-4">
-            <h3 class="font-semibold text-lg">Settings</h3>
+            <h3 class="font-semibold text-lg" data-i18n="settings">Settings</h3>
+
+            <div class="border rounded-xl p-4 border-slate-200 bg-slate-50">
+              <div class="font-medium mb-2 text-slate-800" data-i18n="appearance">Appearance</div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] text-slate-500" data-i18n="theme">Theme</label>
+                  <select id="settingTheme" onchange="setAppTheme(this.value)" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500" data-i18n="language">Language</label>
+                  <select id="settingLang" onchange="setAppLang(this.value)" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
+                    <option value="ta">தமிழ்</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-2" data-i18n="themeHint">Theme & language save on this device</p>
+            </div>
 
             <div class="border rounded-xl p-4 border-green-200 bg-green-50">
               <div class="font-medium mb-1 text-green-900">WhatsApp Templates</div>
