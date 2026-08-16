@@ -1264,7 +1264,7 @@ function getPendingFiltered() {
   let list = allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0);
   if (area) list = list.filter(c => (c.place || '') === area);
   if (street) list = list.filter(c => (c.street || '') === street);
-  if (mso) list = list.filter(c => (c.mso || '') === mso);
+  if (mso) list = list.filter(c => String(c.mso || '').trim().toUpperCase() === String(mso).trim().toUpperCase());
   list.sort((a, b) => {
     const s = (a.street || '').localeCompare(b.street || '', 'ta');
     if (s) return s;
@@ -1330,56 +1330,71 @@ function renderPendingReport() {
   document.getElementById('pendingTotal').textContent = '₹' + totalDue.toLocaleString('en-IN');
 
   const cards = document.getElementById('pendingCards');
-  if (!list.length) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">No pending in this filter</td></tr>`;
-    if (cards) cards.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm bg-white rounded-xl border">No pending in this filter</div>';
-    return;
-  }
+  try {
+    if (!list.length) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">No pending in this filter</td></tr>';
+      if (cards) cards.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm bg-white rounded-xl border">No pending in this filter</div>';
+      return;
+    }
 
-  if (cards) {
-    cards.innerHTML = list.map(c => {
-      const due = Number(c.dueAmt || c.due || 0);
-      const mobile = (c.mobile || '').toString().trim();
-      const nameSafe = (c.name || '').replace(/'/g, "\\'");
-      return `<div class="bg-white rounded-xl border border-slate-100 p-3 shadow-sm">
-        <div class="flex justify-between items-start gap-2">
-          <div class="min-w-0">
-            <div class="font-semibold text-slate-900 truncate">${c.name || '—'}</div>
-            <div class="text-[11px] text-slate-500 mt-0.5">ID: ${c.custId || c.id.slice(0,6)} · ${c.street || '—'}</div>
-          </div>
-          <div class="text-base font-bold text-red-600 shrink-0">₹${due.toLocaleString('en-IN')}</div>
-        </div>
-        <div class="mt-1.5 text-xs text-slate-600 space-y-0.5">
-          <div>${mobile ? '📞 ' + mobile : '<span class="text-slate-400">📞 No mobile</span>'}</div>
-          <div class="font-mono text-[11px] text-slate-500">📦 ${c.boxNo || '—'} · ${c.mso || 'MSO —'}</div>
-        </div>
-        <div class="flex gap-2 mt-2.5 pt-2 border-t border-slate-50">
-          <button type="button" onclick="viewLedger('${c.id}')" class="flex-1 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium">Ledger</button>
-          ${mobile ? `<button type="button" onclick="openWhatsApp('${mobile}', '${nameSafe}', ${due})" class="flex-1 py-1.5 rounded-lg bg-green-50 text-green-700 text-xs font-medium">WhatsApp</button>` : ''}
-          ${mobile ? `<a href="tel:${mobile.replace(/\D/g,'')}" class="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-700 text-xs font-medium">Call</a>` : ''}
-        </div>
-      </div>`;
-    }).join('');
-  }
+    if (cards) {
+      cards.innerHTML = list.map(function (c) {
+        var due = Number(c.dueAmt || c.due || 0);
+        var mobile = String(c.mobile || '').trim();
+        var cid = c.custId || (c.id ? String(c.id).slice(0, 8) : '');
+        var nm = String(c.name || '—').replace(/</g, '&lt;');
+        var st = String(c.street || '—').replace(/</g, '&lt;');
+        var box = String(c.boxNo || '—');
+        var mso = String(c.mso || '—');
+        var id = c.id || '';
+        var tel = mobile.replace(/\D/g, '');
+        var html = '<div class="bg-white rounded-xl border border-slate-100 p-3 shadow-sm">';
+        html += '<div class="flex justify-between items-start gap-2">';
+        html += '<div class="min-w-0"><div class="font-semibold text-slate-900 truncate">' + nm + '</div>';
+        html += '<div class="text-[11px] text-slate-500 mt-0.5">ID: ' + cid + ' · ' + st + '</div></div>';
+        html += '<div class="text-base font-bold text-red-600 shrink-0">₹' + due.toLocaleString('en-IN') + '</div></div>';
+        html += '<div class="mt-1.5 text-xs text-slate-600">';
+        html += mobile ? ('📞 ' + mobile) : '<span class="text-slate-400">📞 No mobile</span>';
+        html += '</div>';
+        html += '<div class="font-mono text-[11px] text-slate-500 mt-0.5">📦 ' + box + ' · ' + mso + '</div>';
+        html += '<div class="flex gap-2 mt-2.5 pt-2 border-t border-slate-50">';
+        html += '<button type="button" data-id="' + id + '" class="pend-ledger flex-1 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium">Ledger</button>';
+        if (mobile) {
+          html += '<button type="button" data-m="' + mobile + '" data-n="' + nm.replace(/"/g, '&quot;') + '" data-d="' + due + '" class="pend-wa flex-1 py-1.5 rounded-lg bg-green-50 text-green-700 text-xs font-medium">WhatsApp</button>';
+          html += '<a href="tel:' + tel + '" class="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-700 text-xs font-medium">Call</a>';
+        }
+        html += '</div></div>';
+        return html;
+      }).join('');
+      cards.querySelectorAll('.pend-ledger').forEach(function (btn) {
+        btn.addEventListener('click', function () { viewLedger(btn.getAttribute('data-id')); });
+      });
+      cards.querySelectorAll('.pend-wa').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          openWhatsApp(btn.getAttribute('data-m'), btn.getAttribute('data-n'), Number(btn.getAttribute('data-d') || 0));
+        });
+      });
+    }
 
-  if (tbody) {
-    tbody.innerHTML = list.map(c => `
-      <tr class="border-t border-slate-100 hover:bg-slate-50">
-        <td class="px-3 py-2 font-mono text-xs">${c.custId || c.id.slice(0,6)}</td>
-        <td class="px-3 py-2">
-          <div class="font-medium text-sm">${c.name || '-'}</div>
-          <div class="text-[10px] text-slate-500">${c.street || ''} ${c.place ? '· '+c.place : ''}</div>
-        </td>
-        <td class="px-3 py-2 text-sm">${c.mobile || '-'}</td>
-        <td class="px-3 py-2 font-mono text-xs">${c.boxNo || '-'}</td>
-        <td class="px-3 py-2 text-xs">${c.mso || '-'}</td>
-        <td class="px-3 py-2 text-sm font-bold text-red-600">₹${Number(c.dueAmt || c.due || 0).toLocaleString('en-IN')}</td>
-        <td class="px-3 py-2 whitespace-nowrap">
-          <button onclick="openWhatsApp('${c.mobile || ''}', '${(c.name || '').replace(/'/g, '')}', ${Number(c.dueAmt||c.due||0)})" class="text-green-600 hover:underline text-xs mr-2">WA</button>
-          <button onclick="viewLedger('${c.id}')" class="text-purple-600 hover:underline text-xs">Ledger</button>
-        </td>
-      </tr>
-    `).join('');
+    if (tbody) {
+      tbody.innerHTML = list.map(function (c) {
+        var due = Number(c.dueAmt || c.due || 0);
+        var cid = c.custId || (c.id ? String(c.id).slice(0, 6) : '');
+        return '<tr class="border-t border-slate-100 hover:bg-slate-50">' +
+          '<td class="px-3 py-2 font-mono text-xs">' + cid + '</td>' +
+          '<td class="px-3 py-2"><div class="font-medium text-sm">' + (c.name || '-') + '</div>' +
+          '<div class="text-[10px] text-slate-500">' + (c.street || '') + (c.place ? ' · ' + c.place : '') + '</div></td>' +
+          '<td class="px-3 py-2 text-sm">' + (c.mobile || '-') + '</td>' +
+          '<td class="px-3 py-2 font-mono text-xs">' + (c.boxNo || '-') + '</td>' +
+          '<td class="px-3 py-2 text-xs">' + (c.mso || '-') + '</td>' +
+          '<td class="px-3 py-2 text-sm font-bold text-red-600">₹' + due.toLocaleString('en-IN') + '</td>' +
+          '<td class="px-3 py-2"><button type="button" onclick="viewLedger(\'' + c.id + '\')" class="text-purple-600 text-xs">Ledger</button></td></tr>';
+      }).join('');
+    }
+  } catch (err) {
+    console.error(err);
+    if (cards) cards.innerHTML = '<div class="p-4 text-red-500 text-sm">' + (err.message || err) + '</div>';
+    showToast('Pending list error: ' + (err.message || err), true);
   }
 }
 
