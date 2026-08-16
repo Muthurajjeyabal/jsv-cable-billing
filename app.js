@@ -4535,7 +4535,7 @@ function renderCustomerReport() {
     body.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">No customers</div>';
     return;
   }
-  body.innerHTML = list.map(c => {
+  const cards = list.map(c => {
     const due = Number(c.dueAmt || c.due || 0);
     const isDc = String(c.status || '').toUpperCase() === 'DC';
     const badge = isDc
@@ -4568,6 +4568,41 @@ function renderCustomerReport() {
       </div>
     </div>`;
   }).join('');
+
+  const tableRows = list.map(c => {
+    const due = Number(c.dueAmt || c.due || 0);
+    const st = String(c.status || 'ACT').toUpperCase();
+    return `<tr class="border-t border-slate-100 hover:bg-slate-50 cursor-pointer" onclick="viewLedger('${c.id}')">
+      <td class="px-3 py-2 font-mono text-xs text-slate-500">${c.custId || ''}</td>
+      <td class="px-3 py-2 font-medium text-slate-800">${c.name || ''}</td>
+      <td class="px-3 py-2 text-sm">${c.mobile || '<span class="text-slate-300">—</span>'}</td>
+      <td class="px-3 py-2 text-xs text-slate-600">${c.street || ''}</td>
+      <td class="px-3 py-2 text-xs text-slate-500">${c.place || ''}</td>
+      <td class="px-3 py-2 text-right font-semibold ${due > 0 ? 'text-red-600' : 'text-slate-400'}">₹${due.toLocaleString('en-IN')}</td>
+      <td class="px-3 py-2"><span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${st === 'DC' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}">${st === 'DC' ? 'DC' : 'ACT'}</span></td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="md:hidden space-y-2">${cards}</div>
+    <div class="hidden md:block bg-white rounded-xl border border-slate-100 overflow-hidden">
+      <div class="overflow-x-auto max-h-[70vh]">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 sticky top-0 text-slate-500">
+            <tr>
+              <th class="text-left px-3 py-2.5 font-medium">ID</th>
+              <th class="text-left px-3 py-2.5 font-medium">Name</th>
+              <th class="text-left px-3 py-2.5 font-medium">Mobile</th>
+              <th class="text-left px-3 py-2.5 font-medium">Street</th>
+              <th class="text-left px-3 py-2.5 font-medium">Area</th>
+              <th class="text-right px-3 py-2.5 font-medium">Due</th>
+              <th class="text-left px-3 py-2.5 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>`;
 }
 function renderDcReport() {
   const list = allCustomers.filter(c => String(c.status||'').toUpperCase() === 'DC')
