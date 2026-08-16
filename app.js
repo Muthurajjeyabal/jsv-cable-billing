@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
       document.getElementById('userEmailDisplay').textContent = user.email;
+      try { if (typeof initThemeLang === 'function') initThemeLang(); } catch (e) {}
       loadDashboard();
       loadCustomers();
     } else {
@@ -6093,14 +6094,19 @@ function getAppTheme() {
   return localStorage.getItem('jsv_theme') || 'light';
 }
 function getAppLang() {
-  return localStorage.getItem('jsv_lang') || 'ta';
+  try {
+    var v = (localStorage.getItem('jsv_lang') || 'ta').toLowerCase();
+    if (v === 'en' || v === 'english') return 'en';
+    return 'ta';
+  } catch (e) { return 'ta'; }
 }
 function setAppTheme(v) {
   localStorage.setItem('jsv_theme', v);
   applyAppTheme();
 }
 function setAppLang(v) {
-  localStorage.setItem('jsv_lang', v);
+  v = (v === 'en' || v === 'english') ? 'en' : 'ta';
+  try { localStorage.setItem('jsv_lang', v); } catch (e) {}
   applyAppLang();
   if (typeof currentPageId !== 'undefined' && currentPageId) {
     const titles = (I18N[getAppLang()] || I18N.ta);

@@ -7,6 +7,18 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>JSV Cable TV</title>
+  <script>
+    (function () {
+      try {
+        var lang = localStorage.getItem('jsv_lang') || 'ta';
+        var theme = localStorage.getItem('jsv_theme') || 'light';
+        document.documentElement.lang = lang;
+        if (theme === 'dark') document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+      } catch (e) {}
+    })();
+  </script>
+
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="logo.png" type="image/png">
   <link rel="apple-touch-icon" href="logo.png">
