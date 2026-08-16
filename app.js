@@ -220,7 +220,7 @@ function showPage(pageId, isBack) {
     const bd = document.getElementById('billDate');
     if (bd) { bd.value = new Date().toISOString().slice(0, 10); bd.readOnly = true; }
   }
-  if (pageId === 'settings') { loadWaTemplate(); applyAppTheme(); applyAppLang(); }
+  if (pageId === 'settings') { loadWaTemplate(); applyAppTheme(); applyAppLang(); if (typeof loadBillingSettings === 'function') loadBillingSettings(); }
   if (pageId === 'monthBill') { refreshMonthBillLockUI(); }
   if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d){ d.value=new Date().toISOString().slice(0,10); d.readOnly=true; } loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
@@ -6101,7 +6101,7 @@ function getAppLang() {
   } catch (e) { return 'ta'; }
 }
 function setAppTheme(v) {
-  localStorage.setItem('jsv_theme', v);
+  localStorage.setItem('jsv_theme', v || 'light');
   applyAppTheme();
 }
 function setAppLang(v) {
@@ -6118,12 +6118,15 @@ function setAppLang(v) {
   }
 }
 function applyAppTheme() {
-  const t = getAppTheme();
+  let t = getAppTheme();
+  if (t === 'system') {
+    t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
   document.documentElement.classList.toggle('dark', t === 'dark');
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', t === 'dark' ? '#0b1220' : '#0f172a');
   const sel = document.getElementById('settingTheme');
-  if (sel) sel.value = t;
+  if (sel) sel.value = getAppTheme();
 }
 function applyAppLang() {
   const lang = getAppLang();
@@ -6155,3 +6158,60 @@ try { initThemeLang(); } catch (e) {}
 document.addEventListener('DOMContentLoaded', function () {
   try { initThemeLang(); } catch (e) {}
 });
+
+
+function toggleSettingsAcc(btn) {
+  const acc = btn.closest('.settings-acc');
+  if (!acc) return;
+  const body = acc.querySelector('.settings-acc-body');
+  const open = !body.classList.contains('hidden');
+  // close others optional - keep multi-open for mobile ease
+  if (open) {
+    body.classList.add('hidden');
+    acc.classList.remove('open');
+  } else {
+    body.classList.remove('hidden');
+    acc.classList.add('open');
+  }
+}
+
+function saveBillingSettings() {
+  try {
+    const o = {
+      billPrefix: document.getElementById('setBillPrefix')?.value || 'JSV',
+      currency: document.getElementById('setCurrency')?.value || '₹',
+      defaultMode: document.getElementById('setDefaultMode')?.value || 'Cash',
+      cycle: document.getElementById('setBillCycle')?.value || 'Monthly',
+      rcptCollector: !!document.getElementById('setRcptCollector')?.checked,
+      rcptMode: !!document.getElementById('setRcptMode')?.checked,
+      rcptDue: !!document.getElementById('setRcptDue')?.checked,
+      rcptFooter: document.getElementById('setRcptFooter')?.value || '',
+      permCancelAdmin: !!document.getElementById('setPermCancelAdmin')?.checked,
+      permDeleteAdmin: !!document.getElementById('setPermDeleteAdmin')?.checked,
+      permExport: !!document.getElementById('setPermExport')?.checked
+    };
+    localStorage.setItem('jsv_billing_settings', JSON.stringify(o));
+    if (typeof showToast === 'function') showToast('Settings saved');
+  } catch (e) {}
+}
+function loadBillingSettings() {
+  try {
+    const o = JSON.parse(localStorage.getItem('jsv_billing_settings') || '{}');
+    const set = (id, v, isChk) => {
+      const el = document.getElementById(id);
+      if (!el || v === undefined) return;
+      if (isChk) el.checked = !!v; else el.value = v;
+    };
+    set('setBillPrefix', o.billPrefix);
+    set('setCurrency', o.currency);
+    set('setDefaultMode', o.defaultMode);
+    set('setBillCycle', o.cycle);
+    set('setRcptCollector', o.rcptCollector, true);
+    set('setRcptMode', o.rcptMode, true);
+    set('setRcptDue', o.rcptDue, true);
+    set('setRcptFooter', o.rcptFooter);
+    set('setPermCancelAdmin', o.permCancelAdmin, true);
+    set('setPermDeleteAdmin', o.permDeleteAdmin, true);
+    set('setPermExport', o.permExport, true);
+  } catch (e) {}
+}
