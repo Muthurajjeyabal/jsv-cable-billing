@@ -997,10 +997,28 @@ async function viewLedger(id) {
   if (msoEl) msoEl.textContent = c.mso || '-';
   const pkgEl = document.getElementById('ledgerPkg');
   if (pkgEl) {
-    const base = c.packageBase != null ? Number(c.packageBase) : Number(c.packageAmt || 0);
-    const addon = Number(c.addonAmt || 0);
+    let addonList = [];
+    try {
+      const arr = typeof c.addons === 'string' ? JSON.parse(c.addons || '[]') : (c.addons || []);
+      if (Array.isArray(arr)) addonList = arr;
+    } catch (e) {}
+    const addonSum = addonList.reduce((s, a) => s + Number(a.amount || 0), 0) || Number(c.addonAmt || 0);
+    const base = c.packageBase != null ? Number(c.packageBase)
+      : (Number(c.packageAmt || 0) - addonSum);
+    const total = Number(c.packageAmt != null ? c.packageAmt : (base + addonSum));
     const pkgName = c.package || '-';
-    pkgEl.textContent = pkgName + (base || addon ? ' · ₹' + (Number(c.packageAmt || base + addon)) : '');
+    let html = '<div>' + pkgName + ' · ₹' + (base > 0 ? base : total) + '</div>';
+    if (addonList.length) {
+      html += addonList.map(a =>
+        '<div class="text-[11px] text-indigo-600 font-medium">+ ' + (a.name || 'Add-on') +
+        (a.amount ? ' ₹' + a.amount : '') + '</div>'
+      ).join('');
+      html += '<div class="text-[11px] text-slate-500 mt-0.5">Total ₹' + total + '</div>';
+    } else if (addonSum > 0) {
+      html += '<div class="text-[11px] text-indigo-600">+ Add-on ₹' + addonSum + '</div>';
+      html += '<div class="text-[11px] text-slate-500">Total ₹' + total + '</div>';
+    }
+    pkgEl.innerHTML = html;
   }
   const vcBtn = document.getElementById('ledgerVcBtn');
   const vc = c.scNo || c.smartCard || '';
@@ -1023,7 +1041,9 @@ async function viewLedger(id) {
       if (Array.isArray(arr) && arr.length) addons = arr.map(a => a.name + (a.amount ? ' ₹'+a.amount : '')).join(', ');
     } catch(e) {}
     const caf = c.cafNo || c.caf || '';
-    ca.textContent = [caf ? 'CAF: '+caf : '', addons ? 'Add-on: '+addons : ''].filter(Boolean).join(' · ') || '-';
+    if (addons) ca.innerHTML = (caf ? '<div class="text-[10px] text-slate-400">CAF: ' + caf + '</div>' : '') +
+      '<div class="text-indigo-700 text-xs font-medium">' + addons + '</div>';
+    else ca.textContent = caf || '-';
   }
   document.getElementById('ledgerDue').textContent = '₹' + Number(c.dueAmt || c.due || 0).toLocaleString('en-IN');
   const st = (c.status || 'ACT').toUpperCase();
