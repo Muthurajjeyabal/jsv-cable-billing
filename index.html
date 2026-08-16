@@ -1369,10 +1369,13 @@
                 <button type="button" data-chip="DC" onclick="setCustRepChip(this)" class="cust-chip px-3 py-1.5 rounded-full text-xs bg-white border border-slate-200 text-slate-600">DC</button>
               </div>
               <div class="flex flex-wrap gap-2 items-center">
-                <select id="custRepArea" onchange="renderCustomerReport()" class="px-2 py-1.5 border rounded-lg text-xs bg-white">
+                <select id="custRepArea" onchange="onCustRepAreaChange()" class="px-2 py-1.5 border rounded-lg text-xs bg-white">
                   <option value="">All Areas</option>
                   <option value="AREA 1">AREA 1</option>
                   <option value="AREA 2">AREA 2</option>
+                </select>
+                <select id="custRepStreet" onchange="renderCustomerReport()" class="px-2 py-1.5 border rounded-lg text-xs bg-white max-w-[140px]">
+                  <option value="">All Streets</option>
                 </select>
                 <select id="custRepSort" onchange="renderCustomerReport()" class="px-2 py-1.5 border rounded-lg text-xs bg-white">
                   <option value="id">Sort: ID</option>

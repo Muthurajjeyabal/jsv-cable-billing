@@ -4604,6 +4604,26 @@ function closeReportPanels() {
   const menu = document.getElementById('reportMenu');
   if (menu) menu.classList.remove('hidden');
 }
+function onCustRepAreaChange() {
+  const area = (document.getElementById('custRepArea') || {}).value || '';
+  const streetSel = document.getElementById('custRepStreet');
+  if (!streetSel) { renderCustomerReport(); return; }
+  const streets = new Set();
+  (allCustomers || []).forEach(c => {
+    const p = String(c.place || '').toUpperCase().replace(/\s+/g, ' ');
+    let ok = !area;
+    if (area) {
+      const a = area.toUpperCase();
+      ok = p === a || p.includes(a) || (a === 'AREA 1' && (p === '1' || p === 'AREA1')) || (a === 'AREA 2' && (p === '2' || p === 'AREA2'));
+    }
+    if (ok && c.street) streets.add(String(c.street).trim());
+  });
+  streetSel.innerHTML = '<option value="">All Streets</option>' +
+    Array.from(streets).sort((a, b) => a.localeCompare(b, 'ta'))
+      .map(s => '<option value="' + s.replace(/"/g, '&quot;') + '">' + s + '</option>').join('');
+  renderCustomerReport();
+}
+
 function setCustRepChip(btn) {
   const v = btn.getAttribute('data-chip') || '';
   const hid = document.getElementById('custRepStatus');
@@ -4642,7 +4662,15 @@ function renderCustomerReport() {
   if (st === 'DC') list = list.filter(c => String(c.status || '').toUpperCase() === 'DC');
   else if (st === 'ACT') list = list.filter(c => String(c.status || 'ACT').toUpperCase() !== 'DC');
   else if (st === 'DUE') list = list.filter(c => Number(c.dueAmt || c.due || 0) > 0);
-  if (area) list = list.filter(c => String(c.place || '').toUpperCase() === area.toUpperCase());
+  if (area) {
+    const a = area.toUpperCase();
+    list = list.filter(c => {
+      const p = String(c.place || '').toUpperCase().replace(/\s+/g, ' ');
+      return p === a || p.includes(a) || (a === 'AREA 1' && (p === '1' || p === 'AREA1')) || (a === 'AREA 2' && (p === '2' || p === 'AREA2'));
+    });
+  }
+  const streetF = (document.getElementById('custRepStreet') || {}).value || '';
+  if (streetF) list = list.filter(c => String(c.street || '').trim() === streetF);
   if (q) {
     list = list.filter(c => {
       const blob = [c.name, c.mobile, c.boxNo, c.custId, c.street].join(' ').toLowerCase();
