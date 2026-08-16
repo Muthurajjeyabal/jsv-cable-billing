@@ -3263,11 +3263,19 @@ async function fixGpayLocalAgents() {
 }
 
 async function importAugustCollections() {
-  if (!confirm('ஆகஸ்ட் Collection list import?\n\n• ஏற்கனவே உள்ள bill (same BillNo+Date+Customer) SKIP\n• புதியவை ADD\n• Pay செய்த customers Due = 0')) return;
+  return importCollectionsFromJson('collections_aug2026.json', 'ஆகஸ்ட் full list');
+}
+
+async function importTodayCollections() {
+  return importCollectionsFromJson('collections_2026-08-16.json', '16 Aug 2026 collection');
+}
+
+async function importCollectionsFromJson(fileName, label) {
+  if (!confirm((label || fileName) + ' import?\n\n• same BillNo+Date+Customer → SKIP\n• புதியவை ADD\n• Paid customers Due = 0')) return;
   try {
     showToast('Loading file...');
-    const res = await fetch('collections_aug2026.json?t=' + Date.now());
-    if (!res.ok) throw new Error('collections_aug2026.json not found in site — upload that file to GitHub too');
+    const res = await fetch(fileName + '?t=' + Date.now());
+    if (!res.ok) throw new Error(fileName + ' not found — upload to GitHub root');
     const list = await res.json();
     if (!Array.isArray(list) || !list.length) throw new Error('Empty list');
 
@@ -4885,12 +4893,32 @@ function setTrendPreset(which) {
   renderTrendReport();
 }
 
+function normalizeDateInput(v) {
+  v = String(v || '').trim();
+  if (!v) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  let m = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) {
+    // assume DD/MM/YYYY (India)
+    return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  }
+  const t = Date.parse(v);
+  if (!isNaN(t)) {
+    const d = new Date(t);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  return v;
+}
+
 function eachDateInclusive(from, to) {
   const out = [];
   const a = new Date(from + 'T00:00:00');
   const b = new Date(to + 'T00:00:00');
-  if (isNaN(a) || isNaN(b)) return out;
-  for (let d = new Date(a); d <= b; d.setDate(d.getDate() + 1)) {
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return out;
+  if (a > b) return out;
+  // safety: max 120 days
+  let guard = 0;
+  for (let d = new Date(a); d <= b && guard < 120; d.setDate(d.getDate() + 1), guard++) {
     out.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'));
   }
   return out;
@@ -4900,16 +4928,35 @@ async function renderTrendReport() {
   const body = document.getElementById('trendBody');
   if (!body) return;
   const t = new Date();
-  const iso = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+  const isoNow = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
   const fromEl = document.getElementById('trendFrom');
   const toEl = document.getElementById('trendTo');
-  if (fromEl && !fromEl.value) fromEl.value = iso.slice(0, 8) + '01';
-  if (toEl && !toEl.value) toEl.value = iso;
-  const from = (fromEl && fromEl.value) || iso.slice(0, 8) + '01';
-  const to = (toEl && toEl.value) || iso;
+  if (fromEl && !fromEl.value) fromEl.value = isoNow.slice(0, 8) + '01';
+  if (toEl && !toEl.value) toEl.value = isoNow;
+  let from = normalizeDateInput((fromEl && fromEl.value) || isoNow.slice(0, 8) + '01');
+  let to = normalizeDateInput((toEl && toEl.value) || isoNow);
+  if (from > to) { const tmp = from; from = to; to = tmp; }
   body.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
   try {
-    const rows = await fetchCollectionsInRange(from, to);
+    let rows = [];
+    try {
+      rows = await fetchCollectionsInRange(from, to);
+    } catch (e1) {
+      console.warn('trend fetch', e1);
+      // fallback: load all collections limited client filter
+      try {
+        const snap = await db.collection('collections').limit(2000).get();
+        snap.forEach(function (doc) {
+          const d = doc.data();
+          if (d.status === 'cancelled') return;
+          const dt = d.date || '';
+          if (dt >= from && dt <= to) rows.push({ id: doc.id, ...d });
+        });
+      } catch (e2) {
+        throw e1;
+      }
+    }
+
     const byDate = {};
     rows.forEach(function (r) {
       const d = r.date || '';
@@ -4917,7 +4964,7 @@ async function renderTrendReport() {
       byDate[d] = (byDate[d] || 0) + Number(r.amount || 0);
     });
     const days = eachDateInclusive(from, to);
-    const entries = days.map(function (d) { return [d, byDate[d] || 0]; });
+    const entries = days.length ? days.map(function (d) { return [d, byDate[d] || 0]; }) : Object.entries(byDate).sort(function (a, b) { return a[0].localeCompare(b[0]); });
     const total = entries.reduce(function (s, e) { return s + e[1]; }, 0);
     const nDays = Math.max(1, entries.length);
     const avg = Math.round(total / nDays);
@@ -4928,28 +4975,10 @@ async function renderTrendReport() {
     });
     if (bestA < 0) bestA = 0;
     if (lowA === Infinity) lowA = 0;
-
-    // Previous equal-length period
-    const fromDt = new Date(from + 'T00:00:00');
-    const toDt = new Date(to + 'T00:00:00');
-    const span = Math.round((toDt - fromDt) / 86400000) + 1;
-    const prevTo = new Date(fromDt); prevTo.setDate(prevTo.getDate() - 1);
-    const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - (span - 1));
-    const pIso = function (d) {
-      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    };
-    let prevTotal = 0;
-    try {
-      const prevRows = await fetchCollectionsInRange(pIso(prevFrom), pIso(prevTo));
-      prevTotal = prevRows.reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
-    } catch (e) {}
-    const change = prevTotal ? Math.round(((total - prevTotal) / prevTotal) * 1000) / 10 : 0;
-
     const max = Math.max(1, bestA);
 
-    // SVG sparkline / bar chart
     const W = 320, H = 120, pad = 8;
-    const n = entries.length || 1;
+    const n = Math.max(1, entries.length);
     const barW = Math.max(2, (W - pad * 2) / n - 1);
     let bars = '';
     entries.forEach(function (e, i) {
@@ -4957,47 +4986,73 @@ async function renderTrendReport() {
       const x = pad + i * ((W - pad * 2) / n);
       const y = H - pad - h;
       const isBest = e[0] === bestD && bestA > 0;
-      const isLow = e[0] === lowD && e[1] === lowA;
-      bars += '<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + barW.toFixed(1) + '" height="' + Math.max(h, e[1] > 0 ? 2 : 0) + '" rx="1" fill="' + (isBest ? '#10b981' : isLow && e[1] === 0 ? '#e2e8f0' : '#34d399') + '"/>';
+      bars += '<rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + barW.toFixed(1) + '" height="' + Math.max(h, e[1] > 0 ? 2 : 0) + '" rx="1" fill="' + (isBest ? '#10b981' : '#34d399') + '"/>';
     });
     const svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="w-full h-28">' + bars + '</svg>';
 
     let html = '';
-    html += '<div class="text-xs text-slate-500 px-1">' + from + ' → ' + to + '</div>';
+    html += '<div class="text-xs text-slate-500 px-1">' + from + ' → ' + to + ' · ' + rows.length + ' bills</div>';
     html += '<div class="grid grid-cols-3 gap-2">';
     html += '<div class="bg-white rounded-xl border p-2.5 text-center"><div class="text-sm font-bold text-slate-800">₹' + total.toLocaleString('en-IN') + '</div><div class="text-[9px] text-slate-400">Total</div></div>';
     html += '<div class="bg-white rounded-xl border p-2.5 text-center"><div class="text-sm font-bold text-slate-800">₹' + avg.toLocaleString('en-IN') + '</div><div class="text-[9px] text-slate-400">Daily Avg</div></div>';
     html += '<div class="bg-white rounded-xl border p-2.5 text-center"><div class="text-sm font-bold text-emerald-600">₹' + bestA.toLocaleString('en-IN') + '</div><div class="text-[9px] text-slate-400">Best Day</div></div></div>';
-
     html += '<div class="bg-white rounded-xl border p-3">' + svg + '</div>';
-
     html += '<div class="grid grid-cols-2 gap-2">';
-    html += '<div class="bg-white rounded-xl border p-3"><div class="text-[10px] text-emerald-600 font-medium">Best</div><div class="text-xs font-semibold mt-0.5">' + bestD + '</div><div class="text-sm font-bold">₹' + bestA.toLocaleString('en-IN') + '</div></div>';
-    html += '<div class="bg-white rounded-xl border p-3"><div class="text-[10px] text-slate-400 font-medium">Lowest</div><div class="text-xs font-semibold mt-0.5">' + lowD + '</div><div class="text-sm font-bold">₹' + lowA.toLocaleString('en-IN') + '</div></div></div>';
+    html += '<div class="bg-white rounded-xl border p-3"><div class="text-[10px] text-emerald-600 font-medium">Best</div><div class="text-xs font-semibold mt-0.5">' + (bestD || '—') + '</div><div class="text-sm font-bold">₹' + bestA.toLocaleString('en-IN') + '</div></div>';
+    html += '<div class="bg-white rounded-xl border p-3"><div class="text-[10px] text-slate-400 font-medium">Lowest</div><div class="text-xs font-semibold mt-0.5">' + (lowD || '—') + '</div><div class="text-sm font-bold">₹' + lowA.toLocaleString('en-IN') + '</div></div></div>';
 
-    html += '<div class="bg-white rounded-xl border p-3">';
-    html += '<div class="flex justify-between text-xs mb-1"><span class="text-slate-500">Previous ' + span + ' days</span><span>₹' + prevTotal.toLocaleString('en-IN') + '</span></div>';
-    html += '<div class="flex justify-between text-xs mb-1"><span class="text-slate-500">Current period</span><span class="font-semibold">₹' + total.toLocaleString('en-IN') + '</span></div>';
-    html += '<div class="text-sm font-bold ' + (change >= 0 ? 'text-emerald-600' : 'text-red-600') + '">' + (change >= 0 ? '↑' : '↓') + ' ' + Math.abs(change) + '%</div></div>';
+    // Previous period — non-blocking after first paint
+    html += '<div id="trendPrevBox" class="bg-white rounded-xl border p-3 text-xs text-slate-400">Comparing previous period…</div>';
 
     html += '<div class="bg-white rounded-xl border p-3">';
     html += '<div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Daily Details</div>';
-    entries.forEach(function (e) {
-      const pct = Math.round((e[1] / max) * 100);
-      const zero = e[1] === 0;
-      html += '<div class="mb-1.5">';
-      html += '<div class="flex justify-between text-[11px] mb-0.5"><span class="' + (zero ? 'text-slate-400' : '') + '">' + e[0] + '</span><span class="font-medium ' + (zero ? 'text-slate-400' : '') + '">₹' + e[1].toLocaleString('en-IN') + '</span></div>';
-      html += '<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full ' + (zero ? 'bg-slate-200' : 'bg-emerald-500') + '" style="width:' + pct + '%"></div></div></div>';
-    });
+    if (!entries.length) {
+      html += '<div class="text-slate-400 text-center py-4">No data</div>';
+    } else {
+      entries.forEach(function (e) {
+        const pct = Math.round((e[1] / max) * 100);
+        const zero = e[1] === 0;
+        html += '<div class="mb-1.5"><div class="flex justify-between text-[11px] mb-0.5"><span class="' + (zero ? 'text-slate-400' : '') + '">' + e[0] + '</span><span class="font-medium ' + (zero ? 'text-slate-400' : '') + '">₹' + e[1].toLocaleString('en-IN') + '</span></div>';
+        html += '<div class="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full ' + (zero ? 'bg-slate-200' : 'bg-emerald-500') + '" style="width:' + pct + '%"></div></div></div>';
+      });
+    }
     html += '</div>';
 
     body.innerHTML = html;
+
+    // async previous comparison
+    (async function () {
+      const box = document.getElementById('trendPrevBox');
+      if (!box) return;
+      try {
+        const fromDt = new Date(from + 'T00:00:00');
+        const toDt = new Date(to + 'T00:00:00');
+        const span = Math.round((toDt - fromDt) / 86400000) + 1;
+        if (span < 1 || span > 120) {
+          box.innerHTML = '<div class="text-slate-400">Previous period N/A</div>';
+          return;
+        }
+        const prevTo = new Date(fromDt); prevTo.setDate(prevTo.getDate() - 1);
+        const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - (span - 1));
+        const pIso = function (d) {
+          return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        };
+        const prevRows = await fetchCollectionsInRange(pIso(prevFrom), pIso(prevTo));
+        const prevTotal = prevRows.reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
+        const change = prevTotal ? Math.round(((total - prevTotal) / prevTotal) * 1000) / 10 : 0;
+        box.innerHTML =
+          '<div class="flex justify-between mb-1"><span class="text-slate-500">Previous ' + span + ' days</span><span>₹' + prevTotal.toLocaleString('en-IN') + '</span></div>' +
+          '<div class="flex justify-between mb-1"><span class="text-slate-500">Current period</span><span class="font-semibold text-slate-800">₹' + total.toLocaleString('en-IN') + '</span></div>' +
+          '<div class="text-sm font-bold ' + (change >= 0 ? 'text-emerald-600' : 'text-red-600') + '">' + (change >= 0 ? '↑' : '↓') + ' ' + Math.abs(change) + '%</div>';
+      } catch (e) {
+        box.innerHTML = '<div class="text-slate-400">Previous compare skipped</div>';
+      }
+    })();
   } catch (e) {
-    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + (e.message || e) + '</div>';
+    console.error(e);
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">Error: ' + (e.message || e) + '</div>';
   }
 }
-
-
 
 function openCollectorsPrintOut() {
   // Direct open — avoid showPage('reports') closing panels again
