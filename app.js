@@ -3225,25 +3225,49 @@ async function renderAgentDayReport() {
   body.innerHTML = '<div class="p-6 text-center text-slate-400">Loading...</div>';
   try {
     const byId = new Map();
-    (allCustomers || []).forEach(c => byId.set(c.id, c));
+    const byCustId = new Map();
+    (allCustomers || []).forEach(c => {
+      byId.set(c.id, c);
+      const cid = String(c.custId || '').trim().toUpperCase();
+      if (cid) byCustId.set(cid, c);
+    });
+    // street name → area from street master
+    const streetArea = new Map();
+    (typeof allStreets !== 'undefined' && allStreets ? allStreets : []).forEach(s => {
+      const n = String(s.name || s.street || '').trim();
+      const p = String(s.place || s.area || '').trim().toUpperCase();
+      if (n) streetArea.set(n, p);
+    });
+    function normArea(p, street) {
+      let s = String(p || '').trim().toUpperCase().replace(/\s+/g, ' ');
+      if (!s && street) s = String(streetArea.get(street) || '').toUpperCase();
+      if (s === 'AREA1' || s === '1' || s === 'AREA 1') return 'AREA 1';
+      if (s === 'AREA2' || s === '2' || s === 'AREA 2') return 'AREA 2';
+      if (s.includes('AREA 1')) return 'AREA 1';
+      if (s.includes('AREA 2')) return 'AREA 2';
+      return s;
+    }
     const snap = await db.collection('collections').where('date', '>=', from).where('date', '<=', to).get();
     const rows = [];
     snap.forEach(doc => {
       const d = { id: doc.id, ...doc.data() };
       const key = classifyAgent(d);
       if (who !== 'ALL' && key !== who) return;
-      const cust = byId.get(d.customerId);
-      const place = (cust?.place || d.place || '').toString().trim().toUpperCase();
-      if (areaFilter !== 'ALL') {
-        const af = areaFilter.toUpperCase();
-        if (place !== af && !place.includes(af.replace('AREA ', ''))) {
-          // also accept "AREA1" without space
-          if (place.replace(/\s+/g, '') !== af.replace(/\s+/g, '')) return;
-        }
-      }
+      let cust = byId.get(d.customerId);
+      if (!cust && d.importCustId) cust = byCustId.get(String(d.importCustId).toUpperCase());
+      if (!cust && d.custId) cust = byCustId.get(String(d.custId).toUpperCase());
+      const area = normArea(cust?.place || d.place, cust?.street || d.street);
+      if (areaFilter !== 'ALL' && area !== areaFilter) return;
       const mso = (d.mso || cust?.mso || '').toString().trim();
       if (msoFilter !== 'ALL' && mso !== msoFilter) return;
-      rows.push({ ...d, _agent: key, _mso: mso || '-', _area: place || '-' });
+      rows.push({
+        ...d,
+        customerName: d.customerName || cust?.name || '',
+        importCustId: d.importCustId || cust?.custId || '',
+        _agent: key,
+        _mso: mso || '-',
+        _area: area || '-'
+      });
     });
     rows.sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(a.customerName||'').localeCompare(String(b.customerName||'')));
     const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
