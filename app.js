@@ -220,7 +220,7 @@ function showPage(pageId, isBack) {
     const bd = document.getElementById('billDate');
     if (bd) { bd.value = new Date().toISOString().slice(0, 10); bd.readOnly = true; }
   }
-  if (pageId === 'settings') { loadWaTemplate(); applyAppTheme(); applyAppLang(); if (typeof loadBillingSettings === 'function') loadBillingSettings(); }
+  if (pageId === 'settings') { loadWaTemplate(); applyAppTheme(); applyAppLang(); if (typeof loadBillingSettings === 'function') loadBillingSettings(); if (typeof applyDashLayout === 'function') applyDashLayout(); }
   if (pageId === 'monthBill') { refreshMonthBillLockUI(); }
   if (pageId === 'expenses') { const d=document.getElementById('expDate'); if(d){ d.value=new Date().toISOString().slice(0,10); d.readOnly=true; } loadExpenses(); }
   if (pageId === 'reports') closeReportPanels();
@@ -242,6 +242,7 @@ function showPage(pageId, isBack) {
   if (pageId === 'cancelled') {
     loadCancelledBills();
   }
+  if (pageId === 'dashboard' && typeof applyDashLayout === 'function') applyDashLayout();
 
   if (window.innerWidth < 1024) {
     document.getElementById('sidebar').classList.add('-translate-x-full');
@@ -1815,6 +1816,30 @@ async function loadDashboard() {
     });
     const sm = document.getElementById('statMonthCol');
     if (sm) sm.textContent = '₹ ' + monthTotal.toLocaleString('en-IN');
+
+    // Month expenses + net
+    try {
+      let expMonth = 0, expToday = 0;
+      const expSnap = await db.collection('expenses').where('date', '>=', monthStart).get();
+      expSnap.forEach(function (doc) {
+        const d = doc.data();
+        const a = Number(d.amount || 0);
+        expMonth += a;
+        if (d.date === today) expToday += a;
+      });
+      const se = document.getElementById('statMonthExp');
+      if (se) se.textContent = '₹ ' + expMonth.toLocaleString('en-IN');
+      const ste = document.getElementById('statTodayExp');
+      if (ste) ste.textContent = 'Today ₹' + expToday.toLocaleString('en-IN');
+      const net = monthTotal - expMonth;
+      const sn = document.getElementById('statNetMonth');
+      if (sn) {
+        sn.textContent = '₹ ' + net.toLocaleString('en-IN');
+        sn.className = 'text-xl font-bold mt-1 ' + (net >= 0 ? 'text-emerald-700' : 'text-rose-600');
+      }
+      window._dashMonthCollection = monthTotal;
+      window._dashMonthExpenses = expMonth;
+    } catch (ee) { console.log('expense dash', ee); }
 
     const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     setTxt('agentUmaToday', '₹' + agentsToday.uma.amt.toLocaleString('en-IN'));
@@ -5153,6 +5178,19 @@ function openCollectorsPrintOut() {
 }
 
 function openReport(kind) {
+  if (kind === 'expense') {
+    document.getElementById('reportMenu')?.classList.add('hidden');
+    document.querySelectorAll('.report-panel').forEach(function (p) { p.classList.add('hidden'); });
+    const p = document.getElementById('reportPanel-expense');
+    if (p) p.classList.remove('hidden');
+    const t = new Date().toISOString().slice(0, 10);
+    const f = document.getElementById('expRepFrom');
+    const to = document.getElementById('expRepTo');
+    if (f && !f.value) f.value = t.slice(0, 8) + '01';
+    if (to && !to.value) to.value = t;
+    renderExpenseReport();
+    return;
+  }
   if (kind === 'transfer') {
     document.getElementById('reportMenu')?.classList.add('hidden');
     document.querySelectorAll('.report-panel').forEach(p => p.classList.add('hidden'));
@@ -6109,6 +6147,65 @@ async function deleteExpense(id) {
 }
 
 
+
+
+async function renderExpenseReport() {
+  const from = document.getElementById('expRepFrom')?.value || '';
+  const to = document.getElementById('expRepTo')?.value || '';
+  const sumEl = document.getElementById('expRepSummary');
+  const brEl = document.getElementById('expRepBreakdown');
+  const body = document.getElementById('expRepBody');
+  if (!body) return;
+  body.innerHTML = '<div class="p-4 text-center text-slate-400">Loading...</div>';
+  try {
+    let snap;
+    try {
+      if (from) snap = await db.collection('expenses').where('date', '>=', from).get();
+      else snap = await db.collection('expenses').limit(500).get();
+    } catch (e1) {
+      snap = await db.collection('expenses').limit(500).get();
+    }
+    let rows = [];
+    snap.forEach(function (d) { rows.push({ id: d.id, ...d.data() }); });
+    if (from) rows = rows.filter(function (r) { return String(r.date || '') >= from; });
+    if (to) rows = rows.filter(function (r) { return String(r.date || '') <= to; });
+    rows.sort(function (a, b) { return String(b.date || '').localeCompare(String(a.date || '')); });
+    const total = rows.reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
+    const byCat = {};
+    const byMode = {};
+    rows.forEach(function (r) {
+      const c = String(r.category || 'Other').split(' · ')[0];
+      byCat[c] = (byCat[c] || 0) + Number(r.amount || 0);
+      const m = r.mode || 'Cash';
+      byMode[m] = (byMode[m] || 0) + Number(r.amount || 0);
+    });
+    if (sumEl) {
+      sumEl.innerHTML =
+        '<div class="soft-card p-3 text-center"><div class="text-[10px] text-slate-400">TOTAL</div><div class="text-xl font-bold text-rose-600">₹' + total.toLocaleString('en-IN') + '</div><div class="text-[10px] text-slate-400">' + rows.length + ' entries</div></div>' +
+        '<div class="soft-card p-3 text-center"><div class="text-[10px] text-slate-400">PERIOD</div><div class="text-sm font-semibold text-slate-800">' + (from || '…') + '</div><div class="text-[10px] text-slate-400">to ' + (to || '…') + '</div></div>';
+    }
+    const cats = Object.keys(byCat).map(function (k) { return { k: k, v: byCat[k] }; }).sort(function (a, b) { return b.v - a.v; });
+    if (brEl) {
+      brEl.innerHTML = '<div class="font-semibold text-xs mb-2">By Category</div>' +
+        (cats.length ? cats.map(function (e) {
+          const pct = total ? Math.round((e.v / total) * 100) : 0;
+          return '<div class="flex justify-between py-1 border-b border-slate-50 text-xs"><span>' + e.k + '</span><span class="font-semibold">₹' + e.v.toLocaleString('en-IN') + ' <span class="text-slate-400">(' + pct + '%)</span></span></div>';
+        }).join('') : '<div class="text-slate-400 text-xs">No data</div>') +
+        '<div class="font-semibold text-xs mt-3 mb-2">By Payment Mode</div>' +
+        Object.keys(byMode).map(function (m) {
+          return '<div class="flex justify-between py-1 text-xs"><span>' + m + '</span><span class="font-semibold">₹' + byMode[m].toLocaleString('en-IN') + '</span></div>';
+        }).join('');
+    }
+    body.innerHTML = rows.length ? ('<div class="font-semibold text-xs mb-2">Details</div>' + rows.map(function (r) {
+      return '<div class="flex justify-between py-1.5 border-b border-slate-50 text-xs gap-2">' +
+        '<div class="min-w-0"><div class="font-medium">' + (r.category || '') + '</div><div class="text-slate-400">' + (r.date || '') + ' · ' + (r.mode || 'Cash') + (r.note ? ' · ' + r.note : '') + '</div></div>' +
+        '<div class="font-bold text-rose-600 shrink-0">₹' + Number(r.amount || 0).toLocaleString('en-IN') + '</div></div>';
+    }).join('')) : '<div class="text-center text-slate-400 py-6">No expenses in range</div>';
+  } catch (e) {
+    body.innerHTML = '<div class="text-red-500 text-sm">' + (e.message || e) + '</div>';
+  }
+}
+
 // ==================== THEME & LANGUAGE ====================
 const I18N = {
   en: {
@@ -6235,6 +6332,7 @@ function applyAppLang() {
 function initThemeLang() {
   applyAppTheme();
   applyAppLang();
+  try { if (typeof applyDashLayout === 'function') applyDashLayout(); } catch (e) {}
 }
 // run early
 try { initThemeLang(); } catch (e) {}
@@ -6297,4 +6395,59 @@ function loadBillingSettings() {
     set('setPermDeleteAdmin', o.permDeleteAdmin, true);
     set('setPermExport', o.permExport, true);
   } catch (e) {}
+}
+
+
+function getDashLayout() {
+  try {
+    return JSON.parse(localStorage.getItem('jsv_dash_layout') || '{}');
+  } catch (e) { return {}; }
+}
+function saveDashLayout() {
+  const o = {
+    expenses: document.getElementById('dashShowExpenses')?.checked !== false,
+    network: document.getElementById('dashShowNetwork')?.checked !== false,
+    agents: document.getElementById('dashShowAgents')?.checked !== false,
+    quick: document.getElementById('dashShowQuick')?.checked !== false
+  };
+  // if checkbox missing, keep previous
+  const cur = getDashLayout();
+  if (!document.getElementById('dashShowExpenses')) o.expenses = cur.expenses !== false;
+  if (!document.getElementById('dashShowNetwork')) o.network = cur.network !== false;
+  if (!document.getElementById('dashShowAgents')) o.agents = cur.agents !== false;
+  if (!document.getElementById('dashShowQuick')) o.quick = cur.quick !== false;
+  try { localStorage.setItem('jsv_dash_layout', JSON.stringify(o)); } catch (e) {}
+  applyDashLayout();
+  if (typeof showToast === 'function') showToast('Dashboard updated');
+}
+function applyDashLayout() {
+  const o = getDashLayout();
+  const show = function (id, on) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('hidden', on === false);
+  };
+  show('dashExpenseRow', o.expenses !== false);
+  show('dashNetworkCard', o.network !== false);
+  // agents: hide parent of title
+  const at = document.getElementById('dashAgentTitle');
+  if (at) {
+    const card = at.closest('.soft-card') || at.parentElement;
+    if (card) card.classList.toggle('hidden', o.agents === false);
+  }
+  show('dashQuickCard', o.quick !== false);
+  const qt = document.getElementById('dashQuickTitle');
+  if (qt && !document.getElementById('dashQuickCard')) {
+    const card = qt.closest('.soft-card') || qt.parentElement;
+    if (card) card.classList.toggle('hidden', o.quick === false);
+  }
+  // sync checkboxes if present
+  const setChk = function (id, val) {
+    const el = document.getElementById(id);
+    if (el) el.checked = val !== false;
+  };
+  setChk('dashShowExpenses', o.expenses);
+  setChk('dashShowNetwork', o.network);
+  setChk('dashShowAgents', o.agents);
+  setChk('dashShowQuick', o.quick);
 }
