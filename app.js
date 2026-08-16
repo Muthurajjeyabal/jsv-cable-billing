@@ -1169,6 +1169,21 @@ async function viewLedger(id) {
       if (pt) pt.textContent = '';
     } else {
       if (timeline) {
+        // Cancel only for latest active payment within 7 days
+        let cancelableId = null;
+        try {
+          const active = rows.filter(function (x) { return x.status !== 'cancelled'; })
+            .slice().sort(function (a, b) { return String(b.date || '').localeCompare(String(a.date || '')); });
+          if (active.length) {
+            const latest = active[0];
+            const d0 = String(latest.date || '').slice(0, 10);
+            const t0 = new Date(d0 + 'T12:00:00').getTime();
+            const now = Date.now();
+            if (!isNaN(t0) && (now - t0) <= 7 * 24 * 60 * 60 * 1000) {
+              cancelableId = latest.id;
+            }
+          }
+        } catch (e) {}
         timeline.innerHTML = rows.map(r => {
           const cancelled = r.status === 'cancelled';
           if (!cancelled) total += Number(r.amount || 0);
@@ -1179,7 +1194,7 @@ async function viewLedger(id) {
             const dt = new Date(d + 'T12:00:00');
             if (!isNaN(dt)) dLabel = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
           } catch (e) {}
-          const cancelBtn = cancelled ? '' : `<button type="button" onclick="event.stopPropagation();cancelCollection('${r.id}','${r.customerId || id}',${Number(r.amount||0)})" class="text-[10px] text-red-500 border border-red-200 px-1.5 py-0.5 rounded shrink-0">Cancel</button>`;
+          const cancelBtn = (!cancelled && r.id === cancelableId) ? `<button type="button" onclick="event.stopPropagation();cancelCollection('${r.id}','${r.customerId || id}',${Number(r.amount||0)})" class="text-[10px] text-red-500 border border-red-200 px-1.5 py-0.5 rounded shrink-0">Cancel</button>` : '';
           return `<div class="px-4 py-3 flex gap-3 ${cancelled ? 'opacity-40' : ''}">
             <div class="flex flex-col items-center pt-1">
               <div class="w-2.5 h-2.5 rounded-full ${cancelled ? 'bg-slate-300' : 'bg-emerald-500'}"></div>
