@@ -700,6 +700,7 @@ async function saveTransferModal() {
     const idx = allCustomers.findIndex(x => x.id === id);
     if (idx >= 0) Object.assign(allCustomers[idx], updates);
     closeTransferModal();
+    await logActivity(id, 'Transfer', (oldPlace || '') + ' ' + (oldStreet || '') + ' → ' + place + ' ' + street + ' · ID ' + newCustId);
     showToast('Transfer OK · ' + place + ' · ' + street + ' · ' + newCustId);
     await viewLedger(id);
   } catch (e) {
@@ -798,6 +799,7 @@ function closePackageModal() {
 async function savePackageModal() {
   const id = window._pkgModalCustId;
   if (!id) return;
+  const c = allCustomers.find(x => x.id === id);
   const pkg = (document.getElementById('pkgModalSelect')?.value || '').trim();
   const packageBase = Number(document.getElementById('pkgModalAmt')?.value || 0);
   const addonAmt = pkgModalAddons.reduce((s, a) => s + Number(a.amount || 0), 0);
@@ -817,6 +819,7 @@ async function savePackageModal() {
       Object.assign(allCustomers[idx], { package: pkg, packageBase, packageAmt, addonAmt, addons: pkgModalAddons });
     }
     closePackageModal();
+    await logActivity(id, 'Package changed', (c && c.package ? c.package + ' → ' : '') + pkg + ' · ₹' + packageAmt);
     showToast('Package updated · ₹' + packageAmt);
     await viewLedger(id);
   } catch (e) {
@@ -898,6 +901,7 @@ async function toggleDC(id, currentStatus) {
       createdBy: currentUser.email
     });
 
+    await logActivity(id, action, returnBox ? ('Box ' + boxNo + ' → Store') : '');
     showToast(returnBox ? `${action} + Box ${boxNo} → Store` : `${action} successful!`);
     await loadCustomers();
     if (typeof currentLedgerCustomerId !== 'undefined' && currentLedgerCustomerId === id) await viewLedger(id);
@@ -982,19 +986,52 @@ function startBillForLedger() {
   showPage('billing');
 }
 
+
+async function logActivity(customerId, action, detail, extra) {
+  try {
+    if (!customerId) return;
+    await db.collection('activityLogs').add({
+      customerId,
+      action: action || '',
+      detail: detail || '',
+      ...(extra || {}),
+      date: new Date().toISOString().slice(0, 10),
+      time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+      createdBy: (currentUser && currentUser.email) || '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) { console.warn('activity log', e); }
+}
+
 async function viewLedger(id) {
   currentLedgerCustomerId = id;
   const c = allCustomers.find(x => x.id === id);
-  if (!c) return;
+  if (!c) { showToast('Customer not found', true); return; }
 
   document.getElementById('ledgerCustName').textContent = c.name || '-';
   const streetLine = [c.street, c.place].filter(Boolean).join(' · ');
   const sl = document.getElementById('ledgerStreetLine');
   if (sl) sl.textContent = streetLine || '-';
-  document.getElementById('ledgerCustInfo').textContent =
-    `ID: ${c.custId || id} · Mobile: ${c.mobile || '-'} · Package: ${c.package || '-'}`;
+
+  const mobile = String(c.mobile || '').replace(/\D/g, '');
+  const info = document.getElementById('ledgerCustInfo');
+  if (info) {
+    info.innerHTML = (mobile ? '📞 ' + c.mobile + ' <button type="button" onclick="copyText(\'' + mobile + '\')" class="text-blue-500 text-[10px]">copy</button>' : '') +
+      ' · ID: <span class="font-mono">' + (c.custId || id) + '</span>';
+  }
+  const callBtn = document.getElementById('ledgerCallBtn');
+  const waBtn = document.getElementById('ledgerWaBtn');
+  if (callBtn) callBtn.href = mobile ? ('tel:' + mobile) : '#';
+  if (waBtn) {
+    const due = Number(c.dueAmt || c.due || 0);
+    let msg = 'வணக்கம் ' + (c.name || '') + ', JSV Cable TV.';
+    if (due > 0) msg += ' உங்கள் pending amount ₹' + due + '.';
+    waBtn.href = mobile ? ('https://wa.me/91' + mobile.slice(-10) + '?text=' + encodeURIComponent(msg)) : '#';
+  }
+
   const msoEl = document.getElementById('ledgerMso');
   if (msoEl) msoEl.textContent = c.mso || '-';
+
   const pkgEl = document.getElementById('ledgerPkg');
   if (pkgEl) {
     let addonList = [];
@@ -1003,34 +1040,25 @@ async function viewLedger(id) {
       if (Array.isArray(arr)) addonList = arr;
     } catch (e) {}
     const addonSum = addonList.reduce((s, a) => s + Number(a.amount || 0), 0) || Number(c.addonAmt || 0);
-    const base = c.packageBase != null ? Number(c.packageBase)
-      : (Number(c.packageAmt || 0) - addonSum);
+    const base = c.packageBase != null ? Number(c.packageBase) : (Number(c.packageAmt || 0) - addonSum);
     const total = Number(c.packageAmt != null ? c.packageAmt : (base + addonSum));
     const pkgName = c.package || '-';
-    let html = '<div>' + pkgName + ' · ₹' + (base > 0 ? base : total) + '</div>';
+    let html = '<div>' + pkgName + ' · ₹' + (base > 0 ? base : total) + '/mo</div>';
     if (addonList.length) {
       html += addonList.map(a =>
-        '<div class="text-[11px] text-indigo-600 font-medium">+ ' + (a.name || 'Add-on') +
-        (a.amount ? ' ₹' + a.amount : '') + '</div>'
+        '<div class="text-[11px] text-indigo-600">+ ' + (a.name || 'Add-on') + (a.amount ? ' ₹' + a.amount : '') + '</div>'
       ).join('');
-      html += '<div class="text-[11px] text-slate-500 mt-0.5">Total ₹' + total + '</div>';
     } else if (addonSum > 0) {
       html += '<div class="text-[11px] text-indigo-600">+ Add-on ₹' + addonSum + '</div>';
-      html += '<div class="text-[11px] text-slate-500">Total ₹' + total + '</div>';
     }
     pkgEl.innerHTML = html;
   }
+
   const vcBtn = document.getElementById('ledgerVcBtn');
   const vc = c.scNo || c.smartCard || '';
-  if (vcBtn) {
-    vcBtn.textContent = vc || '-';
-    vcBtn.dataset.val = vc;
-  }
+  if (vcBtn) { vcBtn.textContent = (vc || '-') + (vc ? ' 📋' : ''); vcBtn.dataset.val = vc; }
   const boxBtn = document.getElementById('ledgerBoxBtn');
-  if (boxBtn) {
-    boxBtn.textContent = c.boxNo || '-';
-    boxBtn.dataset.val = c.boxNo || '';
-  }
+  if (boxBtn) { boxBtn.textContent = (c.boxNo || '-') + (c.boxNo ? ' 📋' : ''); boxBtn.dataset.val = c.boxNo || ''; }
   const cd = document.getElementById('ledgerConDate');
   if (cd) cd.textContent = c.conDate || c.connectionDate || '-';
   const ca = document.getElementById('ledgerCafAddon');
@@ -1038,77 +1066,194 @@ async function viewLedger(id) {
     let addons = '';
     try {
       const arr = typeof c.addons === 'string' ? JSON.parse(c.addons || '[]') : (c.addons || []);
-      if (Array.isArray(arr) && arr.length) addons = arr.map(a => a.name + (a.amount ? ' ₹'+a.amount : '')).join(', ');
-    } catch(e) {}
-    const caf = c.cafNo || c.caf || '';
-    if (addons) ca.innerHTML = (caf ? '<div class="text-[10px] text-slate-400">CAF: ' + caf + '</div>' : '') +
-      '<div class="text-indigo-700 text-xs font-medium">' + addons + '</div>';
-    else ca.textContent = caf || '-';
+      if (Array.isArray(arr) && arr.length) addons = arr.map(a => a.name + (a.amount ? ' ₹' + a.amount : '')).join(', ');
+    } catch (e) {}
+    ca.textContent = addons || (c.caf || '-') || '-';
   }
-  document.getElementById('ledgerDue').textContent = '₹' + Number(c.dueAmt || c.due || 0).toLocaleString('en-IN');
+
+  const dueAmt = Number(c.dueAmt || c.due || 0);
+  const dueEl = document.getElementById('ledgerDue');
+  const dueCard = document.getElementById('ledgerDueCard');
+  const dueHint = document.getElementById('ledgerDueHint');
+  if (dueEl) dueEl.textContent = '₹' + dueAmt.toLocaleString('en-IN');
+  if (dueCard) {
+    if (dueAmt > 0) {
+      dueCard.className = 'rounded-2xl p-4 mb-3 border border-red-100 bg-gradient-to-br from-red-50 to-white';
+      dueEl.className = 'text-3xl font-bold text-red-600 mt-0.5';
+      const months = Math.max(1, Math.round(dueAmt / Math.max(1, Number(c.packageAmt || c.packageBase || 280))));
+      if (dueHint) dueHint.textContent = '🔴 ' + months + ' month' + (months > 1 ? 's' : '') + ' pending';
+    } else {
+      dueCard.className = 'rounded-2xl p-4 mb-3 border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white';
+      dueEl.className = 'text-3xl font-bold text-emerald-700 mt-0.5';
+      if (dueHint) dueHint.textContent = '✓ Paid up · no pending';
+    }
+  }
+
   const st = (c.status || 'ACT').toUpperCase();
-  document.getElementById('ledgerStatus').textContent = st;
+  const stEl = document.getElementById('ledgerStatus');
+  if (stEl) {
+    if (st === 'DC') {
+      stEl.textContent = 'DISCONNECTED';
+      stEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700';
+    } else {
+      stEl.textContent = 'ACTIVE';
+      stEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700';
+    }
+  }
   const dcBtn = document.getElementById('ledgerDcBtn');
   if (dcBtn) {
     if (st === 'DC') {
-      dcBtn.textContent = 'RC';
-      dcBtn.className = 'text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1.5 rounded-lg font-medium';
+      dcBtn.textContent = '🟢 RC';
+      dcBtn.className = 'bg-white border border-emerald-100 py-2.5 rounded-xl text-sm font-medium text-emerald-700';
     } else {
-      dcBtn.textContent = 'DC';
-      dcBtn.className = 'text-xs bg-red-100 text-red-700 px-2.5 py-1.5 rounded-lg font-medium';
+      dcBtn.textContent = '🔴 DC';
+      dcBtn.className = 'bg-white border border-red-100 py-2.5 rounded-xl text-sm font-medium text-red-600';
     }
   }
-  document.getElementById('ledgerStatus').className =
-    (c.status === 'DC') ? 'px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700'
-                        : 'px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700';
+
+  const timeline = document.getElementById('ledgerTimeline');
+  if (timeline) timeline.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
 
   try {
-    const snap = await db.collection('collections')
-      .where('customerId', '==', id)
-      .get();
-
+    const snap = await db.collection('collections').where('customerId', '==', id).get();
     const rows = [];
-    snap.forEach(doc => {
-      const d = doc.data();
-      rows.push({ id: doc.id, ...d });
-    });
-
-    rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
+    rows.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
 
     const tbody = document.getElementById('ledgerTableBody');
-    if (rows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No collection records</td></tr>`;
+    let total = 0;
+    if (!rows.length) {
+      if (timeline) timeline.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">No payments yet</div>';
+      if (tbody) tbody.innerHTML = '';
+      const pt = document.getElementById('ledgerPayTotal');
+      if (pt) pt.textContent = '';
     } else {
-      let total = 0;
-      // active only for total; show cancelled struck
-      tbody.innerHTML = rows.map(r => {
-        const cancelled = r.status === 'cancelled';
-        if (!cancelled) total += Number(r.amount || 0);
-        return `
-        <tr class="border-t border-slate-100 ${cancelled ? 'opacity-50 line-through' : ''}">
-          <td class="px-2 py-2 text-xs font-mono">${r.billNo || '-'}</td>
-          <td class="px-2 py-2 text-sm">${r.date || '-'}</td>
-          <td class="px-2 py-2 text-sm font-semibold">₹${Number(r.amount || 0).toLocaleString('en-IN')}</td>
-          <td class="px-2 py-2 text-sm">${r.mode || '-'}</td>
-          <td class="px-2 py-2 text-xs text-slate-500">${displayAgentName(r)}</td>
-          <td class="px-2 py-2 text-xs">
-            ${cancelled ? '<span class="text-red-500 text-xs">Cancelled</span>' : ''}
-          </td>
-        </tr>`;
-      }).join('') + `
-        <tr class="border-t-2 border-slate-300 bg-slate-50 font-semibold">
-          <td class="px-2 py-2" colspan="2">Total (active)</td>
-          <td class="px-2 py-2">₹${total.toLocaleString('en-IN')}</td>
-          <td colspan="3"></td>
-        </tr>`;
+      if (timeline) {
+        timeline.innerHTML = rows.map(r => {
+          const cancelled = r.status === 'cancelled';
+          if (!cancelled) total += Number(r.amount || 0);
+          const agent = (typeof displayAgentName === 'function') ? displayAgentName(r) : (r.collectedBy || '-');
+          const d = r.date || '';
+          let dLabel = d;
+          try {
+            const dt = new Date(d + 'T12:00:00');
+            if (!isNaN(dt)) dLabel = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+          } catch (e) {}
+          return `<div class="px-4 py-3 flex gap-3 ${cancelled ? 'opacity-40' : ''}">
+            <div class="flex flex-col items-center pt-1">
+              <div class="w-2.5 h-2.5 rounded-full ${cancelled ? 'bg-slate-300' : 'bg-emerald-500'}"></div>
+              <div class="w-px flex-1 bg-slate-100 mt-1"></div>
+            </div>
+            <div class="flex-1 min-w-0 pb-1">
+              <div class="flex justify-between gap-2 items-start">
+                <div>
+                  <div class="text-xs text-slate-400">${dLabel}</div>
+                  <div class="font-semibold text-slate-800">₹${Number(r.amount || 0).toLocaleString('en-IN')} ${cancelled ? '<span class="text-red-500 text-[10px]">Cancelled</span>' : 'Paid'}</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">${r.mode || '-'} · ${agent}${r.billNo ? ' · #' + r.billNo : ''}</div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+      const pt = document.getElementById('ledgerPayTotal');
+      if (pt) pt.textContent = 'Total collected (active): ₹' + total.toLocaleString('en-IN');
+      if (tbody) tbody.innerHTML = rows.map(r => `<tr><td>${r.billNo||''}</td></tr>`).join('');
     }
   } catch (err) {
     console.error(err);
-    document.getElementById('ledgerTableBody').innerHTML =
-      `<tr><td colspan="5" class="text-center py-6 text-red-500">Error loading ledger</td></tr>`;
+    if (timeline) timeline.innerHTML = '<div class="p-4 text-red-500 text-sm">Error loading history</div>';
   }
 
+  await loadLedgerActivity(id, c);
   showPage('ledger');
+}
+
+async function loadLedgerActivity(id, c) {
+  const box = document.getElementById('ledgerActivity');
+  if (!box) return;
+  box.innerHTML = '<div class="p-4 text-center text-slate-400 text-sm">Loading activity...</div>';
+  const events = [];
+  try {
+    // unified activityLogs
+    try {
+      const a = await db.collection('activityLogs').where('customerId', '==', id).limit(100).get();
+      a.forEach(doc => {
+        const d = doc.data();
+        events.push({
+          ts: d.createdAt?.toMillis?.() || Date.parse(d.date || '') || 0,
+          date: d.date || '',
+          time: d.time || '',
+          text: (d.action || '') + (d.detail ? ' — ' + d.detail : ''),
+          by: d.createdBy || ''
+        });
+      });
+    } catch (e) {}
+    // statusLogs
+    try {
+      const s = await db.collection('statusLogs').where('customerId', '==', id).limit(50).get();
+      s.forEach(doc => {
+        const d = doc.data();
+        events.push({
+          ts: d.createdAt?.toMillis?.() || Date.parse(d.date || '') || 0,
+          date: d.date || '',
+          time: '',
+          text: (d.fromStatus || '') + ' → ' + (d.toStatus || '') + (d.boxReturned ? ' (box returned)' : ''),
+          by: d.createdBy || ''
+        });
+      });
+    } catch (e) {}
+    // transfers
+    try {
+      const t = await db.collection('transfers').where('customerId', '==', id).limit(50).get();
+      t.forEach(doc => {
+        const d = doc.data();
+        events.push({
+          ts: d.createdAt?.toMillis?.() || Date.parse(d.date || '') || 0,
+          date: d.date || '',
+          time: '',
+          text: 'Transfer: ' + (d.fromStreet || '') + ' → ' + (d.toStreet || '') +
+            (d.toCustId ? ' · ID ' + (d.fromCustId || '') + ' → ' + d.toCustId : ''),
+          by: d.createdBy || ''
+        });
+      });
+    } catch (e) {}
+    // connection created (synthetic)
+    if (c && (c.conDate || c.connectionDate || c.createdAt)) {
+      const cd = c.conDate || c.connectionDate || '';
+      events.push({
+        ts: Date.parse(cd) || 0,
+        date: cd,
+        time: '',
+        text: 'Connection / customer record',
+        by: ''
+      });
+    }
+    events.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    if (!events.length) {
+      box.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">No activity yet</div>';
+      return;
+    }
+    box.innerHTML = events.slice(0, 40).map(e => {
+      let dLabel = e.date || '';
+      try {
+        const dt = new Date((e.date || '') + 'T12:00:00');
+        if (!isNaN(dt)) dLabel = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      } catch (err) {}
+      return `<div class="px-4 py-2.5">
+        <div class="text-[10px] text-slate-400">${dLabel}${e.time ? ' · ' + e.time : ''}${e.by ? ' · ' + e.by.split('@')[0] : ''}</div>
+        <div class="text-sm text-slate-800">${e.text}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    console.error(e);
+    box.innerHTML = '<div class="p-4 text-slate-400 text-sm">Activity unavailable</div>';
+  }
+}
+
+function copyText(t) {
+  if (!t) return;
+  navigator.clipboard.writeText(String(t)).then(() => showToast('Copied ✓')).catch(() => showToast(String(t)));
 }
 
 // ==================== PENDING / DUE REPORT ====================
@@ -1375,6 +1520,7 @@ async function handleSaveBill(e) {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
+    await logActivity(customerId, 'Payment collected', '₹' + amount + ' · ' + (data.mode || '') + ' · Bill #' + billNo, { amount, billNo });
 
     showToast('Bill ' + billNo + ' · ₹' + amount + (data.payType === 'partial' ? ' (partial)' : ''));
     finishBillSave(data, newDue);
