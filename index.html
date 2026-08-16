@@ -934,7 +934,7 @@
           <div class="bg-green-50 border border-green-200 rounded-xl p-3 mb-4 flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
             <div class="text-sm text-green-800">
               <div class="font-medium">WhatsApp Due Reminder</div>
-              <div class="text-xs mb-1" id="waQueueInfo">Template தேர்வு → Start</div>
+              <div class="text-xs mb-1" id="waQueueInfo"></div>
               <select id="waQueueTpl" class="mt-1 px-2 py-1.5 border rounded-lg text-xs bg-white max-w-full"></select>
             </div>
             <div class="flex gap-2">
@@ -981,25 +981,30 @@
               <div class="text-2xl font-bold text-red-600" id="pendingTotal">₹0</div>
             </div>
           </div>
-          <div id="pendingPrintArea" class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="px-3 py-2 text-sm font-semibold border-b" id="pendingPrintTitle">JSV Cable TV — Pending Report</div>
-            <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
-              <table class="w-full text-sm">
-                <thead class="bg-slate-50 text-slate-600 sticky top-0">
-                  <tr>
-                    <th class="text-left px-3 py-3 font-medium">ID</th>
-                    <th class="text-left px-3 py-3 font-medium">Name / Street</th>
-                    <th class="text-left px-3 py-3 font-medium">Mobile</th>
-                    <th class="text-left px-3 py-3 font-medium">Box</th>
-                    <th class="text-left px-3 py-3 font-medium">MSO</th>
-                    <th class="text-left px-3 py-3 font-medium">Due</th>
-                    <th class="text-left px-3 py-3 font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody id="pendingTableBody">
-                  <tr><td colspan="7" class="text-center py-8 text-slate-400">Loading...</td></tr>
-                </tbody>
-              </table>
+          <div id="pendingPrintArea">
+            <div class="px-1 py-1 text-sm font-semibold mb-2 no-print" id="pendingPrintTitle">Pending List</div>
+            <!-- Mobile cards -->
+            <div id="pendingCards" class="md:hidden space-y-2 mb-4"></div>
+            <!-- Desktop table -->
+            <div class="hidden md:block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+              <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                <table class="w-full text-sm">
+                  <thead class="bg-slate-50 text-slate-600 sticky top-0">
+                    <tr>
+                      <th class="text-left px-3 py-3 font-medium">ID</th>
+                      <th class="text-left px-3 py-3 font-medium">Name / Street</th>
+                      <th class="text-left px-3 py-3 font-medium">Mobile</th>
+                      <th class="text-left px-3 py-3 font-medium">Box</th>
+                      <th class="text-left px-3 py-3 font-medium">MSO</th>
+                      <th class="text-left px-3 py-3 font-medium">Due</th>
+                      <th class="text-left px-3 py-3 font-medium">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pendingTableBody">
+                    <tr><td colspan="7" class="text-center py-8 text-slate-400">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
