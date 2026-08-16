@@ -4701,41 +4701,170 @@ async function renderActivityReport() {
 }
 
 
+function setColAuditPreset(which) {
+  const t = new Date();
+  const iso = function (d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
+  const fromEl = document.getElementById('colAuditFrom');
+  const toEl = document.getElementById('colAuditTo');
+  if (!fromEl || !toEl) return;
+  if (which === 'today') {
+    fromEl.value = iso(t);
+    toEl.value = iso(t);
+  } else if (which === 'week') {
+    const f = new Date(t); f.setDate(t.getDate() - 6);
+    fromEl.value = iso(f);
+    toEl.value = iso(t);
+  } else {
+    fromEl.value = iso(t).slice(0, 8) + '01';
+    toEl.value = iso(t);
+  }
+  renderColAuditReport();
+}
+
+window._colAuditRows = [];
+window._colAuditByAgent = {};
+
 async function renderColAuditReport() {
   const body = document.getElementById('colAuditBody');
   const sum = document.getElementById('colAuditSummary');
   if (!body) return;
-  const { from, to } = getReportDateRange();
+  const t = new Date();
+  const iso = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+  const fromEl = document.getElementById('colAuditFrom');
+  const toEl = document.getElementById('colAuditTo');
+  if (fromEl && !fromEl.value) fromEl.value = iso.slice(0, 8) + '01';
+  if (toEl && !toEl.value) toEl.value = iso;
+  const from = (fromEl && fromEl.value) || iso.slice(0, 8) + '01';
+  const to = (toEl && toEl.value) || iso;
   if (sum) sum.textContent = from + ' → ' + to;
   body.innerHTML = '<div class="p-6 text-center text-slate-400 text-sm">Loading...</div>';
   try {
     const rows = await fetchCollectionsInRange(from, to);
+    window._colAuditRows = rows;
     const byAgent = {};
-    rows.forEach(r => {
+    let totalCash = 0, totalUpi = 0, totalOther = 0, total = 0;
+    rows.forEach(function (r) {
       const a = (typeof displayAgentName === 'function') ? displayAgentName(r) : (r._agent || '-');
-      byAgent[a] = byAgent[a] || { amt: 0, n: 0, cash: 0, upi: 0, other: 0 };
+      byAgent[a] = byAgent[a] || { amt: 0, n: 0, cash: 0, upi: 0, other: 0, rows: [] };
       const amt = Number(r.amount || 0);
-      byAgent[a].amt += amt; byAgent[a].n++;
+      byAgent[a].amt += amt;
+      byAgent[a].n++;
+      byAgent[a].rows.push(r);
+      total += amt;
       const m = String(r.mode || '').toUpperCase();
-      if (m.includes('CASH')) byAgent[a].cash += amt;
-      else if (m.includes('UPI') || m.includes('GPAY')) byAgent[a].upi += amt;
-      else byAgent[a].other += amt;
+      const ag = String(a).toUpperCase();
+      // Online collector often stored as UPI/GPAY mode
+      if (ag === 'ONLINE' || m.includes('UPI') || m.includes('GPAY') || m.includes('ONLINE')) {
+        byAgent[a].upi += amt;
+        totalUpi += amt;
+      } else if (m.includes('CASH') || !m || ag === 'UMA' || ag === 'MUTHUMARI' || ag === 'OFFICE') {
+        byAgent[a].cash += amt;
+        totalCash += amt;
+      } else {
+        byAgent[a].other += amt;
+        totalOther += amt;
+      }
     });
-    body.innerHTML = Object.entries(byAgent).sort((a,b)=>b[1].amt-a[1].amt).map(([k,v]) =>
-      `<div class="bg-white rounded-xl border p-3">
-        <div class="flex justify-between font-semibold text-sm"><span>${k}</span><span>₹${v.amt.toLocaleString('en-IN')}</span></div>
-        <div class="text-[11px] text-slate-500 mt-1">${v.n} customers/bills</div>
-        <div class="grid grid-cols-3 gap-1 mt-2 text-[11px] text-center">
-          <div class="bg-slate-50 rounded p-1">Cash<br><b>₹${v.cash.toLocaleString('en-IN')}</b></div>
-          <div class="bg-slate-50 rounded p-1">UPI<br><b>₹${v.upi.toLocaleString('en-IN')}</b></div>
-          <div class="bg-slate-50 rounded p-1">Other<br><b>₹${v.other.toLocaleString('en-IN')}</b></div>
-        </div>
-      </div>`
-    ).join('') || '<div class="p-6 text-center text-slate-400">No data</div>';
+    // Fix mode attribution: prefer mode field, fall back agent for ONLINE
+    totalCash = 0; totalUpi = 0; totalOther = 0;
+    Object.keys(byAgent).forEach(function (k) {
+      byAgent[k].cash = 0; byAgent[k].upi = 0; byAgent[k].other = 0;
+      byAgent[k].rows.forEach(function (r) {
+        const amt = Number(r.amount || 0);
+        const m = String(r.mode || '').toUpperCase();
+        const ag = String(k).toUpperCase();
+        if (m.includes('UPI') || m.includes('GPAY') || m.includes('ONLINE') || (ag === 'ONLINE' && !m.includes('CASH'))) {
+          byAgent[k].upi += amt; totalUpi += amt;
+        } else if (m.includes('CASH') || !m) {
+          byAgent[k].cash += amt; totalCash += amt;
+        } else {
+          byAgent[k].other += amt; totalOther += amt;
+        }
+      });
+    });
+    window._colAuditByAgent = byAgent;
+
+    // System total vs cash+upi+other should balance
+    const modeSum = totalCash + totalUpi + totalOther;
+    const diff = Math.round((total - modeSum) * 100) / 100;
+    const balanced = Math.abs(diff) < 1;
+
+    let html = '';
+    html += '<div class="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-4 text-white shadow-sm">';
+    html += '<div class="text-[11px] opacity-80 uppercase tracking-wide">Total Collection</div>';
+    html += '<div class="text-2xl font-bold mt-0.5">₹' + total.toLocaleString('en-IN') + '</div>';
+    html += '<div class="text-xs opacity-90 mt-1">' + rows.length + ' Transactions</div></div>';
+
+    html += '<div class="bg-white rounded-xl border p-3">';
+    html += '<div class="grid grid-cols-3 gap-2 text-center text-[11px] mb-2">';
+    html += '<div><div class="text-slate-400">Cash</div><div class="font-semibold">₹' + totalCash.toLocaleString('en-IN') + '</div></div>';
+    html += '<div><div class="text-slate-400">UPI</div><div class="font-semibold">₹' + totalUpi.toLocaleString('en-IN') + '</div></div>';
+    html += '<div><div class="text-slate-400">Other</div><div class="font-semibold">₹' + totalOther.toLocaleString('en-IN') + '</div></div></div>';
+    html += '<div class="text-xs ' + (balanced ? 'text-emerald-600' : 'text-red-600 font-semibold') + '">';
+    html += balanced ? '✓ Audit Status: Balanced' : 'Difference: ₹' + Math.abs(diff).toLocaleString('en-IN') + ' ⚠';
+    html += '</div></div>';
+
+    const agents = Object.entries(byAgent).sort(function (a, b) { return b[1].amt - a[1].amt; });
+    if (!agents.length) {
+      html += '<div class="p-6 text-center text-slate-400">No data</div>';
+      body.innerHTML = html;
+      return;
+    }
+
+    agents.forEach(function (pair) {
+      const k = pair[0];
+      const v = pair[1];
+      html += '<div class="bg-white rounded-xl border p-3">';
+      html += '<div class="flex justify-between font-semibold text-sm"><span>' + k + '</span><span>₹' + v.amt.toLocaleString('en-IN') + '</span></div>';
+      html += '<div class="text-[11px] text-slate-500 mt-1">' + v.n + ' Transactions</div>';
+      html += '<div class="grid grid-cols-3 gap-1 mt-2 text-[11px] text-center">';
+      html += '<div class="bg-slate-50 rounded p-1">Cash<br><b>₹' + v.cash.toLocaleString('en-IN') + '</b></div>';
+      html += '<div class="bg-slate-50 rounded p-1">UPI<br><b>₹' + v.upi.toLocaleString('en-IN') + '</b></div>';
+      html += '<div class="bg-slate-50 rounded p-1">Other<br><b>₹' + v.other.toLocaleString('en-IN') + '</b></div></div>';
+      html += '<button type="button" onclick="showColAuditDetails(\'' + k.replace(/'/g, "\\'") + '\')" class="mt-2 w-full py-1.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-medium">View Details →</button>';
+      html += '</div>';
+    });
+
+    html += '<div id="colAuditDetail" class="hidden"></div>';
+    body.innerHTML = html;
   } catch (e) {
-    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + e.message + '</div>';
+    body.innerHTML = '<div class="p-4 text-red-500 text-sm">' + (e.message || e) + '</div>';
   }
 }
+
+function showColAuditDetails(agent) {
+  const panel = document.getElementById('colAuditDetail');
+  if (!panel) return;
+  const data = (window._colAuditByAgent || {})[agent];
+  if (!data) return;
+  const byId = {};
+  (allCustomers || []).forEach(function (c) { byId[c.id] = c; });
+  const rows = (data.rows || []).slice().sort(function (a, b) {
+    return String(b.date || '').localeCompare(String(a.date || ''));
+  });
+  let html = '<div class="bg-white rounded-xl border p-3 mt-2">';
+  html += '<div class="flex justify-between items-center mb-2">';
+  html += '<div><div class="font-semibold text-sm">' + agent + '</div>';
+  html += '<div class="text-[11px] text-slate-500">' + rows.length + ' · ₹' + data.amt.toLocaleString('en-IN') + '</div></div>';
+  html += '<button type="button" onclick="document.getElementById(\'colAuditDetail\').classList.add(\'hidden\')" class="text-xs text-slate-500 px-2">✕</button></div>';
+  html += '<div class="max-h-[50vh] overflow-y-auto space-y-1">';
+  rows.forEach(function (r) {
+    const c = r.customerId ? byId[r.customerId] : null;
+    const name = (c && c.name) || r.customerName || r.name || '—';
+    const mode = r.mode || 'Cash';
+    html += '<div class="flex justify-between gap-2 px-2 py-1.5 rounded-lg bg-slate-50 text-xs">';
+    html += '<div class="min-w-0"><div class="font-medium truncate">' + name + '</div>';
+    html += '<div class="text-slate-400">' + (r.date || '') + (r.billNo ? ' · #' + r.billNo : '') + ' · ' + mode + '</div></div>';
+    html += '<div class="font-semibold shrink-0">₹' + Number(r.amount || 0).toLocaleString('en-IN') + '</div></div>';
+  });
+  html += '</div></div>';
+  panel.innerHTML = html;
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 
 async function renderTrendReport() {
   const body = document.getElementById('trendBody');

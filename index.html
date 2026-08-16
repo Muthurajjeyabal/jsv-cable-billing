@@ -1840,12 +1840,30 @@
           </div>
           <div id="reportPanel-colAudit" class="report-panel hidden">
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
-            <div class="soft-card p-4 mb-3 no-print">
-              <h3 class="font-semibold text-sm">Collection Audit</h3>
-              <p class="text-xs text-slate-500" id="colAuditSummary">—</p>
-              <button type="button" onclick="renderColAuditReport()" class="mt-2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm">Refresh</button>
+            <div class="soft-card p-3 mb-3 no-print space-y-2">
+              <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-sm">Collection Audit</h3>
+                <button type="button" onclick="printDiv('colAuditBody')" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs">🖨 Print</button>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-[10px] text-slate-500">From</label>
+                  <input type="date" id="colAuditFrom" class="w-full px-2 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-500">To</label>
+                  <input type="date" id="colAuditTo" class="w-full px-2 py-2 border rounded-lg text-sm">
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-1.5 items-center">
+                <button type="button" onclick="setColAuditPreset('today')" class="px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">Today</button>
+                <button type="button" onclick="setColAuditPreset('week')" class="px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">This Week</button>
+                <button type="button" onclick="setColAuditPreset('month')" class="px-2.5 py-1 rounded-full text-xs bg-white border border-slate-200">This Month</button>
+                <button type="button" onclick="renderColAuditReport()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm">Show</button>
+              </div>
+              <p class="text-xs text-slate-500" id="colAuditSummary"></p>
             </div>
-            <div id="colAuditBody" class="space-y-2"></div>
+            <div id="colAuditBody" class="space-y-2 pb-6"></div>
           </div>
           <div id="reportPanel-trend" class="report-panel hidden">
             <button type="button" onclick="closeReportPanels()" class="no-print text-sm text-blue-600 mb-2">← Back</button>
