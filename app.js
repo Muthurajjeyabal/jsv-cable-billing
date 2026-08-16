@@ -4065,8 +4065,36 @@ async function runFullBackup() {
 }
 
 function openCollectorsPrintOut() {
-  showPage('reports');
-  setTimeout(() => openReport('collection'), 50);
+  // Direct open — avoid showPage('reports') closing panels again
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  const page = document.getElementById('page-reports');
+  if (page) page.classList.remove('hidden');
+  currentPageId = 'reports';
+  if (pageHistory[pageHistory.length - 1] !== 'reports') {
+    pageHistory.push('reports');
+    if (pageHistory.length > 30) pageHistory.shift();
+  }
+  const pt = document.getElementById('pageTitle');
+  if (pt) pt.textContent = 'Collectors Print Out';
+  const backBtn = document.getElementById('globalBackBtn');
+  if (backBtn) backBtn.classList.remove('hidden');
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.page === 'reports' || item.dataset.page === 'monthBill');
+  });
+  document.getElementById('reportMenu')?.classList.add('hidden');
+  document.querySelectorAll('.report-panel').forEach(p => p.classList.add('hidden'));
+  const panel = document.getElementById('reportPanel-collection');
+  if (panel) {
+    panel.classList.remove('hidden');
+  } else {
+    showToast('Print panel not found', true);
+    return;
+  }
+  if (typeof renderCollectionReport === 'function') renderCollectionReport();
+  if (window.innerWidth < 1024) {
+    document.getElementById('sidebar')?.classList.add('-translate-x-full');
+    document.getElementById('sidebarOverlay')?.classList.add('hidden');
+  }
 }
 
 function openReport(kind) {
