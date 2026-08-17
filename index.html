@@ -25,8 +25,8 @@
   </script>
 
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="logo.png" type="image/png">
-  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="icon" href="icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icon-192.png">
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -296,7 +296,7 @@
     <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 fade-in">
       <div class="text-center mb-6">
         <div class="inline-block bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-wide">ADMIN PANEL</div>
-        <img src="logo.png" alt="JSV Cable TV" class="w-28 h-auto mx-auto mb-4 drop-shadow-lg">
+        <img src="logo-clean.png" alt="JSV Cable TV" class="w-32 h-auto mx-auto mb-4">
         <h1 class="text-xl font-bold text-slate-800">JSV Cable TV</h1>
         <p class="text-indigo-600 text-sm mt-1 font-medium">Admin Login</p>
         <p class="text-slate-400 text-xs mt-1">S. Alangulam</p>
@@ -339,7 +339,7 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#0b1220] text-white transform -translate-x-full lg:translate-x-0 transition-transform duration-300 flex flex-col">
       <div class="p-4 border-b border-slate-800 flex items-center gap-3">
-        <img src="logo.png" alt="JSV" class="w-11 h-11 object-contain rounded-lg bg-black p-0.5">
+        <img src="logo-clean.png" alt="JSV" class="w-11 h-11 object-contain">
         <div>
           <div class="font-bold text-sm tracking-tight">JSV CABLE TV</div>
           <div class="text-[10px] text-slate-400 font-medium tracking-wide">S. Alangulam</div>
@@ -2395,5 +2395,12 @@
   <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-lg text-sm hidden z-50 transition"></div>
 
   <script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function () {});
+    });
+  }
+</script>
 </body>
 </html>
