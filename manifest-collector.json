@@ -1,24 +1,30 @@
 {
   "name": "JSV Collector",
   "short_name": "JSV Collect",
-  "description": "JSV Cable TV — Collector only",
+  "description": "JSV Cable TV \u2014 Collector only",
   "start_url": "./collector.html?source=pwa",
   "scope": "./",
   "id": "/jsv-cable-billing/collector-app",
   "display": "standalone",
-  "background_color": "#065f46",
+  "background_color": "#062832",
   "theme_color": "#065f46",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "logo.png",
+      "src": "icon-collector-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-collector-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "logo.png",
-      "sizes": "192x192",
+      "src": "icon-collector-512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
