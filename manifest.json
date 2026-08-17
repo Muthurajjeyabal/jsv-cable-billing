@@ -1,12 +1,11 @@
 {
   "name": "JSV Cable TV \u00b7 Admin",
   "short_name": "JSV Admin",
-  "description": "JSV Cable TV \u2014 Admin Billing",
   "start_url": "./index.html?source=pwa",
   "scope": "./",
   "id": "/jsv-cable-billing/admin",
   "display": "standalone",
-  "background_color": "#051937",
+  "background_color": "#ffffff",
   "theme_color": "#0b1220",
   "orientation": "portrait-primary",
   "icons": [
@@ -21,12 +20,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ]
 }
