@@ -1,12 +1,12 @@
 {
-  "name": "JSV Cable TV",
-  "short_name": "JSV Cable TV",
-  "description": "JSV Cable TV — Billing & Collection · S. Alangulam",
-  "start_url": "./index.html",
+  "name": "JSV Cable TV · Admin",
+  "short_name": "JSV Admin",
+  "description": "JSV Cable TV — Admin Billing",
+  "start_url": "./index.html?source=pwa",
   "scope": "./",
-  "id": "./index.html",
+  "id": "/jsv-cable-billing/admin",
   "display": "standalone",
-  "background_color": "#000000",
+  "background_color": "#0b1220",
   "theme_color": "#0b1220",
   "orientation": "portrait-primary",
   "icons": [
