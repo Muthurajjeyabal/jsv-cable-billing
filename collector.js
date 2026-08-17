@@ -667,6 +667,8 @@ async function loadDashboard(force) {
   const unpaidAmt = unpaidList.reduce((s,c) => s + Number(c.dueAmt||c.due||0), 0);
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   set('dActive', active);
+  const paidUp = allCustomers.filter(c => Number(c.dueAmt||c.due||0) <= 0 && (c.status||'ACT')==='ACT').length;
+  set('dPaidCust', String(paidUp));
   set('dUnpaidCust', unpaidList.length);
   set('dUnpaidAmt', '₹' + unpaidAmt.toLocaleString('en-IN'));
   set('dPending', '₹' + unpaidAmt.toLocaleString('en-IN'));
@@ -753,7 +755,7 @@ async function loadDashboard(force) {
     });
     set('dToday', '₹' + todayT.toLocaleString('en-IN'));
     set('dTodayCount', String(todayN));
-    set('dPaidCust', String(paidTodayIds.size || todayN));
+    set('dPaidCust', String(allCustomers.filter(c => Number(c.dueAmt||c.due||0) <= 0 && (c.status||'ACT')==='ACT').length));
     set('dPaidAmt', '₹' + todayT.toLocaleString('en-IN'));
     set('dMyTotal', '₹' + todayT.toLocaleString('en-IN'));
 
@@ -803,7 +805,74 @@ function showToast(msg, isError) {
   setTimeout(() => t.classList.add('hidden'), 2500);
 }
 
+
+/* ===== Collector Language + Theme ===== */
+const COL_I18N = {
+  en: {
+    home: 'Home', customers: 'Customers', collect: 'Collect', due: 'Due', more: 'More',
+    dashboard: 'Dashboard', ledger: '📒 Ledger', colReport: '📑 Collection Report', logout: 'Logout',
+    loggedIn: 'Logged in as', language: 'Language', theme: 'Theme',
+    todayColl: "Today's Collection", custCollected: 'customers collected',
+    active: 'Active', paidUp: 'Paid Up', pending: 'Pending', dueAmt: 'Due Amount',
+    todayRoute: "Today's Route", pendingCust: 'Pending Customers', recentColl: 'Recent Collections',
+    online: '● Online', synced: 'Synced'
+  },
+  ta: {
+    home: 'முகப்பு', customers: 'வாடிக்கையாளர்', collect: 'வசூல்', due: 'பாக்கி', more: 'மேலும்',
+    dashboard: 'முகப்பு', ledger: '📒 கணக்கு', colReport: '📑 வசூல் அறிக்கை', logout: 'வெளியேறு',
+    loggedIn: 'உள்நுழைந்துள்ளவர்', language: 'மொழி', theme: 'தோற்றம்',
+    todayColl: 'இன்றைய வசூல்', custCollected: 'பேர் வசூல்',
+    active: 'செயலில்', paidUp: 'பணம் செலுத்தியவர்', pending: 'பாக்கி உள்ளவர்', dueAmt: 'மொத்த பாக்கி',
+    todayRoute: 'இன்றைய தெருக்கள்', pendingCust: 'பாக்கி வாடிக்கையாளர்', recentColl: 'சமீபத்திய வசூல்',
+    online: '● இணைப்பு உள்ளது', synced: 'புதுப்பிக்கப்பட்டது'
+  }
+};
+
+function getCollectorLang() {
+  return localStorage.getItem('jsv_col_lang') || localStorage.getItem('jsv_lang') || 'en';
+}
+function getCollectorTheme() {
+  return localStorage.getItem('jsv_col_theme') || localStorage.getItem('jsv_theme') || 'light';
+}
+function applyCollectorLang() {
+  const lang = getCollectorLang();
+  const dict = COL_I18N[lang] || COL_I18N.en;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (dict[k]) el.textContent = dict[k];
+  });
+  const sel = document.getElementById('colLangSelect');
+  if (sel) sel.value = lang;
+  document.documentElement.lang = lang === 'ta' ? 'ta' : 'en';
+}
+function setCollectorLang(lang) {
+  localStorage.setItem('jsv_col_lang', lang);
+  localStorage.setItem('jsv_lang', lang);
+  applyCollectorLang();
+}
+function applyCollectorTheme() {
+  const theme = getCollectorTheme();
+  document.body.classList.toggle('dark', theme === 'dark');
+  const sel = document.getElementById('colThemeSelect');
+  if (sel) sel.value = theme;
+}
+function setCollectorTheme(theme) {
+  localStorage.setItem('jsv_col_theme', theme);
+  localStorage.setItem('jsv_theme', theme);
+  applyCollectorTheme();
+}
+function initCollectorAppearance() {
+  applyCollectorTheme();
+  applyCollectorLang();
+}
+document.addEventListener('DOMContentLoaded', initCollectorAppearance);
+setTimeout(initCollectorAppearance, 400);
+
+
 window.showPage = showPage;
+window.setCollectorLang = setCollectorLang;
+window.setCollectorTheme = setCollectorTheme;
+
 window.goHome = goHome;
 window.logout = logout;
 window.openCollect = openCollect;

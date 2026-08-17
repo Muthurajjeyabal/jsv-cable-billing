@@ -19,6 +19,16 @@
     .page-pad { padding-bottom: 72px; }
     .progress-bar { height: 6px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
     .progress-bar > span { display:block; height:100%; background: linear-gradient(90deg,#2563eb,#10b981); border-radius:99px; }
+    body.dark { background:#0f172a; color:#e2e8f0; }
+    body.dark .bg-white { background:#1e293b !important; }
+    body.dark .bg-slate-100 { background:#0f172a !important; }
+    body.dark .text-slate-900, body.dark .text-slate-800 { color:#f1f5f9 !important; }
+    body.dark .text-slate-700 { color:#cbd5e1 !important; }
+    body.dark .text-slate-500, body.dark .text-slate-400 { color:#94a3b8 !important; }
+    body.dark .border-slate-200, body.dark .border-slate-100 { border-color:#334155 !important; }
+    body.dark input, body.dark select { background:#0f172a; color:#e2e8f0; border-color:#475569; }
+    body.dark #bottomNav { background:#1e293b; border-color:#334155; }
+    body.dark .divide-slate-100 > * { border-color:#334155; }
   </style>
 </head>
 <div id="splashScreen" style="position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s">
@@ -80,27 +90,27 @@
 
       <!-- TODAY COLLECTION -->
       <div class="mx-3 mb-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase">Today's Collection</div>
+        <div class="text-[10px] font-semibold tracking-wider text-slate-400 uppercase" data-i18n="todayColl">Today's Collection</div>
         <div class="text-3xl font-bold text-slate-900 mt-1" id="dToday">₹0</div>
-        <div class="text-xs text-slate-500 mt-0.5"><span id="dTodayCount">0</span> customers collected</div>
+        <div class="text-xs text-slate-500 mt-0.5"><span id="dTodayCount">0</span> <span data-i18n="custCollected">customers collected</span></div>
       </div>
 
       <!-- SUMMARY 2x2 -->
       <div class="mx-3 mb-3 grid grid-cols-2 gap-2">
         <div class="bg-white rounded-xl border border-slate-200 p-3">
-          <div class="text-[10px] text-slate-400 uppercase">Active</div>
+          <div class="text-[10px] text-slate-400 uppercase" data-i18n="active">Active</div>
           <div class="text-xl font-bold text-slate-800" id="dActive">0</div>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 p-3">
-          <div class="text-[10px] text-slate-400 uppercase">Today Paid</div>
+          <div class="text-[10px] text-slate-400 uppercase" data-i18n="paidUp">Paid Up</div>
           <div class="text-xl font-bold text-emerald-600" id="dPaidCust">0</div>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 p-3">
-          <div class="text-[10px] text-slate-400 uppercase">Pending</div>
+          <div class="text-[10px] text-slate-400 uppercase" data-i18n="pending">Pending</div>
           <div class="text-xl font-bold text-amber-600" id="dUnpaidCust">0</div>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 p-3">
-          <div class="text-[10px] text-slate-400 uppercase">Due Amount</div>
+          <div class="text-[10px] text-slate-400 uppercase" data-i18n="dueAmt">Due Amount</div>
           <div class="text-lg font-bold text-red-600" id="dUnpaidAmt">₹0</div>
         </div>
       </div>
@@ -108,7 +118,7 @@
       <!-- ROUTE BY STREET -->
       <div class="mx-3 mb-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
-          <div class="text-xs font-semibold text-slate-700">Today's Route</div>
+          <div class="text-xs font-semibold text-slate-700" data-i18n="todayRoute">Today's Route</div>
           <button type="button" onclick="showPage('pending')" class="text-[10px] text-blue-600 font-medium">View All →</button>
         </div>
         <div id="dashRouteList" class="divide-y divide-slate-100 max-h-48 overflow-y-auto">
@@ -119,7 +129,7 @@
       <!-- PENDING PREVIEW -->
       <div class="mx-3 mb-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="px-4 py-2.5 border-b border-slate-100 flex justify-between items-center">
-          <div class="text-xs font-semibold text-slate-700">Pending Customers</div>
+          <div class="text-xs font-semibold text-slate-700" data-i18n="pendingCust">Pending Customers</div>
           <button type="button" onclick="showPage('pending')" class="text-[10px] text-blue-600 font-medium">View All →</button>
         </div>
         <div id="dashPendingPreview" class="divide-y divide-slate-100">
@@ -202,8 +212,10 @@
     </div>
 
     <div id="page-pending" class="page hidden flex-1 flex flex-col overflow-hidden">
-      <div class="p-3 bg-white border-b flex gap-2">
-        <button onclick="loadPending()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm">Show Pending</button>
+      <div class="p-3 bg-white border-b space-y-2">
+        <input type="text" id="pendingSearch" placeholder="Search name / mobile / ID..." oninput="filterPendingList()" class="w-full px-3 py-2.5 border rounded-xl text-sm">
+        <div id="pendingStreetChips" class="flex gap-1.5 overflow-x-auto pb-1 text-xs"></div>
+        <button type="button" onclick="loadPending()" class="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium">Refresh Pending</button>
       </div>
       <div class="grid grid-cols-2 gap-0 bg-white border-b sticky top-0 z-10">
         <div class="p-2.5 text-center border-r">
@@ -221,24 +233,44 @@
     </div>
 
     <div id="page-settings" class="page hidden flex-1 p-4 page-pad overflow-y-auto">
-      <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-2 mb-3">
-        <div class="text-xs text-slate-400">Logged in as</div>
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-2 mb-3 dark:bg-slate-800 dark:border-slate-700">
+        <div class="text-xs text-slate-400" data-i18n="loggedIn">Logged in as</div>
         <div class="font-semibold text-sm" id="settingsEmail">-</div>
       </div>
-      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-3 divide-y">
-        <button type="button" onclick="showPage('ledger')" class="w-full text-left px-4 py-3.5 text-sm font-medium">📒 Ledger</button>
-        <button type="button" onclick="showPage('colReport')" class="w-full text-left px-4 py-3.5 text-sm font-medium">📑 Collection Report</button>
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 mb-3 dark:bg-slate-800 dark:border-slate-700">
+        <div>
+          <label class="text-xs text-slate-500 font-medium" data-i18n="language">Language</label>
+          <select id="colLangSelect" onchange="setCollectorLang(this.value)" class="w-full mt-1 px-3 py-2.5 border rounded-xl text-sm bg-white dark:bg-slate-900 dark:border-slate-600">
+            <option value="en">English</option>
+            <option value="ta">தமிழ்</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-500 font-medium" data-i18n="theme">Theme</label>
+          <select id="colThemeSelect" onchange="setCollectorTheme(this.value)" class="w-full mt-1 px-3 py-2.5 border rounded-xl text-sm bg-white dark:bg-slate-900 dark:border-slate-600">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
       </div>
-      <button onclick="logout()" class="w-full bg-red-600 text-white py-3.5 rounded-xl font-medium">Logout</button>
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-3 divide-y dark:bg-slate-800 dark:border-slate-700">
+        <button type="button" onclick="showPage('ledger')" class="w-full text-left px-4 py-3.5 text-sm font-medium" data-i18n="ledger">📒 Ledger</button>
+        <button type="button" onclick="showPage('colReport')" class="w-full text-left px-4 py-3.5 text-sm font-medium" data-i18n="colReport">📑 Collection Report</button>
+      </div>
+      <button onclick="logout()" class="w-full bg-red-600 text-white py-3.5 rounded-xl font-medium" data-i18n="logout">Logout</button>
       <p class="text-center text-xs text-slate-400 mt-6">JSV Cable TV · by JMR Apps</p>
     </div>
   </div>
 
   <div id="collectModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
     <div class="bg-white w-full rounded-t-2xl p-5 max-h-[85vh] overflow-y-auto">
-      <div class="flex justify-between items-start mb-3">
-        <div><h3 class="font-bold text-lg" id="modalName">-</h3><p class="text-xs text-slate-500" id="modalInfo">-</p></div>
-        <button onclick="closeModal()" class="text-2xl text-slate-400">&times;</button>
+      <div class="flex justify-between items-start mb-3 gap-2">
+        <div class="min-w-0 flex-1">
+          <h3 class="font-bold text-lg" id="modalName">-</h3>
+          <p class="text-xs text-slate-500 whitespace-pre-line mt-1" id="modalInfo">-</p>
+          <a id="modalCallBtn" href="#" class="hidden inline-flex mt-2 items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg">📞 Call</a>
+        </div>
+        <button onclick="closeModal()" class="text-2xl text-slate-400 shrink-0">&times;</button>
       </div>
       <div class="bg-red-50 rounded-xl p-3 mb-4 flex justify-between"><span class="text-sm text-red-700">Due</span><span class="text-xl font-bold text-red-600" id="modalDue">₹0</span></div>
       <div class="space-y-3">
@@ -254,23 +286,23 @@
   <nav id="bottomNav" class="bottom-nav fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 grid grid-cols-5 text-center shadow-[0_-4px_12px_rgba(0,0,0,.06)] hidden">
     <button type="button" onclick="goHome()" class="nav-item py-2 text-blue-600" data-nav="home">
       <div class="text-lg leading-none">⌂</div>
-      <div class="text-[9px] font-medium mt-0.5">Home</div>
+      <div class="text-[9px] font-medium mt-0.5" data-i18n="home">Home</div>
     </button>
     <button type="button" onclick="showPage('customers')" class="nav-item py-2 text-slate-400" data-nav="customers">
       <div class="text-lg leading-none">◎</div>
-      <div class="text-[9px] font-medium mt-0.5">Customers</div>
+      <div class="text-[9px] font-medium mt-0.5" data-i18n="customers">Customers</div>
     </button>
     <button type="button" onclick="showPage('billing')" class="nav-item py-2 text-slate-400" data-nav="billing">
       <div class="text-lg leading-none">₹</div>
-      <div class="text-[9px] font-medium mt-0.5">Collect</div>
+      <div class="text-[9px] font-medium mt-0.5" data-i18n="collect">Collect</div>
     </button>
     <button type="button" onclick="showPage('pending')" class="nav-item py-2 text-slate-400" data-nav="pending">
       <div class="text-lg leading-none">⚠</div>
-      <div class="text-[9px] font-medium mt-0.5">Due</div>
+      <div class="text-[9px] font-medium mt-0.5" data-i18n="due">Due</div>
     </button>
     <button type="button" onclick="showPage('settings')" class="nav-item py-2 text-slate-400" data-nav="settings">
       <div class="text-lg leading-none">≡</div>
-      <div class="text-[9px] font-medium mt-0.5">More</div>
+      <div class="text-[9px] font-medium mt-0.5" data-i18n="more">More</div>
     </button>
   </nav>
 
