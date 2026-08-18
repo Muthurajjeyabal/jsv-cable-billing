@@ -263,6 +263,31 @@ function toggleSidebar() {
 let _customersLoadedAt = 0;
 const CUSTOMERS_CACHE_MS = 5 * 60 * 1000; // 5 minutes
 
+// Refreshes just ONE customer document (1 Firestore read) and patches it
+// into the already-loaded allCustomers array, instead of re-downloading the
+// entire customers collection after every single edit/status change. Use
+// this after any action that only touches one customer — it's strictly
+// cheaper than even the 5-minute cache above.
+async function refreshOneCustomer(id) {
+  if (!id) return;
+  try {
+    const doc = await db.collection('customers').doc(id).get();
+    if (!doc.exists) {
+      allCustomers = allCustomers.filter(c => c.id !== id);
+    } else {
+      const updated = { id: doc.id, ...doc.data() };
+      const idx = allCustomers.findIndex(c => c.id === id);
+      if (idx >= 0) allCustomers[idx] = updated;
+      else allCustomers.push(updated);
+    }
+    allCustomers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ta'));
+    if (typeof renderCustomerTable === 'function') renderCustomerTable(allCustomers);
+    if (typeof updateDashboardStats === 'function') updateDashboardStats();
+  } catch (e) {
+    console.error('refreshOneCustomer', e);
+  }
+}
+
 async function loadCustomers(force) {
   try {
     const fresh = allCustomers.length && (Date.now() - _customersLoadedAt) < CUSTOMERS_CACHE_MS;
@@ -523,9 +548,7 @@ async function handleSaveCustomer(e) {
         console.error('box stock', be);
       }
     }
-    invalidateCustomersCache();
-    _dashCacheAt = 0;
-    await loadCustomers(true);
+    await refreshOneCustomer(savedId);
     if (typeof loadBoxes === 'function') {
       try { await loadBoxes(); window._boxesLoadedAt = Date.now(); } catch (e) {}
     }
@@ -952,7 +975,7 @@ async function toggleDC(id, currentStatus) {
 
     await logActivity(id, action, returnBox ? ('Box ' + boxNo + ' → Store') : '');
     showToast(returnBox ? `${action} + Box ${boxNo} → Store` : `${action} successful!`);
-    await loadCustomers();
+    await refreshOneCustomer(id);
     if (typeof currentLedgerCustomerId !== 'undefined' && currentLedgerCustomerId === id) await viewLedger(id);
   } catch (err) {
     showToast('Error: ' + err.message, true);
@@ -1753,12 +1776,18 @@ function finishBillSave(data, newDue, offline) {
   if (bd) bd.value = new Date().toISOString().split('T')[0];
   if (document.getElementById('billPrintReceipt')) document.getElementById('billPrintReceipt').checked = true;
   selectedBillCustomer = null;
-  // optimistic local update
+  // optimistic local update — no Firestore round-trip needed just to reflect
+  // one due-amount change. This was the single biggest source of wasted
+  // Firestore reads (every bill collected re-fetched/reloaded the entire
+  // customer list + dashboard).
   const c = allCustomers.find(x => x.id === data.customerId);
   if (c) c.dueAmt = newDue;
-  if (!offline) {
-    loadCustomers().then(() => { if (typeof loadDashboard === 'function') loadDashboard(); else if (typeof updateDashboardStats === 'function') updateDashboardStats(); });
-  } else if (typeof updateDashboardStats === 'function') updateDashboardStats();
+  if (typeof renderCustomerTable === 'function') renderCustomerTable(allCustomers);
+  // Today/Month collection totals come from a small, separate query on the
+  // `collections` table (not customers) — force this one so the numbers on
+  // screen reflect the payment immediately, without re-downloading customers.
+  if (typeof loadDashboard === 'function') loadDashboard(true);
+  else if (typeof updateDashboardStats === 'function') updateDashboardStats();
 }
 
 function showReceipt(data, balanceAfter) {
@@ -1825,7 +1854,7 @@ async function cancelCollection(colId, customerId, amount) {
     }
     showToast('Bill cancelled · Due restored');
     if (currentLedgerCustomerId) await viewLedger(currentLedgerCustomerId);
-    await loadCustomers();
+    await refreshOneCustomer(customerId);
     if (typeof loadCancelledBills === 'function') loadCancelledBills();
   } catch (err) {
     showToast('Error: ' + err.message, true);
