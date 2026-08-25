@@ -3970,11 +3970,15 @@ async function fixGpayLocalAgents() {
 }
 
 async function importAugustCollections() {
-  return importCollectionsFromJson('collections_aug2026.json', 'ஆகஸ்ட் full list');
+  return importCollectionsFromJson('collections_to_25aug2026.json', 'Aug 1–25 CableSoft (duplicate SKIP)');
 }
 
 async function importTodayCollections() {
-  return importCollectionsFromJson('collections_2026-08-16.json', '16 Aug 2026 collection');
+  return importCollectionsFromJson('collections_from_19aug2026.json', 'Aug 19–25 only (new bills)');
+}
+
+async function importCollectionsTo25() {
+  return importCollectionsFromJson('collections_to_25aug2026.json', 'Full list to 25 Aug · old SKIP · new ADD');
 }
 
 async function importCollectionsFromJson(fileName, label) {
