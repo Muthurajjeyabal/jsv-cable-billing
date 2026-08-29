@@ -3970,11 +3970,11 @@ async function fixGpayLocalAgents() {
 }
 
 async function importAugustCollections() {
-  return importCollectionsFromJson('collections_to_25aug2026.json', 'Aug 1–25 CableSoft (duplicate SKIP)');
+  return importCollectionsFromJson('collections_from_15aug2026.json', 'Aug 15–27 CableSoft (duplicate SKIP)');
 }
 
 async function importTodayCollections() {
-  return importCollectionsFromJson('collections_from_19aug2026.json', 'Aug 19–25 only (new bills)');
+  return importCollectionsFromJson('collections_from_25aug2026.json', 'Aug 25–27 only (new bills)');
 }
 
 async function importCollectionsTo25() {
