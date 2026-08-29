@@ -3981,6 +3981,171 @@ async function importCollectionsTo25() {
   return importCollectionsFromJson('collections_to_25aug2026.json', 'Full list to 25 Aug · old SKIP · new ADD');
 }
 
+async function syncCustomersFromCableSoft() {
+  const ok = confirm(
+    'CableSoft LIVE customer list (29 Aug) sync?\n\n' +
+    '• ஆப்பில் இல்லை + லிஸ்ட்டில் உண்டு → NEW ADD\n' +
+    '• இரண்டிலும் உண்டு → details UPDATE (street/MSO/box/package)\n' +
+    '• ஆப்பில் உண்டு + லிஸ்ட்டில் இல்லை → DC\n' +
+    '• லிஸ்ட்டில் ST=DC → DC\n\n' +
+    'Due amount மாற்றப்படாது (collection import பாதுகாப்பு).'
+  );
+  if (!ok) return;
+  try {
+    showToast('Loading customer list...');
+    const res = await fetch('customers_29aug2026.json?t=' + Date.now());
+    if (!res.ok) throw new Error('customers_29aug2026.json not found — GitHub root-ல upload பண்ணுங்க');
+    const list = await res.json();
+    if (!Array.isArray(list) || !list.length) throw new Error('Empty list');
+
+    if (!allCustomers || !allCustomers.length) {
+      if (typeof loadCustomers === 'function') await loadCustomers(true);
+    }
+
+    const liveById = new Map();
+    list.forEach(r => {
+      const id = String(r.custId || '').trim().toUpperCase();
+      if (id) liveById.set(id, r);
+    });
+
+    const appById = new Map();
+    (allCustomers || []).forEach(c => {
+      const id = String(c.custId || '').trim().toUpperCase();
+      if (id) appById.set(id, c);
+    });
+
+    let added = 0, updated = 0, dcMarked = 0, skipped = 0, transfers = 0;
+
+    const ops = [];
+
+    liveById.forEach((r, cid) => {
+      const existing = appById.get(cid);
+      const status = String(r.status || 'ACT').toUpperCase() === 'DC' ? 'DC' : 'ACT';
+      if (!existing) {
+        ops.push({ type: 'add', r, cid, status });
+        return;
+      }
+      const newPlace = String(r.place || '').trim();
+      const newStreet = String(r.street || '').trim();
+      const oldPlace = String(existing.place || '').trim();
+      const oldStreet = String(existing.street || '').trim();
+      const transferred = (newPlace && oldPlace && newPlace !== oldPlace) ||
+                          (newStreet && oldStreet && newStreet !== oldStreet);
+      const up = {
+        name: r.name || existing.name || '',
+        mobile: r.mobile || existing.mobile || '',
+        doorNo: r.doorNo || existing.doorNo || '',
+        place: newPlace || existing.place || '',
+        street: newStreet || existing.street || '',
+        mso: r.mso || existing.mso || '',
+        scNo: r.scNo || existing.scNo || existing.smartCard || '',
+        smartCard: r.scNo || existing.smartCard || existing.scNo || '',
+        boxNo: r.boxNo || existing.boxNo || '',
+        caf: r.caf || existing.caf || '',
+        package: r.package || existing.package || '',
+        packageAmt: Number(r.packageAmt) || existing.packageAmt || 0,
+        addonAmt: Number(r.addonAmt) || existing.addonAmt || 0,
+        status,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (status === 'DC' && String(existing.status || 'ACT').toUpperCase() !== 'DC') {
+        up.dcDate = new Date().toISOString().slice(0, 10);
+        up.dcReason = existing.dcReason || 'CableSoft list ST=DC';
+        dcMarked++;
+      }
+      ops.push({ type: 'update', id: existing.id, up, transferred, existing, r, cid });
+    });
+
+    appById.forEach((c, cid) => {
+      if (liveById.has(cid)) return;
+      if (String(c.status || 'ACT').toUpperCase() === 'DC') return;
+      ops.push({
+        type: 'dc',
+        id: c.id,
+        up: {
+          status: 'DC',
+          dcDate: new Date().toISOString().slice(0, 10),
+          dcReason: 'Not in CableSoft live list 29 Aug 2026',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }
+      });
+    });
+
+    for (let i = 0; i < ops.length; i += 200) {
+      const chunk = ops.slice(i, i + 200);
+      const batch = db.batch();
+      let n = 0;
+      for (const op of chunk) {
+        if (op.type === 'add') {
+          const ref = db.collection('customers').doc();
+          batch.set(ref, {
+            custId: op.r.custId,
+            name: op.r.name || '',
+            mobile: op.r.mobile || '',
+            doorNo: op.r.doorNo || '',
+            place: op.r.place || '',
+            street: op.r.street || '',
+            mso: op.r.mso || '',
+            scNo: op.r.scNo || '',
+            smartCard: op.r.scNo || '',
+            boxNo: op.r.boxNo || '',
+            caf: op.r.caf || '',
+            package: op.r.package || '',
+            packageAmt: Number(op.r.packageAmt) || 0,
+            addonAmt: Number(op.r.addonAmt) || 0,
+            dueAmt: Number(op.r.packageAmt) || 0,
+            status: op.status,
+            billing: 'Yes',
+            remarks: 'New from CableSoft live 29 Aug',
+            source: 'cablesoft-sync-29aug',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          added++;
+          n++;
+        } else if (op.type === 'update') {
+          batch.update(db.collection('customers').doc(op.id), op.up);
+          updated++;
+          n++;
+          if (op.transferred) {
+            const tref = db.collection('transfers').doc();
+            batch.set(tref, {
+              customerId: op.id,
+              custId: op.cid,
+              customerName: op.r.name || op.existing.name || '',
+              fromPlace: op.existing.place || '',
+              fromStreet: op.existing.street || '',
+              toPlace: op.r.place || '',
+              toStreet: op.r.street || '',
+              date: new Date().toISOString().slice(0, 10),
+              changedBy: (typeof currentUser !== 'undefined' && currentUser && currentUser.email) || 'sync',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            transfers++;
+            n++;
+          }
+        } else if (op.type === 'dc') {
+          batch.update(db.collection('customers').doc(op.id), op.up);
+          dcMarked++;
+          n++;
+        }
+      }
+      if (n > 0) {
+        showToast('Saving… ' + Math.min(i + chunk.length, ops.length) + '/' + ops.length);
+        await batch.commit();
+      }
+    }
+
+    if (typeof invalidateCustomersCache === 'function') invalidateCustomersCache();
+    if (typeof loadCustomers === 'function') await loadCustomers(true);
+    alert('Customer sync முடிந்தது\n\nNew ADD: ' + added + '\nUpdated: ' + updated + '\nDC marked: ' + dcMarked + '\nStreet transfer: ' + transfers);
+    showToast('Sync done · New ' + added + ' · Upd ' + updated + ' · DC ' + dcMarked);
+  } catch (e) {
+    console.error(e);
+    alert('Sync error: ' + (e.message || e));
+  }
+}
+
 async function importCollectionsFromJson(fileName, label) {
   if (!confirm((label || fileName) + ' import?\n\n• same BillNo+Date+Customer → SKIP\n• புதியவை ADD\n• Paid customers Due = 0')) return;
   try {
