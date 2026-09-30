@@ -2023,7 +2023,10 @@ function updateDashboardStats() {
   const total = allCustomers.length;
   const active = allCustomers.filter(c => String(c.status || 'ACT').toUpperCase() === 'ACT').length;
   const dc = allCustomers.filter(c => String(c.status || '').toUpperCase() === 'DC').length;
-  const totalDue = allCustomers.reduce((s, c) => s + Number(c.dueAmt || c.due || 0), 0);
+  const totalDue = allCustomers.reduce((s, c) => {
+    if (String(c.status || 'ACT').toUpperCase() === 'DC') return s;
+    return s + Number(c.dueAmt || c.due || 0);
+  }, 0);
 
   // Customers
   const sc = document.getElementById('statCustomers');
@@ -2057,7 +2060,9 @@ function updateDashboardStats() {
   const sbb = document.getElementById('statBoxBalance');
   if (sbb) sbb.textContent = balance;
 
-  const pendingN = allCustomers.filter(c => Number(c.dueAmt || c.due || 0) > 0).length;
+  const pendingN = allCustomers.filter(c =>
+    String(c.status || 'ACT').toUpperCase() !== 'DC' && Number(c.dueAmt || c.due || 0) > 0
+  ).length;
   const sdc = document.getElementById('statDueCnt');
   if (sdc) sdc.textContent = pendingN.toLocaleString('en-IN');
   const activeN = allCustomers.filter(c => String(c.status || 'ACT').toUpperCase() === 'ACT').length;
@@ -3974,11 +3979,64 @@ async function importAugustCollections() {
 }
 
 async function importTodayCollections() {
-  return importCollectionsFromJson('collections_from_25aug2026.json', 'Aug 25–27 only (new bills)');
+  return importCollectionsFromJson('collections_sep2026.json', 'Sep 2026 CableSoft (duplicate SKIP)');
+}
+
+async function importSeptemberCollections() {
+  return importCollectionsFromJson('collections_sep2026.json', 'Sep 1–30 CableSoft · old SKIP · new ADD');
 }
 
 async function importCollectionsTo25() {
   return importCollectionsFromJson('collections_to_25aug2026.json', 'Full list to 25 Aug · old SKIP · new ADD');
+}
+
+async function recalcAugustDues() {
+  if (!confirm('August collection இருந்தால் Due = 0\nஇல்லையென்றால் Due = Package\n(DC customers skip)\n\nசெய்யவா?')) return;
+  try {
+    showToast('Loading August collections...');
+    const monthStart = '2026-08-01';
+    const snap = await db.collection('collections').where('date', '>=', monthStart).get();
+    const paid = new Set();
+    snap.forEach(doc => {
+      const d = doc.data();
+      if (String(d.status || 'active').toLowerCase() === 'cancelled') return;
+      if (d.customerId) paid.add(d.customerId);
+      if (d.importCustId) paid.add(String(d.importCustId).toUpperCase());
+    });
+    if (!allCustomers || !allCustomers.length) {
+      if (typeof loadCustomers === 'function') await loadCustomers(true);
+    }
+    let zeroed = 0, setPkg = 0, skipped = 0;
+    const updates = [];
+    allCustomers.forEach(c => {
+      if (String(c.status || 'ACT').toUpperCase() === 'DC') { skipped++; return; }
+      const cid = String(c.custId || '').trim().toUpperCase();
+      const hasPaid = paid.has(c.id) || (cid && paid.has(cid));
+      const newDue = hasPaid ? 0 : (Number(c.packageAmt || c.packageBase || 0) || 0);
+      const oldDue = Number(c.dueAmt || c.due || 0);
+      if (oldDue === newDue) return;
+      updates.push({ id: c.id, dueAmt: newDue, hasPaid });
+    });
+    for (let i = 0; i < updates.length; i += 400) {
+      const batch = db.batch();
+      updates.slice(i, i + 400).forEach(u => {
+        batch.update(db.collection('customers').doc(u.id), {
+          dueAmt: u.dueAmt,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        if (u.hasPaid) zeroed++; else setPkg++;
+      });
+      await batch.commit();
+      showToast('Due update ' + Math.min(i + 400, updates.length) + '/' + updates.length);
+    }
+    if (typeof invalidateCustomersCache === 'function') invalidateCustomersCache();
+    if (typeof loadCustomers === 'function') await loadCustomers(true);
+    if (typeof loadDashboard === 'function') await loadDashboard(true);
+    alert('Due recalc முடிந்தது\n\nPaid → Due 0: ' + zeroed + '\nUnpaid → Package: ' + setPkg + '\nDC skip: ' + skipped);
+  } catch (e) {
+    console.error(e);
+    alert('Due recalc error: ' + (e.message || e));
+  }
 }
 
 async function syncCustomersFromCableSoft() {
